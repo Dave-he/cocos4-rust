@@ -1,0 +1,28 @@
+[package]
+name = "cocos4-rust"
+version = "0.1.0"
+edition = "2021"
+authors = ["Cocos Team"]
+description = "Rust implementation of Cocos4 game engine"
+license = "MIT"
+repository = "https://github.com/cocos/cocos4-rust"
+readme = "README.md"
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_json = { version = "1.0", optional = true }
+
+[dev-dependencies]
+criterion = "0.5"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[profile.dev]
+opt-level = 0

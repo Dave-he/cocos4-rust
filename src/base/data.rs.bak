@@ -1,0 +1,145 @@
+use std::ptr;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Data {
+    bytes: Option<Vec<u8>>,
+}
+
+impl Data {
+    pub const NULL_DATA: Data = Data { bytes: None };
+
+    pub fn new() -> Self {
+        Data { bytes: None }
+    }
+
+    pub fn from_bytes(bytes: Vec<u8>) -> Self {
+        Data {
+            bytes: if bytes.is_empty() { None } else { Some(bytes) },
+        }
+    }
+
+    pub fn copy(bytes: &[u8]) -> Self {
+        if bytes.is_empty() {
+            Data { bytes: None }
+        } else {
+            Data {
+                bytes: Some(bytes.to_vec()),
+            }
+        }
+    }
+
+    pub fn get_bytes(&self) -> Option<&[u8]> {
+        self.bytes.as_deref()
+    }
+
+    pub fn get_size(&self) -> u32 {
+        self.bytes.as_ref().map_or(0, |b| b.len() as u32)
+    }
+
+    pub fn is_null(&self) -> bool {
+        self.get_size() == 0
+    }
+
+    pub fn resize(&mut self, size: u32) {
+        if size == 0 {
+            self.bytes = None;
+        } else {
+            if let Some(ref mut bytes) = self.bytes {
+                bytes.resize(size as usize);
+            } else {
+                self.bytes = Some(vec![0; size as usize]);
+            }
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.bytes = None;
+    }
+
+    pub fn take_buffer(&mut self) -> Option<Vec<u8>> {
+        self.bytes.take()
+    }
+}
+
+impl Default for Data {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl AsRef<[u8]> for Data {
+    fn as_ref(&self) -> &[u8] {
+        self.bytes.as_deref().unwrap_or(&[])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_data_new() {
+        let data = Data::new();
+        assert!(data.is_null());
+        assert_eq!(data.get_size(), 0);
+    }
+
+    #[test]
+    fn test_data_from_bytes() {
+        let bytes = vec![1, 2, 3, 4, 5];
+        let data = Data::from_bytes(bytes.clone());
+        assert!(!data.is_null());
+        assert_eq!(data.get_size(), 5);
+        assert_eq!(data.get_bytes(), Some(bytes.as_slice()));
+    }
+
+    #[test]
+    fn test_data_copy() {
+        let bytes = vec![10, 20, 30];
+        let data = Data::copy(&bytes);
+        assert!(!data.is_null());
+        assert_eq!(data.get_size(), 3);
+        assert_eq!(data.get_bytes(), Some(bytes.as_slice()));
+    }
+
+    #[test]
+    fn test_data_clear() {
+        let bytes = vec![1, 2, 3];
+        let mut data = Data::copy(&bytes);
+        assert!(!data.is_null());
+
+        data.clear();
+        assert!(data.is_null());
+        assert_eq!(data.get_size(), 0);
+    }
+
+    #[test]
+    fn test_data_resize() {
+        let mut data = Data::new();
+        data.resize(10);
+        assert_eq!(data.get_size(), 10);
+
+        data.resize(5);
+        assert_eq!(data.get_size(), 5);
+
+        data.resize(0);
+        assert!(data.is_null());
+    }
+
+    #[test]
+    fn test_data_take_buffer() {
+        let bytes = vec![100, 200, 300];
+        let mut data = Data::copy(&bytes);
+
+        let taken = data.take_buffer();
+        assert_eq!(taken, Some(bytes));
+        assert!(data.is_null());
+    }
+
+    #[test]
+    fn test_data_null_data() {
+        assert!(Data::NULL_DATA.is_null());
+        assert_eq!(Data::NULL_DATA.get_size(), 0);
+        assert_eq!(Data::NULL_DATA.get_bytes(), None);
+    }
+}

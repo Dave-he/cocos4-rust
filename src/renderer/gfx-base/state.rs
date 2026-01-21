@@ -1,0 +1,1 @@
+pub trait state: RefCounted {}

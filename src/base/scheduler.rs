@@ -1,0 +1,315 @@
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
+pub type ScheduleCallback = Box<dyn Fn(f32) + Send + Sync>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SchedulePriority {
+    SystemMin = 0,
+    NonSystemMin = 1,
+}
+
+pub const CC_REPEAT_FOREVER: u32 = u32::MAX;
+
+pub struct Timer {
+    elapsed: f32,
+    run_forever: bool,
+    use_delay: bool,
+    times_executed: u32,
+    repeat: u32,
+    delay: f32,
+    interval: f32,
+}
+
+impl Timer {
+    pub fn new() -> Self {
+        Timer {
+            elapsed: 0.0,
+            run_forever: false,
+            use_delay: false,
+            times_executed: 0,
+            repeat: 0,
+            delay: 0.0,
+            interval: 0.0,
+        }
+    }
+
+    pub fn get_interval(&self) -> f32 {
+        self.interval
+    }
+
+    pub fn set_interval(&mut self, interval: f32) {
+        self.interval = interval;
+    }
+
+    pub fn setup_timer_with_interval(&mut self, seconds: f32, repeat: u32, delay: f32) {
+        self.interval = seconds;
+        self.repeat = repeat;
+        self.delay = delay;
+    }
+}
+
+struct TimerEntry {
+    timers: Vec<Option<Arc<Mutex<Timer>>>>,
+    target: Option<*const ()>,
+    timer_index: i32,
+    current_timer: Option<Arc<Mutex<Timer>>>,
+    current_timer_salvaged: bool,
+    paused: bool,
+}
+
+struct UpdateEntry {
+    callback: ScheduleCallback,
+    target: Option<*const ()>,
+    paused: bool,
+    marker: i32,
+}
+
+pub struct Scheduler {
+    timers: HashMap<String, TimerEntry>,
+    update_handlers: Vec<UpdateEntry>,
+    _update_hash_locked: bool,
+    _current_target_salvaged: bool,
+    functions_to_perform: Vec<Box<dyn Fn() + Send + Sync>>,
+    _perform_mutex: Mutex<()>,
+}
+
+impl Scheduler {
+    pub fn new() -> Self {
+        Scheduler {
+            timers: HashMap::new(),
+            update_handlers: Vec::new(),
+            _update_hash_locked: false,
+            _current_target_salvaged: false,
+            functions_to_perform: Vec::new(),
+            _perform_mutex: Mutex::new(()),
+        }
+    }
+
+    pub fn update(&mut self, dt: f32) {
+        self.update_timers(dt);
+        self.run_functions_to_perform();
+    }
+
+    pub fn schedule(
+        &mut self,
+        callback: ScheduleCallback,
+        target: *const (),
+        interval: f32,
+        repeat: u32,
+        delay: f32,
+        paused: bool,
+        key: String,
+    ) {
+        let entry = TimerEntry {
+            timers: vec![],
+            target: Some(target),
+            timer_index: 0,
+            current_timer: None,
+            current_timer_salvaged: false,
+            paused,
+        };
+        self.timers.insert(key, entry);
+    }
+
+    pub fn schedule_forever(
+        &mut self,
+        callback: ScheduleCallback,
+        target: *const (),
+        interval: f32,
+        paused: bool,
+        key: String,
+    ) {
+        self.schedule(
+            callback,
+            target,
+            interval,
+            CC_REPEAT_FOREVER,
+            0.0,
+            paused,
+            key,
+        );
+    }
+
+    pub fn unschedule(&mut self, key: &str, target: *const ()) {
+        if let Some(entry) = self.timers.get_mut(key) {
+            if entry.target.map(|t| t as *const ()) == Some(target) {
+                self.timers.remove(key);
+            }
+        }
+    }
+
+    pub fn unschedule_all_for_target(&mut self, target: *const ()) {
+        self.timers
+            .retain(|_, entry| entry.target.map(|t| t as *const ()) != Some(target));
+    }
+
+    pub fn unschedule_all(&mut self) {
+        self.timers.clear();
+    }
+
+    pub fn is_scheduled(&self, key: &str, target: *const ()) -> bool {
+        if let Some(entry) = self.timers.get(key) {
+            entry.target.map(|t| t as *const ()) == Some(target)
+        } else {
+            false
+        }
+    }
+
+    pub fn pause_target(&mut self, target: *const ()) {
+        for entry in self.timers.values_mut() {
+            if entry.target.map(|t| t as *const ()) == Some(target) {
+                entry.paused = true;
+            }
+        }
+    }
+
+    pub fn resume_target(&mut self, target: *const ()) {
+        for entry in self.timers.values_mut() {
+            if entry.target.map(|t| t as *const ()) == Some(target) {
+                entry.paused = false;
+            }
+        }
+    }
+
+    pub fn is_target_paused(&self, target: *const ()) -> bool {
+        for entry in self.timers.values() {
+            if entry.target.map(|t| t as *const ()) == Some(target) {
+                return entry.paused;
+            }
+        }
+        false
+    }
+
+    pub fn is_current_target_salvaged(&self) -> bool {
+        self._current_target_salvaged
+    }
+
+    pub fn perform_function_in_cocos_thread(&mut self, function: Box<dyn Fn() + Send + Sync>) {
+        let _lock = self._perform_mutex.lock().unwrap();
+        self.functions_to_perform.push(function);
+    }
+
+    pub fn remove_all_functions_to_be_performed_in_cocos_thread(&mut self) {
+        let _lock = self._perform_mutex.lock().unwrap();
+        self.functions_to_perform.clear();
+    }
+
+    pub fn run_functions_to_be_performed_in_cocos_thread(&mut self) {
+        let functions: Vec<_> = {
+            let _lock = self._perform_mutex.lock().unwrap();
+            self.functions_to_perform.drain(..).collect()
+        };
+
+        for function in functions {
+            function();
+        }
+    }
+
+    fn update_timers(&mut self, dt: f32) {
+        for entry in self.timers.values_mut() {
+            if entry.paused {
+                continue;
+            }
+
+            for timer_opt in entry.timers.iter_mut() {
+                if let Some(timer) = timer_opt {
+                    let timer_data = Arc::try_unwrap(Arc::clone(timer));
+                    if let Ok(timer) = timer_data {
+                        let mut timer_lock = timer.lock().unwrap();
+                        timer_lock.elapsed += dt;
+
+                        if !timer_lock.use_delay {
+                            if timer_lock.elapsed >= timer_lock.interval {
+                                timer_lock.elapsed = 0.0;
+                                timer_lock.times_executed += 1;
+                            }
+                        } else {
+                            if timer_lock.elapsed >= timer_lock.delay {
+                                timer_lock.use_delay = false;
+                                timer_lock.elapsed = 0.0;
+                                timer_lock.times_executed += 1;
+                            }
+                        }
+
+                        if !timer_lock.run_forever && timer_lock.times_executed > timer_lock.repeat
+                        {
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn run_functions_to_perform(&mut self) {
+        for entry in self.update_handlers.iter_mut() {
+            if !entry.paused {
+                (entry.callback)(0.016);
+            }
+        }
+    }
+}
+
+impl Default for Scheduler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scheduler_new() {
+        let scheduler = Scheduler::new();
+        assert!(!scheduler.is_current_target_salvaged());
+    }
+
+    #[test]
+    fn test_timer_new() {
+        let timer = Timer::new();
+        assert_eq!(timer.get_interval(), 0.0);
+    }
+
+    #[test]
+    fn test_timer_set_interval() {
+        let mut timer = Timer::new();
+        timer.set_interval(0.5);
+        assert_eq!(timer.get_interval(), 0.5);
+    }
+
+    #[test]
+    fn test_schedule() {
+        let mut scheduler = Scheduler::new();
+        let key = "test".to_string();
+
+        scheduler.schedule(
+            Box::new(|_| {}),
+            &() as *const (),
+            1.0,
+            5,
+            0.0,
+            false,
+            key.clone(),
+        );
+        assert!(scheduler.is_scheduled(&key, &() as *const ()));
+
+        scheduler.unschedule(&key, &() as *const ());
+        assert!(!scheduler.is_scheduled(&key, &() as *const ()));
+    }
+
+    #[test]
+    fn test_pause_resume_target() {
+        let mut scheduler = Scheduler::new();
+        let key = "test".to_string();
+
+        scheduler.schedule_forever(Box::new(|_| {}), &() as *const (), 1.0, false, key.clone());
+        scheduler.pause_target(&() as *const ());
+        assert!(scheduler.is_target_paused(&() as *const ()));
+
+        scheduler.resume_target(&() as *const ());
+        assert!(!scheduler.is_target_paused(&() as *const ()));
+    }
+}

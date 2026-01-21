@@ -1,0 +1,1 @@
+pub trait shader: RefCounted {}
