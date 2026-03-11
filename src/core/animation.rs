@@ -5,7 +5,7 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 
 use crate::math::Mat4;
 use std::sync::{Arc, Weak};
-use crate::core::scene_graph::Node;
+use crate::core::scene_graph::{Node, NodePtr};
 
 pub trait Texture {}
 
@@ -328,7 +328,7 @@ pub fn get_world_matrix(_transform: &mut IJointTransform, _stamp: i32) -> Mat4 {
     Mat4::IDENTITY
 }
 
-pub fn get_transform(_node: &dyn Node, _root: &dyn Node) -> Option<std::rc::Weak<IJointTransform>> {
+pub fn get_transform(_node: &NodePtr, _root: &NodePtr) -> Option<std::rc::Weak<IJointTransform>> {
     None
 }
 

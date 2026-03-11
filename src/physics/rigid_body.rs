@@ -4,8 +4,7 @@ Original C++ version Copyright (c) 2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
 use crate::math::Vec3;
-use std::sync::{Arc, Weak};
-use crate::core::scene_graph::Node;
+use crate::core::scene_graph::NodeWeakPtr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RigidBodyType {
@@ -16,7 +15,7 @@ pub enum RigidBodyType {
 
 #[derive(Debug, Clone)]
 pub struct RigidBody {
-    pub node: Option<Weak<dyn Node>>,
+    pub node: Option<NodeWeakPtr>,
     pub body_type: RigidBodyType,
     pub mass: f32,
     pub velocity: Vec3,
@@ -34,7 +33,7 @@ impl RigidBody {
         }
     }
 
-    pub fn with_node(node: Weak<dyn Node>) -> Self {
+    pub fn with_node(node: NodeWeakPtr) -> Self {
         RigidBody {
             node: Some(node),
             body_type: RigidBodyType::Dynamic,
@@ -43,7 +42,6 @@ impl RigidBody {
             angular_velocity: Vec3::ZERO,
         }
     }
-
     pub fn set_body_type(&mut self, body_type: RigidBodyType) {
         self.body_type = body_type;
     }

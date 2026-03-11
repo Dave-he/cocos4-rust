@@ -8,6 +8,9 @@ use std::sync::{Arc, Weak};
 pub use crate::math::Vec3;
 pub use crate::math::{Mat4, Quaternion};
 
+pub type NodePtr = Arc<dyn Node>;
+pub type NodeWeakPtr = Weak<dyn Node>;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeSpace {
     Local,

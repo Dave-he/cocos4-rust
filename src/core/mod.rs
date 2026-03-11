@@ -13,5 +13,5 @@ pub use geometry::*;
 pub use scene_graph::*;
 
 pub use scene_graph::{
-    Node, NodeComponent, NodeSpace, Scene, SkewType, Transform, TransformBit, MobilityMode,
+    Node, NodeComponent, NodeSpace, Scene, TransformBit, MobilityMode, SkewType, Transform,
 };

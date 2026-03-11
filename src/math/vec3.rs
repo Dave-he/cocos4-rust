@@ -322,6 +322,25 @@ impl Vec3 {
             normalized * max_step
         }
     }
+
+    pub fn transform_mat4(&self, m: &super::Mat4) -> Vec3 {
+        let w = m.m[3] * self.x + m.m[7] * self.y + m.m[11] * self.z + m.m[15];
+        let inv_w = if w.abs() > FLOAT_CMP_PRECISION { 1.0 / w } else { 1.0 };
+        
+        Vec3 {
+            x: (m.m[0] * self.x + m.m[4] * self.y + m.m[8] * self.z + m.m[12]) * inv_w,
+            y: (m.m[1] * self.x + m.m[5] * self.y + m.m[9] * self.z + m.m[13]) * inv_w,
+            z: (m.m[2] * self.x + m.m[6] * self.y + m.m[10] * self.z + m.m[14]) * inv_w,
+        }
+    }
+
+    pub fn transform_mat3(&self, m: &super::Mat3) -> Vec3 {
+        Vec3 {
+            x: m.m[0] * self.x + m.m[3] * self.y + m.m[6] * self.z,
+            y: m.m[1] * self.x + m.m[4] * self.y + m.m[7] * self.z,
+            z: m.m[2] * self.x + m.m[5] * self.y + m.m[8] * self.z,
+        }
+    }
 }
 
 impl Default for Vec3 {
