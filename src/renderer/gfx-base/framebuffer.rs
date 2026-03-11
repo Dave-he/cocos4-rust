@@ -1,1 +1,3 @@
-pub trait framebuffer: RefCounted {}
+use crate::base::RefCounted;
+
+pub trait Framebuffer: RefCounted {}

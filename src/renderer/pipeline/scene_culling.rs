@@ -1,1 +1,3 @@
-pub trait scene_culling: RefCounted {}
+use crate::base::RefCounted;
+
+pub trait SceneCulling: RefCounted {}

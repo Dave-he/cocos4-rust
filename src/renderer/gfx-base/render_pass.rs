@@ -1,1 +1,3 @@
-pub trait render_pass: RefCounted {}
+use crate::base::RefCounted;
+
+pub trait RenderPass: RefCounted {}

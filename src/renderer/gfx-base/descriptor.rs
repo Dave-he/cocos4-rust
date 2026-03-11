@@ -1,1 +1,3 @@
-pub trait descriptor: RefCounted {}
+use crate::base::RefCounted;
+
+pub trait Descriptor: RefCounted {}

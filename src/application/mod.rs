@@ -3,7 +3,6 @@ Rust port of Cocos Creator Application Manager
 Original C++ version Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use crate::base::std::vector::Vector;
 use crate::base::RefCounted;
 
 pub trait BaseApplication: RefCounted {
@@ -13,7 +12,7 @@ pub trait BaseApplication: RefCounted {
 }
 
 pub trait ApplicationManager: RefCounted {
-    fn get_instance(&self) -> std::shared_ptr<BaseApplication>;
+    fn get_instance(&self) -> Option<Box<dyn BaseApplication>>;
 }
 
 pub trait PlatformInterface: RefCounted {

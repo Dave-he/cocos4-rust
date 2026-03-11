@@ -1,1 +1,3 @@
-pub trait shadow: RefCounted {}
+use crate::base::RefCounted;
+
+pub trait Shadow: RefCounted {}

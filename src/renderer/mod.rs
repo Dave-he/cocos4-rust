@@ -4,12 +4,13 @@
  ****************************************************************************/
 
 pub mod core;
+#[path = "frame-graph/mod.rs"]
+pub mod frame_graph;
+#[path = "gfx-base/mod.rs"]
+pub mod gfx_base;
 pub mod pipeline;
 
-pub use core::*;
-pub use pipeline::*;
-
-pub use core::*;
-pub use frame_graph::*;
-pub use gfx_base::*;
-pub use pipeline::*;
+pub use self::core::*;
+pub use self::frame_graph::*;
+pub use self::gfx_base::*;
+pub use self::pipeline::*;

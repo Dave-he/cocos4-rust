@@ -15,7 +15,7 @@ pub enum ObjectFlags {
     EditOnly = 1 << 4,
     Dirty = 1 << 5,
     Destroying = 1 << 6,
-    DontDestroy = 1 << 6,
+    DontDestroy = 1 << 7,
     Deactivating = 1 << 8,
     IsPreloadStarted = 1 << 13,
     IsOnLoadCalled = 1 << 14,

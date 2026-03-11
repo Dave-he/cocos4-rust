@@ -1,1 +1,3 @@
-pub trait states: RefCounted {}
+use crate::base::RefCounted;
+
+pub trait States: RefCounted {}

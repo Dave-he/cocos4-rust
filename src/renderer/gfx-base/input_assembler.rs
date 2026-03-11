@@ -1,1 +1,3 @@
-pub trait input_assembler: RefCounted {}
+use crate::base::RefCounted;
+
+pub trait InputAssembler: RefCounted {}

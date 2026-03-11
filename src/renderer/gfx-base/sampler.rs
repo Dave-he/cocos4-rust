@@ -1,1 +1,3 @@
-pub trait sampler: RefCounted {}
+use crate::base::RefCounted;
+
+pub trait Sampler: RefCounted {}

@@ -1,1 +1,3 @@
-pub trait render_queue: RefCounted {}
+use crate::base::RefCounted;
+
+pub trait RenderQueue: RefCounted {}

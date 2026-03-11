@@ -6,6 +6,19 @@ Original C++ version Copyright (c) 2023 Xiamen Yaji Software Co., Ltd.
 use crate::base::RefCounted;
 use crate::math::Vec3;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShapeType {
+    Unknown = 0,
+    Sphere = 1,
+    Box = 2,
+    Capsule = 3,
+    Cylinder = 4,
+    Cone = 5,
+    Mesh = 6,
+    Plane = 7,
+    Simplex = 8,
+}
+
 #[derive(Debug, Clone)]
 pub struct Box {
     pub center: Vec3,

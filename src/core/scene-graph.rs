@@ -21,9 +21,15 @@ pub enum TransformBit {
     Rotation = 2,
     Scale = 4,
     Skew = 8,
-    RS = Rotation as i32 | Scale as i32,
-    RSS = Rotation as i32 | Scale as i32 | Skew as i32,
-    TRS = Position as i32 | Rotation as i32 | Scale as i32,
+    RS = 6,
+    RSS = 14,
+    TRS = 7,
+}
+
+impl TransformBit {
+    pub fn as_i32(self) -> i32 {
+        self as i32
+    }
 }
 
 impl std::ops::BitOr for TransformBit {

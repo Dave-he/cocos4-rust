@@ -1,1 +1,3 @@
-pub trait command_buffer: RefCounted {}
+use crate::base::RefCounted;
+
+pub trait CommandBuffer: RefCounted {}

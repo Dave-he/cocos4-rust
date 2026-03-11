@@ -1,1 +1,3 @@
-pub trait shader: RefCounted {}
+use crate::base::RefCounted;
+
+pub trait Shader: RefCounted {}

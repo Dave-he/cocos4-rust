@@ -1,1 +1,3 @@
-pub trait render_flow: RefCounted {}
+use crate::base::RefCounted;
+
+pub trait RenderFlow: RefCounted {}
