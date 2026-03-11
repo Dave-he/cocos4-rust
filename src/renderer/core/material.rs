@@ -3,8 +3,7 @@ Rust port of Cocos Creator Renderer Material System
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use super::pass::{IPass as PassIPass, IPassInfo as PassIPassInfo};
-use super::program::IProgramInfo;
+use super::pass::{IPass, IPassInfo};
 use crate::base::RefCounted;
 
 pub struct Material {
@@ -43,11 +42,11 @@ pub trait MaterialInstance: RefCounted {
 
     fn recompile_shaders(&mut self, overrides: &MacroRecord);
 
-    fn override_pipeline_states(&mut self, overrides: &PassIPassInfo);
+    fn override_pipeline_states(&mut self, overrides: &IPassInfo);
 
     fn on_pass_state_change(&mut self, dont_notify: bool);
 }
 
-pub trait IPassInfo {
-    fn get(&self) -> Option<&PassIPass>;
+pub trait IPassInfoTrait {
+    fn get(&self) -> Option<&dyn IPass>;
 }

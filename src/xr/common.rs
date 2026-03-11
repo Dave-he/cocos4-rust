@@ -373,9 +373,24 @@ impl XRControllerInfo for XRPose {
 }
 
 /// XR controller event
-#[derive(Debug, Clone, Default)]
 pub struct XRControllerEvent {
     pub xr_controller_infos: Vec<Box<dyn XRControllerInfo + Send + Sync>>,
+}
+
+impl Default for XRControllerEvent {
+    fn default() -> Self {
+        Self {
+            xr_controller_infos: Vec::new(),
+        }
+    }
+}
+
+impl std::fmt::Debug for XRControllerEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("XRControllerEvent")
+            .field("xr_controller_infos_count", &self.xr_controller_infos.len())
+            .finish()
+    }
 }
 
 /// XR swapchain

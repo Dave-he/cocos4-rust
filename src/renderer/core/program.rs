@@ -21,11 +21,26 @@ pub struct ITemplateInfo {
     pub defines: Vec<MacroRecord>,
 }
 
-pub trait IProgramInfo {
-    fn get(&self) -> Option<&IProgramInfo>;
+pub trait IProgramInfoTrait {
+    fn get_info(&self) -> Option<&ProgramInfo>;
+}
+
+#[derive(Debug, Clone)]
+pub struct ProgramInfo {
+    pub name: String,
+    pub defines: Vec<MacroRecord>,
 }
 
 pub struct ShaderInfo {
     pub name: String,
     pub defines: Vec<MacroRecord>,
+}
+
+impl ShaderInfo {
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            defines: Vec::new(),
+        }
+    }
 }

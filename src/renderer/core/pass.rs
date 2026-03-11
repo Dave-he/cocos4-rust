@@ -3,7 +3,6 @@ Rust port of Cocos Creator Renderer Pass System
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use super::material::MaterialInstance;
 use crate::base::RefCounted;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,13 +43,13 @@ pub trait IPass: RefCounted {
 pub trait RenderableComponent: RefCounted {}
 
 pub struct PassInstance {
-    pub parent: Option<*const MaterialInstance>,
+    pub parent: Option<*const ()>,
     pub owner: Option<*const dyn RenderableComponent>,
     pub sub_model_index: usize,
 }
 
 impl PassInstance {
-    pub fn new(parent: Option<*const MaterialInstance>) -> Self {
+    pub fn new(parent: Option<*const ()>) -> Self {
         PassInstance {
             parent,
             owner: None,

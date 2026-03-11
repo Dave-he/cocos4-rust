@@ -1,5 +1,3 @@
-use crate::math::Vec4;
-
 /// Window size
 pub type Size = (u32, u32);
 
@@ -31,43 +29,17 @@ impl WindowFlags {
     pub const VULKAN: u32 = 0x1000_0000;
 }
 
+/// Main window ID constant
+pub const MAIN_WINDOW_ID: u32 = 1;
+
 /// System window interface
 pub trait ISystemWindow {
-    const MAIN_WINDOW_ID: u32 = 1;
-
-    /// Create window with full parameters
-    fn create_window(
-        &mut self,
-        title: &str,
-        x: i32,
-        y: i32,
-        width: i32,
-        height: i32,
-        flags: u32,
-    ) -> bool {
-        true
-    }
-
-    /// Create window displayed in the bottom left
-    fn create_window_simple(&mut self, title: &str, width: i32, height: i32, flags: u32) -> bool {
-        true
-    }
-
     /// Get the window's unique ID
     fn get_window_id(&self) -> u32;
-
-    /// Close the window
-    fn close_window(&mut self) {}
 
     /// Get the native window handle
     fn get_window_handle(&self) -> usize;
 
     /// Get the view size
     fn get_view_size(&self) -> Size;
-
-    /// Set the view size
-    fn set_view_size(&mut self, width: u32, height: u32) {}
-
-    /// Enable or disable the cursor
-    fn set_cursor_enabled(&mut self, value: bool);
 }

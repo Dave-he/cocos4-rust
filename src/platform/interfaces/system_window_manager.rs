@@ -28,7 +28,7 @@ pub trait ISystemWindowManager {
 
     /// Create a system window
     /// Returns the created window or None if failed
-    fn create_window(&mut self, info: &SystemWindowInfo) -> Option<Box<dyn ISystemWindow>>;
+    fn create_window(&mut self, info: &SystemWindowInfo) -> Option<u32>;
 
     /// Find a system window by ID
     fn get_window(&self, window_id: u32) -> Option<&dyn ISystemWindow>;

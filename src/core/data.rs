@@ -32,25 +32,27 @@ pub enum ObjectFlags {
 }
 
 impl ObjectFlags {
-    pub fn all_hide_mask(&self) -> u32 {
-        !(Self::ToDestroy
-            | Self::Dirty
-            | Self::Destroying
-            | Self::DontDestroy
-            | Self::Deactivating
-            | Self::IsPreloadStarted
-            | Self::IsOnLoadCalled
-            | Self::IsOnLoadStarted
-            | Self::IsStartCalled
-            | Self::IsRotationLocked
-            | Self::IsScaleLocked
-            | Self::IsAnchorLocked
-            | Self::IsSizeLocked
-            | Self::IsPositionLocked)
+    pub const ALL_HIDE_MASK: u32 = !(Self::ToDestroy as u32
+            | Self::Dirty as u32
+            | Self::Destroying as u32
+            | Self::DontDestroy as u32
+            | Self::Deactivating as u32
+            | Self::IsPreloadStarted as u32
+            | Self::IsOnLoadCalled as u32
+            | Self::IsOnLoadStarted as u32
+            | Self::IsStartCalled as u32
+            | Self::IsRotationLocked as u32
+            | Self::IsScaleLocked as u32
+            | Self::IsAnchorLocked as u32
+            | Self::IsSizeLocked as u32
+            | Self::IsPositionLocked as u32);
+
+    pub fn all_hide_mask() -> u32 {
+        Self::ALL_HIDE_MASK
     }
 
     pub fn has_any_hide_flag(flags: u32) -> bool {
-        (flags & Self::all_hide_mask(0)) != 0
+        (flags & Self::ALL_HIDE_MASK) != 0
     }
 }
 
@@ -63,7 +65,7 @@ pub struct ObjectFlagBits {
 impl ObjectFlagBits {
     pub const ALL_HIDE_MASKS: ObjectFlagBits = ObjectFlagBits {
         zero: ObjectFlags::Zero,
-        all_hide_mask: ObjectFlags::all_hide_mask(0),
+        all_hide_mask: ObjectFlags::ALL_HIDE_MASK,
     };
 }
 
