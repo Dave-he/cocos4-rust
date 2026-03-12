@@ -409,10 +409,433 @@ impl Mat3 {
 
         Vec3::new(x, y, z)
     }
+
+    /// 从 Mat4 提取前三行三列
+    pub fn from_mat4(m: &Mat4) -> Mat3 {
+        Mat3::new(
+            m.m[0], m.m[1], m.m[2],
+            m.m[4], m.m[5], m.m[6],
+            m.m[8], m.m[9], m.m[10],
+        )
+    }
+
+    /// 从四元数创建矩阵
+    pub fn from_quat(q: &Quaternion) -> Mat3 {
+        let x = q.x;
+        let y = q.y;
+        let z = q.z;
+        let w = q.w;
+
+        let x2 = x + x;
+        let y2 = y + y;
+        let z2 = z + z;
+
+        let xx = x * x2;
+        let yx = y * x2;
+        let yy = y * y2;
+        let zx = z * x2;
+        let zy = z * y2;
+        let zz = z * z2;
+        let wx = w * x2;
+        let wy = w * y2;
+        let wz = w * z2;
+
+        Mat3 {
+            m: [
+                1.0 - yy - zz, yx + wz, zx - wy,
+                yx - wz, 1.0 - xx - zz, zy + wx,
+                zx + wy, zy - wx, 1.0 - xx - yy,
+            ],
+        }
+    }
+
+    /// 从 2D 平移创建矩阵
+    pub fn from_translation_2d(x: f32, y: f32) -> Mat3 {
+        Mat3::new(
+            1.0, 0.0, 0.0,
+            0.0, 1.0, 0.0,
+            x, y, 1.0,
+        )
+    }
+
+    /// 从 2D 缩放创建矩阵
+    pub fn from_scaling_2d(x: f32, y: f32) -> Mat3 {
+        Mat3::new(
+            x, 0.0, 0.0,
+            0.0, y, 0.0,
+            0.0, 0.0, 1.0,
+        )
+    }
+
+    /// 从 2D 旋转创建矩阵
+    pub fn from_rotation_2d(rad: f32) -> Mat3 {
+        let s = rad.sin();
+        let c = rad.cos();
+        Mat3::new(
+            c, s, 0.0,
+            -s, c, 0.0,
+            0.0, 0.0, 1.0,
+        )
+    }
+
+    /// 矩阵与向量乘法
+    pub fn transform_vec3(&self, v: &Vec3) -> Vec3 {
+        let x = v.x;
+        let y = v.y;
+        let z = v.z;
+
+        Vec3::new(
+            self.m[0] * x + self.m[3] * y + self.m[6] * z,
+            self.m[1] * x + self.m[4] * y + self.m[7] * z,
+            self.m[2] * x + self.m[5] * y + self.m[8] * z,
+        )
+    }
+
+    /// 检查两个矩阵是否近似相等
+    pub fn approx_equals(&self, other: &Mat3, epsilon: f32) -> bool {
+        for i in 0..MATRIX3_SIZE {
+            if (self.m[i] - other.m[i]).abs() > epsilon {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 impl Default for Mat3 {
     fn default() -> Self {
         Mat3::ZERO
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::f32::consts::PI;
+
+    const EPSILON: f32 = 0.0001;
+
+    fn assert_float_eq(a: f32, b: f32, epsilon: f32) {
+        assert!(
+            (a - b).abs() < epsilon,
+            "Float values not equal: {} != {}",
+            a,
+            b
+        );
+    }
+
+    fn assert_mat3_eq(a: &Mat3, b: &Mat3, epsilon: f32) {
+        for i in 0..9 {
+            assert_float_eq(a.m[i], b.m[i], epsilon);
+        }
+    }
+
+    fn assert_vec3_eq(a: &Vec3, b: &Vec3, epsilon: f32) {
+        assert_float_eq(a.x, b.x, epsilon);
+        assert_float_eq(a.y, b.y, epsilon);
+        assert_float_eq(a.z, b.z, epsilon);
+    }
+
+    #[test]
+    fn test_identity() {
+        let m = Mat3::IDENTITY;
+        assert!(m.is_identity());
+        assert_float_eq(m.determinant(), 1.0, EPSILON);
+    }
+
+    #[test]
+    fn test_zero() {
+        let m = Mat3::ZERO;
+        assert!(m.is_zero());
+        assert_float_eq(m.determinant(), 0.0, EPSILON);
+    }
+
+    #[test]
+    fn test_new() {
+        let m = Mat3::new(
+            1.0, 2.0, 3.0,
+            4.0, 5.0, 6.0,
+            7.0, 8.0, 9.0,
+        );
+        assert_float_eq(m.m[0], 1.0, EPSILON);
+        assert_float_eq(m.m[4], 5.0, EPSILON);
+        assert_float_eq(m.m[8], 9.0, EPSILON);
+    }
+
+    #[test]
+    fn test_from_array() {
+        let arr = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
+        let m = Mat3::from_array(&arr);
+        assert_float_eq(m.m[0], 1.0, EPSILON);
+        assert_float_eq(m.m[8], 9.0, EPSILON);
+
+        let short_arr = [1.0, 2.0];
+        let m2 = Mat3::from_array(&short_arr);
+        assert!(m2.is_zero());
+    }
+
+    #[test]
+    fn test_from_quat_identity() {
+        let q = Quaternion::IDENTITY;
+        let m = Mat3::from_quat(&q);
+        assert_mat3_eq(&m, &Mat3::IDENTITY, EPSILON);
+    }
+
+    #[test]
+    fn test_from_quat_rotation_x() {
+        let q = Quaternion::from_axis_angle(&Vec3::UNIT_X, PI / 2.0);
+        let m = Mat3::from_quat(&q);
+        assert_float_eq(m.m[0], 1.0, EPSILON);
+        assert_float_eq(m.m[4], 0.0, EPSILON);
+        assert_float_eq(m.m[5], 1.0, EPSILON);
+        assert_float_eq(m.m[7], -1.0, EPSILON);
+        assert_float_eq(m.m[8], 0.0, EPSILON);
+    }
+
+    #[test]
+    fn test_from_quat_rotation_y() {
+        let q = Quaternion::from_axis_angle(&Vec3::UNIT_Y, PI / 2.0);
+        let m = Mat3::from_quat(&q);
+        assert_float_eq(m.m[0], 0.0, EPSILON);
+        assert_float_eq(m.m[2], -1.0, EPSILON);
+        assert_float_eq(m.m[4], 1.0, EPSILON);
+        assert_float_eq(m.m[6], 1.0, EPSILON);
+        assert_float_eq(m.m[8], 0.0, EPSILON);
+    }
+
+    #[test]
+    fn test_from_quat_rotation_z() {
+        let q = Quaternion::from_axis_angle(&Vec3::UNIT_Z, PI / 2.0);
+        let m = Mat3::from_quat(&q);
+        assert_float_eq(m.m[0], 0.0, EPSILON);
+        assert_float_eq(m.m[1], 1.0, EPSILON);
+        assert_float_eq(m.m[3], -1.0, EPSILON);
+        assert_float_eq(m.m[4], 0.0, EPSILON);
+        assert_float_eq(m.m[8], 1.0, EPSILON);
+    }
+
+    #[test]
+    fn test_to_euler() {
+        // Test identity
+        let m = Mat3::IDENTITY;
+        let euler = m.to_euler();
+        assert_float_eq(euler.x, 0.0, EPSILON);
+        assert_float_eq(euler.y, 0.0, EPSILON);
+        assert_float_eq(euler.z, 0.0, EPSILON);
+    }
+
+    #[test]
+    fn test_from_view_up() {
+        let view = Vec3::new(0.0, 0.0, -1.0);
+        let up = Vec3::UNIT_Y;
+        let m = Mat3::from_view_up(&view, Some(&up));
+        
+        // Should produce identity-like matrix for default orientation
+        assert_float_eq(m.m[0], 1.0, EPSILON);
+        assert_float_eq(m.m[4], 1.0, EPSILON);
+        assert_float_eq(m.m[8], 1.0, EPSILON);
+    }
+
+    #[test]
+    fn test_from_view_up_zero_view() {
+        let view = Vec3::ZERO;
+        let up = Vec3::UNIT_Y;
+        let m = Mat3::from_view_up(&view, Some(&up));
+        assert!(m.is_identity());
+    }
+
+    #[test]
+    fn test_from_axes() {
+        let x_axis = Vec3::UNIT_X;
+        let y_axis = Vec3::UNIT_Y;
+        let z_axis = Vec3::UNIT_Z;
+        let m = Mat3::from_axes(&x_axis, &y_axis, &z_axis);
+        assert_mat3_eq(&m, &Mat3::IDENTITY, EPSILON);
+    }
+
+    #[test]
+    fn test_transpose() {
+        let mut m = Mat3::new(
+            1.0, 2.0, 3.0,
+            4.0, 5.0, 6.0,
+            7.0, 8.0, 9.0,
+        );
+        m.transpose();
+        
+        assert_float_eq(m.m[1], 4.0, EPSILON);
+        assert_float_eq(m.m[2], 7.0, EPSILON);
+        assert_float_eq(m.m[3], 2.0, EPSILON);
+        assert_float_eq(m.m[5], 8.0, EPSILON);
+        assert_float_eq(m.m[6], 3.0, EPSILON);
+        assert_float_eq(m.m[7], 6.0, EPSILON);
+    }
+
+    #[test]
+    fn test_get_transposed() {
+        let m = Mat3::new(
+            1.0, 2.0, 3.0,
+            4.0, 5.0, 6.0,
+            7.0, 8.0, 9.0,
+        );
+        let mt = m.get_transposed();
+        
+        assert_float_eq(mt.m[1], 4.0, EPSILON);
+        assert_float_eq(mt.m[3], 2.0, EPSILON);
+    }
+
+    #[test]
+    fn test_determinant_identity() {
+        let m = Mat3::IDENTITY;
+        assert_float_eq(m.determinant(), 1.0, EPSILON);
+    }
+
+    #[test]
+    fn test_determinant_scale() {
+        let m = Mat3::from_scale(2.0, 3.0);
+        assert_float_eq(m.determinant(), 6.0, EPSILON);
+    }
+
+    #[test]
+    fn test_invert_identity() {
+        let mut m = Mat3::IDENTITY;
+        m.invert();
+        assert_mat3_eq(&m, &Mat3::IDENTITY, EPSILON);
+    }
+
+    #[test]
+    fn test_invert_scale() {
+        let mut m = Mat3::from_scale(2.0, 4.0);
+        m.invert();
+        
+        assert_float_eq(m.m[0], 0.5, EPSILON);
+        assert_float_eq(m.m[4], 0.25, EPSILON);
+    }
+
+    #[test]
+    fn test_invert_multiply() {
+        let original = Mat3::from_quat(&Quaternion::from_axis_angle(&Vec3::new(0.0, 1.0, 0.0).get_normalized(), 0.7));
+        
+        let mut inv = original;
+        inv.invert();
+        
+        let result = Mat3::multiply_mat3(&original, &inv);
+        assert_mat3_eq(&result, &Mat3::IDENTITY, EPSILON);
+    }
+
+    #[test]
+    fn test_invert_zero_det() {
+        let mut m = Mat3::ZERO;
+        m.invert();
+        assert!(m.is_zero());
+    }
+
+    #[test]
+    fn test_multiply_identity() {
+        let m = Mat3::from_rotation(PI / 4.0);
+        let result = Mat3::multiply_mat3(&m, &Mat3::IDENTITY);
+        assert_mat3_eq(&result, &m, EPSILON);
+    }
+
+    #[test]
+    fn test_multiply_vec3() {
+        let m = Mat3::IDENTITY;
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        let result = m.multiply_vec3(&v);
+        assert_vec3_eq(&result, &v, EPSILON);
+    }
+
+    #[test]
+    fn test_from_translation() {
+        let m = Mat3::from_translation(1.0, 2.0);
+        assert_float_eq(m.m[6], 1.0, EPSILON);
+        assert_float_eq(m.m[7], 2.0, EPSILON);
+    }
+
+    #[test]
+    fn test_from_rotation() {
+        let m = Mat3::from_rotation(PI / 2.0);
+        assert_float_eq(m.m[0], 0.0, EPSILON);
+        assert_float_eq(m.m[1], 1.0, EPSILON);
+        assert_float_eq(m.m[3], -1.0, EPSILON);
+        assert_float_eq(m.m[4], 0.0, EPSILON);
+    }
+
+    #[test]
+    fn test_from_scale() {
+        let m = Mat3::from_scale(2.0, 3.0);
+        assert_float_eq(m.m[0], 2.0, EPSILON);
+        assert_float_eq(m.m[4], 3.0, EPSILON);
+    }
+
+    #[test]
+    fn test_scale() {
+        let mut m = Mat3::IDENTITY;
+        m.scale(2.0, 3.0);
+        assert_float_eq(m.m[0], 2.0, EPSILON);
+        assert_float_eq(m.m[4], 3.0, EPSILON);
+    }
+
+    #[test]
+    fn test_rotate() {
+        let mut m = Mat3::IDENTITY;
+        m.rotate(PI / 2.0);
+        assert_float_eq(m.m[0], 0.0, EPSILON);
+        assert_float_eq(m.m[1], 1.0, EPSILON);
+        assert_float_eq(m.m[3], -1.0, EPSILON);
+        assert_float_eq(m.m[4], 0.0, EPSILON);
+    }
+
+    #[test]
+    fn test_translate() {
+        let mut m = Mat3::IDENTITY;
+        m.translate(1.0, 2.0);
+        assert_float_eq(m.m[6], 1.0, EPSILON);
+        assert_float_eq(m.m[7], 2.0, EPSILON);
+    }
+
+    #[test]
+    fn test_from_mat4() {
+        let m4 = super::Mat4::IDENTITY;
+        let m3 = Mat3::from_mat4(&m4);
+        assert_mat3_eq(&m3, &Mat3::IDENTITY, EPSILON);
+    }
+
+    #[test]
+    fn test_add() {
+        let mut m1 = Mat3::IDENTITY;
+        let m2 = Mat3::IDENTITY;
+        m1.add(&m2);
+        assert_float_eq(m1.m[0], 2.0, EPSILON);
+        assert_float_eq(m1.m[4], 2.0, EPSILON);
+        assert_float_eq(m1.m[8], 2.0, EPSILON);
+    }
+
+    #[test]
+    fn test_subtract() {
+        let mut m1 = Mat3::new(
+            2.0, 2.0, 2.0,
+            2.0, 2.0, 2.0,
+            2.0, 2.0, 2.0,
+        );
+        let m2 = Mat3::IDENTITY;
+        m1.subtract(&m2);
+        assert_float_eq(m1.m[0], 1.0, EPSILON);
+        assert_float_eq(m1.m[4], 1.0, EPSILON);
+        assert_float_eq(m1.m[8], 1.0, EPSILON);
+    }
+
+    #[test]
+    fn test_multiply_scalar() {
+        let mut m = Mat3::IDENTITY;
+        m.multiply_scalar(2.0);
+        assert_float_eq(m.m[0], 2.0, EPSILON);
+        assert_float_eq(m.m[4], 2.0, EPSILON);
+        assert_float_eq(m.m[8], 2.0, EPSILON);
+    }
+
+    #[test]
+    fn test_default() {
+        let m: Mat3 = Default::default();
+        assert!(m.is_zero());
     }
 }

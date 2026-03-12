@@ -2,7 +2,6 @@ use super::{FLOAT_CMP_PRECISION, Mat3, Mat4, Vec3, to_degree};
 use std::ops::{Add, Mul, Neg, Sub};
 
 const HALF_TO_RAD: f32 = 0.5 * std::f32::consts::PI / 180.0;
-const HALF_TO_RAD: f32 = 0.5 * std::f32::consts::PI / 180.0;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -138,95 +137,6 @@ impl Quaternion {
             z: z.sin(),
             w: z.cos(),
         }
-    }
-
-    pub fn from_euler(x_deg: f32, y_deg: f32, z_deg: f32) -> Quaternion {
-        let x = x_deg * HALF_TO_RAD;
-        let y = y_deg * HALF_TO_RAD;
-        let z = z_deg * HALF_TO_RAD;
-        let sx = x.sin();
-        let cx = x.cos();
-        let sy = y.sin();
-        let cy = y.cos();
-        let sz = z.sin();
-        let cz = z.cos();
-
-        Quaternion {
-            x: sx * cy * cz + cx * sy * sz,
-            y: cx * sy * cz + sx * cy * sz,
-            z: cx * cy * sz - sx * sy * cz,
-            w: cx * cy * cz - sx * sy * sz,
-        }
-    }
-
-    pub fn to_euler(&self, outer_z: bool) -> Vec3 {
-        let x = self.x;
-        let y = self.y;
-        let z = self.z;
-        let w = self.w;
-        let test = x * y + z * w;
-        let r2d = 180.0 / std::f32::consts::PI;
-
-        let (bank, heading, attitude);
-
-        if test > 0.499999 {
-            bank = 0.0;
-            heading = 2.0 * x.atan2(w) * r2d;
-            attitude = 90.0;
-        } else if test < -0.499999 {
-            bank = 0.0;
-            heading = -2.0 * x.atan2(w) * r2d;
-            attitude = -90.0;
-        } else {
-            let sqx = x * x;
-            let sqy = y * y;
-            let sqz = z * z;
-            bank = (2.0 * x * w - 2.0 * y * z).atan2(1.0 - 2.0 * sqx - 2.0 * sqz) * r2d;
-            heading = (2.0 * y * w - 2.0 * x * z).atan2(1.0 - 2.0 * sqy - 2.0 * sqz) * r2d;
-            attitude = (2.0 * test).asin() * r2d;
-        }
-
-        if outer_z {
-            let sgn = |v: f32| -> f32 {
-                if v >= 0.0 { 1.0 } else { -1.0 }
-            };
-            Vec3::new(
-                -180.0 * sgn(bank + 1e-6) + bank,
-                -180.0 * sgn(heading + 1e-6) + heading,
-                180.0 * sgn(attitude + 1e-6) - attitude,
-            )
-        } else {
-            Vec3::new(bank, heading, attitude)
-        }
-    }
-
-    pub fn from_view_up(view: &Vec3, up: Option<&Vec3>) -> Quaternion {
-        let m = Mat3::from_view_up(view, up);
-        let mut q = Quaternion::from_mat3(&m);
-        q.normalize_self();
-        q
-    }
-
-    pub fn to_axis_angle(&self) -> (Vec3, f32) {
-        let mut q = self.normalize();
-        let mut axis = Vec3::new(q.x, q.y, q.z);
-        axis.normalize();
-        let angle = 2.0 * q.w.acos();
-        (axis, angle)
-    }
-
-    pub fn angle(a: &Quaternion, b: &Quaternion) -> f32 {
-        let dot = Quaternion::dot_static(a, b).abs().min(1.0);
-        dot.acos() * 2.0
-    }
-
-    pub fn rotate_towards(from: &Quaternion, to: &Quaternion, max_step: f32) -> Quaternion {
-        let angle = Quaternion::angle(from, to);
-        if angle == 0.0 {
-            return *to;
-        }
-        let t = (max_step / (angle * 180.0 / std::f32::consts::PI)).min(1.0);
-        Quaternion::slerp(from, to, t)
     }
 
     pub fn is_identity(&self) -> bool {
@@ -602,13 +512,6 @@ impl Quaternion {
         q
     }
 
-    /// 带两个控制点的四元数球面插值
-    pub fn sqlerp(a: &Quaternion, b: &Quaternion, c: &Quaternion, d: &Quaternion, t: f32) -> Quaternion {
-        let q1 = Quaternion::slerp(a, d, t);
-        let q2 = Quaternion::slerp(b, c, t);
-        Quaternion::slerp(&q1, &q2, 2.0 * t * (1.0 - t))
-    }
-
     /// 获取两个单位四元数的夹角
     pub fn angle(a: &Quaternion, b: &Quaternion) -> f32 {
         let dot = a.dot(b).abs().min(1.0);
@@ -896,7 +799,7 @@ mod tests {
     #[test]
     fn test_quaternion_from_euler_roundtrip() {
         let q = Quaternion::from_euler(30.0, 45.0, 60.0);
-        let euler = q.to_euler(false);
+        let euler = q.to_euler();
         let q2 = Quaternion::from_euler(euler.x, euler.y, euler.z);
         let dot = q.dot(&q2).abs();
         assert!((dot - 1.0).abs() < 0.001);

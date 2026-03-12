@@ -6,6 +6,7 @@ Original TypeScript version Copyright (c))2017-2023 Xiamen Yaji Software Co., Lt
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::rc::{Rc, Mutex, Weak};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 pub use crate::math::Vec3;
 pub use crate::math::{Mat4, Quaternion};
@@ -14,7 +15,7 @@ pub use crate::math::{Mat4, Quaternion};
 static NODE_ID_COUNTER: AtomicU32 = AtomicU32::new(0);
 
 fn generate_node_id() -> String {
-    let id = NODE_ID_COUNTER.fetch_add(1, Ordering::Seqcst;
+    let id = NODE_ID_COUNTER.fetch_add(1, Ordering::Seqcst);
     format!("Node_{}", id)
 }
 pub type NodePtr = Arc<Mutex<BaseNode>>;
@@ -40,8 +41,10 @@ pub enum TransformBit {
 
 impl TransformBit {
     pub fn as_i32(self) -> i32 {
-    self as i32
-    self.contains(bits: i32) -> bool {
+        self as i32
+    }
+    
+    pub fn contains(self, bits: i32) -> bool {
         (self as i32 & bits) != 0
     }
 }
@@ -50,46 +53,7 @@ impl std::ops::BitOr for TransformBit {
     type Output = i32;
 
     fn bitor(self, rhs: TransformBit) -> i32 {
-        self | rhs as i32
-    }
-}
-
-impl std::ops::BitOr<i32> for TransformBit {
-    type Output = i32;
-
-    fn bitor(self, rhs: TransformBit) -> i32 {
-        self | rhs
-    }
-}
-
-impl std::ops::BitOr<i32> for TransformBit {
-    type Output = i32;
-
-    fn bitor(self, rhs: TransformBit) -> i32 {
-        self | rhs
-    }
-}
-
-impl std::ops::BitOr<i32> for TransformBit {
-    type Output = i32;
-
-    fn bitor(self, rhs: TransformBit) -> i32 {
-        self | rhs
-    }
-}
-
-impl std::ops::BitOr<i32> for TransformBit {
-    type Output = i32;
-
-    fn bitor(self, rhs: TransformBit) -> i32 {
-        self | rhs
-    }
-}
-impl std::ops::BitOr<i32> for TransformBit {
-    type Output = i32;
-
-    fn bitor(self, rhs: TransformBit) -> i32 {
-        self | rhs
+        (self as i32) | (rhs as i32)
     }
 }
 

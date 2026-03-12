@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # Build and test service
+  test:
+    build:
+      context: .
+      target: builder
+    volumes:
+      - ./src:/usr/src/cocos4-rust/src
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-target:/usr/src/cocos4-rust/target
+    environment:
+      - RUST_BACKTRACE=1
+      - RUST_LOG=debug
+    command: cargo test --release --verbose
+
+  # Development service with watch mode
+  dev:
+    build:
+      context: .
+      target: development
+    volumes:
+      - ./src:/usr/src/cocos4-rust/src
+      - ./tests:/usr/src/cocos4-rust/tests
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-target:/usr/src/cocos4-rust/target
+    environment:
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info
+    command: cargo watch -x test -x build
+
+  # Runtime test service (minimal image)
+  runtime-test:
+    build:
+      context: .
+      target: runtime
+    volumes:
+      - ./test-results:/usr/src/cocos4-rust/test-results
+    environment:
+      - RUST_BACKTRACE=1
+
+  # Benchmark service
+  bench:
+    build:
+      context: .
+      target: development
+    volumes:
+      - ./src:/usr/src/cocos4-rust/src
+      - ./benches:/usr/src/cocos4-rust/benches
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-target:/usr/src/cocos4-rust/target
+    command: cargo bench --no-run
+
+  # Code coverage service
+  coverage:
+    build:
+      context: .
+      target: development
+    volumes:
+      - ./src:/usr/src/cocos4-rust/src
+      - ./coverage:/usr/src/cocos4-rust/coverage
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-target:/usr/src/cocos4-rust/target
+    environment:
+      - CARGO_INCREMENTAL=0
+      - RUSTFLAGS=-Cinstrument-coverage
+      - LLVM_PROFILE_FILE=/usr/src/cocos4-rust/coverage/cocos4-rust-%p-%m.profraw
+    command: >
+      sh -c "cargo test --release && 
+             cargo llvm-cov --lcov --output-path coverage/lcov.info"
+
+volumes:
+  cargo-registry:
+  cargo-target:

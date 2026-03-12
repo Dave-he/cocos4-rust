@@ -552,3 +552,394 @@ impl PartialOrd for Vec2 {
 }
 
 pub type Point = Vec2;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::f32::consts::PI;
+
+    const EPSILON: f32 = 0.0001;
+
+    fn assert_float_eq(a: f32, b: f32, epsilon: f32) {
+        assert!(
+            (a - b).abs() < epsilon,
+            "Float values not equal: {} != {}",
+            a,
+            b
+        );
+    }
+
+    fn assert_vec2_eq(a: &Vec2, b: &Vec2, epsilon: f32) {
+        assert_float_eq(a.x, b.x, epsilon);
+        assert_float_eq(a.y, b.y, epsilon);
+    }
+
+    #[test]
+    fn test_constants() {
+        assert_eq!(Vec2::ZERO, Vec2::new(0.0, 0.0));
+        assert_eq!(Vec2::ONE, Vec2::new(1.0, 1.0));
+        assert_eq!(Vec2::UNIT_X, Vec2::new(1.0, 0.0));
+        assert_eq!(Vec2::UNIT_Y, Vec2::new(0.0, 1.0));
+        assert_eq!(Vec2::ANCHOR_MIDDLE, Vec2::new(0.5, 0.5));
+    }
+
+    #[test]
+    fn test_new() {
+        let v = Vec2::new(1.0, 2.0);
+        assert_eq!(v.x, 1.0);
+        assert_eq!(v.y, 2.0);
+    }
+
+    #[test]
+    fn test_from_array() {
+        let arr = [1.0, 2.0];
+        let v = Vec2::from_array(&arr);
+        assert_eq!(v, Vec2::new(1.0, 2.0));
+
+        let short_arr = [1.0];
+        let v2 = Vec2::from_array(&short_arr);
+        assert_eq!(v2, Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_from_points() {
+        let p1 = Vec2::new(1.0, 2.0);
+        let p2 = Vec2::new(4.0, 6.0);
+        let v = Vec2::from_points(&p1, &p2);
+        assert_eq!(v, Vec2::new(3.0, 4.0));
+    }
+
+    #[test]
+    fn test_is_zero() {
+        assert!(Vec2::ZERO.is_zero());
+        assert!(!Vec2::ONE.is_zero());
+    }
+
+    #[test]
+    fn test_is_one() {
+        assert!(Vec2::ONE.is_one());
+        assert!(!Vec2::ZERO.is_one());
+    }
+
+    #[test]
+    fn test_length() {
+        let v = Vec2::new(3.0, 4.0);
+        assert_eq!(v.length(), 5.0);
+    }
+
+    #[test]
+    fn test_length_squared() {
+        let v = Vec2::new(3.0, 4.0);
+        assert_eq!(v.length_squared(), 25.0);
+    }
+
+    #[test]
+    fn test_normalize() {
+        let v = Vec2::new(3.0, 4.0);
+        v.normalize();
+        assert_float_eq(v.length(), 1.0, EPSILON);
+    }
+
+    #[test]
+    fn test_get_normalized() {
+        let v = Vec2::new(3.0, 4.0);
+        let normalized = v.get_normalized();
+        assert_float_eq(normalized.length(), 1.0, EPSILON);
+        assert_vec2_eq(&normalized, &Vec2::new(0.6, 0.8), EPSILON);
+    }
+
+    #[test]
+    fn test_get_normalized_zero() {
+        let v = Vec2::ZERO;
+        let normalized = v.get_normalized();
+        assert_eq!(normalized, Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_dot() {
+        let v1 = Vec2::new(1.0, 2.0);
+        let v2 = Vec2::new(3.0, 4.0);
+        assert_eq!(v1.dot(&v2), 11.0);
+    }
+
+    #[test]
+    fn test_cross() {
+        let v1 = Vec2::new(1.0, 0.0);
+        let v2 = Vec2::new(0.0, 1.0);
+        assert_eq!(v1.cross(&v2), 1.0);
+    }
+
+    #[test]
+    fn test_distance() {
+        let v1 = Vec2::new(1.0, 2.0);
+        let v2 = Vec2::new(4.0, 6.0);
+        assert_eq!(v1.distance(&v2), 5.0);
+    }
+
+    #[test]
+    fn test_distance_squared() {
+        let v1 = Vec2::new(1.0, 2.0);
+        let v2 = Vec2::new(4.0, 6.0);
+        assert_eq!(v1.distance_squared(&v2), 25.0);
+    }
+
+    #[test]
+    fn test_angle() {
+        let v1 = Vec2::UNIT_X;
+        let v2 = Vec2::UNIT_Y;
+        let angle = Vec2::angle(&v1, &v2);
+        assert_float_eq(angle, PI / 2.0, EPSILON);
+    }
+
+    #[test]
+    fn test_add() {
+        let mut v1 = Vec2::new(1.0, 2.0);
+        let v2 = Vec2::new(3.0, 4.0);
+        v1.add(&v2);
+        assert_eq!(v1, Vec2::new(4.0, 6.0));
+    }
+
+    #[test]
+    fn test_add_vecs() {
+        let v1 = Vec2::new(1.0, 2.0);
+        let v2 = Vec2::new(3.0, 4.0);
+        let result = Vec2::add_vecs(&v1, &v2);
+        assert_eq!(result, Vec2::new(4.0, 6.0));
+    }
+
+    #[test]
+    fn test_subtract() {
+        let mut v1 = Vec2::new(4.0, 6.0);
+        let v2 = Vec2::new(1.0, 2.0);
+        v1.subtract(&v2);
+        assert_eq!(v1, Vec2::new(3.0, 4.0));
+    }
+
+    #[test]
+    fn test_subtract_vecs() {
+        let v1 = Vec2::new(4.0, 6.0);
+        let v2 = Vec2::new(1.0, 2.0);
+        let result = Vec2::subtract_vecs(&v1, &v2);
+        assert_eq!(result, Vec2::new(3.0, 4.0));
+    }
+
+    #[test]
+    fn test_scale() {
+        let mut v = Vec2::new(1.0, 2.0);
+        v.scale(2.0);
+        assert_eq!(v, Vec2::new(2.0, 4.0));
+    }
+
+    #[test]
+    fn test_scale_vec() {
+        let v = Vec2::new(2.0, 3.0);
+        let scale = Vec2::new(2.0, 3.0);
+        let result = v.scale_vec(&scale);
+        assert_eq!(result, Vec2::new(4.0, 9.0));
+    }
+
+    #[test]
+    fn test_negate() {
+        let mut v = Vec2::new(1.0, 2.0);
+        v.negate();
+        assert_eq!(v, Vec2::new(-1.0, -2.0));
+    }
+
+    #[test]
+    fn test_clamp() {
+        let mut v = Vec2::new(5.0, -2.0);
+        let min = Vec2::new(0.0, 0.0);
+        let max = Vec2::new(3.0, 3.0);
+        v.clamp(&min, &max);
+        assert_eq!(v, Vec2::new(3.0, 0.0));
+    }
+
+    #[test]
+    fn test_clamp_vec() {
+        let v = Vec2::new(5.0, -2.0);
+        let min = Vec2::new(0.0, 0.0);
+        let max = Vec2::new(3.0, 3.0);
+        let result = Vec2::clamp_vec(&v, &min, &max);
+        assert_eq!(result, Vec2::new(3.0, 0.0));
+    }
+
+    #[test]
+    fn test_lerp() {
+        let v1 = Vec2::new(0.0, 0.0);
+        let v2 = Vec2::new(10.0, 10.0);
+        let result = v1.lerp(&v2, 0.5);
+        assert_eq!(result, Vec2::new(5.0, 5.0));
+    }
+
+    #[test]
+    fn test_get_angle() {
+        let v = Vec2::new(1.0, 0.0);
+        assert_float_eq(v.get_angle(), 0.0, EPSILON);
+
+        let v2 = Vec2::new(0.0, 1.0);
+        assert_float_eq(v2.get_angle(), PI / 2.0, EPSILON);
+    }
+
+    #[test]
+    fn test_get_perp() {
+        let v = Vec2::new(1.0, 0.0);
+        let perp = v.get_perp();
+        assert_eq!(perp, Vec2::new(0.0, 1.0));
+    }
+
+    #[test]
+    fn test_get_rperp() {
+        let v = Vec2::new(1.0, 0.0);
+        let rperp = v.get_rperp();
+        assert_eq!(rperp, Vec2::new(0.0, -1.0));
+    }
+
+    #[test]
+    fn test_project() {
+        let v = Vec2::new(1.0, 1.0);
+        let onto = Vec2::new(1.0, 0.0);
+        let proj = v.project(&onto);
+        assert_vec2_eq(&proj, &Vec2::new(1.0, 0.0), EPSILON);
+    }
+
+    #[test]
+    fn test_reject() {
+        let v = Vec2::new(1.0, 1.0);
+        let onto = Vec2::new(1.0, 0.0);
+        let rej = v.reject(&onto);
+        assert_vec2_eq(&rej, &Vec2::new(0.0, 1.0), EPSILON);
+    }
+
+    #[test]
+    fn test_get_midpoint() {
+        let v1 = Vec2::new(0.0, 0.0);
+        let v2 = Vec2::new(2.0, 4.0);
+        let mid = v1.get_midpoint(&v2);
+        assert_eq!(mid, Vec2::new(1.0, 2.0));
+    }
+
+    #[test]
+    fn test_rotate() {
+        let mut v = Vec2::new(1.0, 0.0);
+        let center = Vec2::new(0.0, 0.0);
+        v.rotate(&center, PI / 2.0);
+        assert_float_eq(v.x, 0.0, EPSILON);
+        assert_float_eq(v.y, 1.0, EPSILON);
+    }
+
+    #[test]
+    fn test_rotate_by_angle_rad() {
+        let v = Vec2::new(1.0, 0.0);
+        let rotated = v.rotate_by_angle_rad(PI / 2.0);
+        assert_float_eq(rotated.x, 0.0, EPSILON);
+        assert_float_eq(rotated.y, 1.0, EPSILON);
+    }
+
+    #[test]
+    fn test_rotate_vec() {
+        let v1 = Vec2::new(1.0, 0.0);
+        let v2 = Vec2::new(0.0, 1.0);
+        let result = v1.rotate_vec(&v2);
+        assert_float_eq(result.x, 0.0, EPSILON);
+        assert_float_eq(result.y, 1.0, EPSILON);
+    }
+
+    #[test]
+    fn test_unrotate() {
+        let v1 = Vec2::new(0.0, 1.0);
+        let v2 = Vec2::new(0.0, 1.0);
+        let result = v1.unrotate(&v2);
+        assert_float_eq(result.x, 1.0, EPSILON);
+        assert_float_eq(result.y, 0.0, EPSILON);
+    }
+
+    #[test]
+    fn test_for_angle() {
+        let v = Vec2::for_angle(PI / 2.0);
+        assert_float_eq(v.x, 0.0, EPSILON);
+        assert_float_eq(v.y, 1.0, EPSILON);
+    }
+
+    #[test]
+    fn test_equals() {
+        let v1 = Vec2::new(1.0, 2.0);
+        let v2 = Vec2::new(1.000001, 2.000001);
+        assert!(v1.equals(&v2));
+    }
+
+    #[test]
+    fn test_fuzzy_equals() {
+        let v1 = Vec2::new(1.0, 2.0);
+        let v2 = Vec2::new(1.1, 2.1);
+        assert!(v1.fuzzy_equals(&v2, 0.2));
+        assert!(!v1.fuzzy_equals(&v2, 0.05));
+    }
+
+    #[test]
+    fn test_smooth() {
+        let mut v = Vec2::new(0.0, 0.0);
+        let target = Vec2::new(10.0, 10.0);
+        v.smooth(&target, 1.0, 1.0);
+        // Should move towards target
+        assert!(v.x > 0.0);
+        assert!(v.y > 0.0);
+    }
+
+    #[test]
+    fn test_add_operator() {
+        let v1 = Vec2::new(1.0, 2.0);
+        let v2 = Vec2::new(3.0, 4.0);
+        let result = v1 + v2;
+        assert_eq!(result, Vec2::new(4.0, 6.0));
+    }
+
+    #[test]
+    fn test_sub_operator() {
+        let v1 = Vec2::new(4.0, 6.0);
+        let v2 = Vec2::new(1.0, 2.0);
+        let result = v1 - v2;
+        assert_eq!(result, Vec2::new(3.0, 4.0));
+    }
+
+    #[test]
+    fn test_mul_scalar_operator() {
+        let v = Vec2::new(1.0, 2.0);
+        let result = v * 2.0;
+        assert_eq!(result, Vec2::new(2.0, 4.0));
+    }
+
+    #[test]
+    fn test_div_scalar_operator() {
+        let v = Vec2::new(2.0, 4.0);
+        let result = v / 2.0;
+        assert_eq!(result, Vec2::new(1.0, 2.0));
+    }
+
+    #[test]
+    fn test_neg_operator() {
+        let v = Vec2::new(1.0, 2.0);
+        let result = -v;
+        assert_eq!(result, Vec2::new(-1.0, -2.0));
+    }
+
+    #[test]
+    fn test_partial_ord() {
+        let v1 = Vec2::new(1.0, 2.0);
+        let v2 = Vec2::new(2.0, 3.0);
+        let v3 = Vec2::new(1.0, 2.0);
+
+        assert_eq!(v1.partial_cmp(&v2), Some(std::cmp::Ordering::Less));
+        assert_eq!(v2.partial_cmp(&v1), Some(std::cmp::Ordering::Greater));
+        assert_eq!(v1.partial_cmp(&v3), Some(std::cmp::Ordering::Equal));
+
+        // Incomparable case
+        let v4 = Vec2::new(2.0, 1.0);
+        assert_eq!(v1.partial_cmp(&v4), None);
+    }
+
+    #[test]
+    fn test_default() {
+        let v: Vec2 = Default::default();
+        assert_eq!(v, Vec2::ZERO);
+    }
+}
