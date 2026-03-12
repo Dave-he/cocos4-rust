@@ -1,7 +1,8 @@
 use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
 
-const FLOAT_CMP_PRECISION: f32 = 0.00001;
+use super::FLOAT_CMP_PRECISION;
 
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Vec2 {
     pub x: f32,
@@ -262,6 +263,36 @@ impl Vec2 {
         *other * (dot_self / dot_other)
     }
 
+    /// 计算向量在另一个向量上的拒绝（投影的垂直分量）
+    pub fn reject(&self, other: &Vec2) -> Vec2 {
+        *self - self.project(other)
+    }
+
+    /// 用 4x4 矩阵变换向量
+    pub fn transform_mat4(&self, m: &super::Mat4) -> Vec2 {
+        let x = self.x;
+        let y = self.y;
+        
+        let w = m.m[3] * x + m.m[7] * y + m.m[15];
+        let inv_w = if w.abs() > FLOAT_CMP_PRECISION { 1.0 / w } else { 1.0 };
+        
+        Vec2 {
+            x: (m.m[0] * x + m.m[4] * y + m.m[12]) * inv_w,
+            y: (m.m[1] * x + m.m[5] * y + m.m[13]) * inv_w,
+        }
+    }
+
+    /// 绕原点旋转向量（按角度）
+    pub fn rotate_by_angle_rad(&self, angle: f32) -> Vec2 {
+        let s = angle.sin();
+        let c = angle.cos();
+        Vec2 {
+            x: c * self.x - s * self.y,
+            y: s * self.x + c * self.y,
+        }
+    }
+
+    /// 用另一个向量旋转（复数乘法）
     pub fn rotate_vec(&self, other: &Vec2) -> Vec2 {
         Vec2 {
             x: self.x * other.x - self.y * other.y,

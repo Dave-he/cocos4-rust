@@ -1,8 +1,9 @@
-use super::{Quaternion, Vec3};
+use super::{Mat4, Quaternion, Vec3};
 
 const MATRIX3_SIZE: usize = 9;
 const EPSILON: f32 = 0.000001;
 
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Mat3 {
     pub m: [f32; MATRIX3_SIZE],
@@ -353,6 +354,60 @@ impl Mat3 {
         for i in 0..MATRIX3_SIZE {
             self.m[i] *= scalar;
         }
+    }
+
+    /// 从 Mat4 提取旋转矩阵
+    pub fn from_mat4(m: &Mat4) -> Mat3 {
+        Mat3::new(
+            m.m[0], m.m[1], m.m[2],
+            m.m[4], m.m[5], m.m[6],
+            m.m[8], m.m[9], m.m[10],
+        )
+    }
+
+    /// 根据视口的前方向和上方向计算矩阵
+    pub fn from_view_up(view: &Vec3, up: &Vec3) -> Mat3 {
+        let mut z = *view;
+        z.normalize();
+
+        let mut x = Vec3::cross_vecs(up, &z);
+        x.normalize();
+
+        let y = Vec3::cross_vecs(&z, &x);
+
+        Mat3::new(
+            x.x, x.y, x.z,
+            y.x, y.y, y.z,
+            z.x, z.y, z.z,
+        )
+    }
+
+    /// 根据本地坐标轴朝向计算矩阵
+    pub fn from_axes(x_axis: &Vec3, y_axis: &Vec3, z_axis: &Vec3) -> Mat3 {
+        Mat3::new(
+            x_axis.x, x_axis.y, x_axis.z,
+            y_axis.x, y_axis.y, y_axis.z,
+            z_axis.x, z_axis.y, z_axis.z,
+        )
+    }
+
+    /// 将矩阵转换为欧拉角，旋转顺序为 YXZ
+    pub fn to_euler(&self) -> Vec3 {
+        let m00 = self.m[0];
+        let m01 = self.m[1];
+        let m02 = self.m[2];
+        let m10 = self.m[3];
+        let m11 = self.m[4];
+        let m12 = self.m[5];
+        let m20 = self.m[6];
+        let m21 = self.m[7];
+        let m22 = self.m[8];
+
+        let x = m12.atan2(m22);
+        let y = (-m02).asin();
+        let z = m01.atan2(m00);
+
+        Vec3::new(x, y, z)
     }
 }
 

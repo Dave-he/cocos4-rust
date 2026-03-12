@@ -2,6 +2,7 @@ use super::{Quaternion, Vec3, Vec4};
 
 const MATRIX4_SIZE: usize = 16;
 
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Mat4 {
     pub m: [f32; MATRIX4_SIZE],

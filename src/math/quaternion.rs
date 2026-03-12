@@ -1,9 +1,10 @@
-use super::{Mat3, Mat4, Vec3};
+use super::{FLOAT_CMP_PRECISION, Mat3, Mat4, Vec3, to_degree};
 use std::ops::{Add, Mul, Neg, Sub};
 
-const FLOAT_CMP_PRECISION: f32 = 0.00001;
+const HALF_TO_RAD: f32 = 0.5 * std::f32::consts::PI / 180.0;
 const HALF_TO_RAD: f32 = 0.5 * std::f32::consts::PI / 180.0;
 
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Quaternion {
     pub x: f32,
@@ -441,6 +442,190 @@ impl Quaternion {
         let result = qv.multiply(&q_conj);
         Vec3::new(result.x, result.y, result.z)
     }
+
+    /// 从欧拉角创建四元数，旋转顺序为 YZX
+    pub fn from_euler(x: f32, y: f32, z: f32) -> Quaternion {
+        let x = x * HALF_TO_RAD;
+        let y = y * HALF_TO_RAD;
+        let z = z * HALF_TO_RAD;
+
+        let sx = x.sin();
+        let cx = x.cos();
+        let sy = y.sin();
+        let cy = y.cos();
+        let sz = z.sin();
+        let cz = z.cos();
+
+        Quaternion {
+            x: sx * cy * cz + cx * sy * sz,
+            y: cx * sy * cz + sx * cy * sz,
+            z: cx * cy * sz - sx * sy * cz,
+            w: cx * cy * cz - sx * sy * sz,
+        }
+    }
+
+    /// 将四元数转换为欧拉角，返回角度 x, y 在 [-180, 180] 区间内, z 在 [-90, 90] 区间内
+    pub fn to_euler(&self) -> Vec3 {
+        self.to_euler_with_outer_z(false)
+    }
+
+    /// 将四元数转换为欧拉角，outerZ 控制是否将 z 值范围改为 [-180, -90] U [90, 180]
+    pub fn to_euler_with_outer_z(&self, outer_z: bool) -> Vec3 {
+        let x = self.x;
+        let y = self.y;
+        let z = self.z;
+        let w = self.w;
+
+        let test = x * y + z * w;
+        let (bank, heading, attitude) = if test > 0.499999 {
+            let heading = to_degree((2.0 * (x * w + y * z)).atan2(1.0 - 2.0 * (x * x + y * y)));
+            (0.0, heading, 90.0)
+        } else if test < -0.499999 {
+            let heading = to_degree((2.0 * (x * w + y * z)).atan2(1.0 - 2.0 * (x * x + y * y)));
+            (0.0, heading, -90.0)
+        } else {
+            let sqx = x * x;
+            let sqy = y * y;
+            let sqz = z * z;
+            let bank = to_degree((2.0 * x * w - 2.0 * y * z).atan2(1.0 - 2.0 * sqx - 2.0 * sqz));
+            let heading = to_degree((2.0 * y * w - 2.0 * x * z).atan2(1.0 - 2.0 * sqy - 2.0 * sqz));
+            let attitude = to_degree((2.0 * test).asin());
+
+            if outer_z {
+                let bank = -180.0 * (bank + 1e-6).signum() + bank;
+                let heading = -180.0 * (heading + 1e-6).signum() + heading;
+                let attitude = 180.0 * (attitude + 1e-6).signum() - attitude;
+                (bank, heading, attitude)
+            } else {
+                (bank, heading, attitude)
+            }
+        };
+
+        Vec3::new(bank, heading, attitude)
+    }
+
+    /// 绕 X 轴旋转
+    pub fn rotate_x(&self, rad: f32) -> Quaternion {
+        let rad = rad * 0.5;
+        let bx = rad.sin();
+        let bw = rad.cos();
+
+        Quaternion {
+            x: self.x * bw + self.w * bx,
+            y: self.y * bw + self.z * bx,
+            z: self.z * bw - self.y * bx,
+            w: self.w * bw - self.x * bx,
+        }
+    }
+
+    /// 绕 Y 轴旋转
+    pub fn rotate_y(&self, rad: f32) -> Quaternion {
+        let rad = rad * 0.5;
+        let by = rad.sin();
+        let bw = rad.cos();
+
+        Quaternion {
+            x: self.x * bw - self.z * by,
+            y: self.y * bw + self.w * by,
+            z: self.z * bw + self.x * by,
+            w: self.w * bw - self.y * by,
+        }
+    }
+
+    /// 绕 Z 轴旋转
+    pub fn rotate_z(&self, rad: f32) -> Quaternion {
+        let rad = rad * 0.5;
+        let bz = rad.sin();
+        let bw = rad.cos();
+
+        Quaternion {
+            x: self.x * bw + self.y * bz,
+            y: self.y * bw - self.x * bz,
+            z: self.z * bw + self.w * bz,
+            w: self.w * bw - self.z * bz,
+        }
+    }
+
+    /// 设置四元数为两向量间的最短路径旋转
+    pub fn rotation_to(a: &Vec3, b: &Vec3) -> Quaternion {
+        let dot = a.dot(b);
+
+        if dot < -0.999999 {
+            let mut axis = Vec3::cross_vecs(&Vec3::UNIT_X, a);
+            if axis.length() < 0.000001 {
+                axis = Vec3::cross_vecs(&Vec3::UNIT_Y, a);
+            }
+            axis.normalize();
+            Quaternion::from_axis_angle(&axis, std::f32::consts::PI)
+        } else if dot > 0.999999 {
+            Quaternion::IDENTITY
+        } else {
+            let axis = Vec3::cross_vecs(a, b);
+            let mut q = Quaternion {
+                x: axis.x,
+                y: axis.y,
+                z: axis.z,
+                w: 1.0 + dot,
+            };
+            q = q.normalize();
+            q
+        }
+    }
+
+    /// 获取四元数的旋转轴和旋转弧度
+    pub fn get_axis_angle(&self) -> (Vec3, f32) {
+        let rad = self.w.acos() * 2.0;
+        let s = (rad / 2.0).sin();
+
+        let axis = if s != 0.0 {
+            Vec3::new(self.x / s, self.y / s, self.z / s)
+        } else {
+            Vec3::UNIT_X
+        };
+
+        (axis, rad)
+    }
+
+    /// 根据视口的前方向和上方向计算四元数
+    pub fn from_view_up(view: &Vec3, up: Option<&Vec3>) -> Quaternion {
+        let up = up.unwrap_or(&Vec3::UNIT_Y);
+        let m = Mat3::from_view_up(view, up);
+        let q = Quaternion::from_mat3(&m);
+        q.normalize()
+    }
+
+    /// 根据本地坐标轴朝向计算四元数
+    pub fn from_axes(x_axis: &Vec3, y_axis: &Vec3, z_axis: &Vec3) -> Quaternion {
+        let m = Mat3::from_axes(x_axis, y_axis, z_axis);
+        let mut q = Quaternion::from_mat3(&m);
+        q = q.normalize();
+        q
+    }
+
+    /// 带两个控制点的四元数球面插值
+    pub fn sqlerp(a: &Quaternion, b: &Quaternion, c: &Quaternion, d: &Quaternion, t: f32) -> Quaternion {
+        let q1 = Quaternion::slerp(a, d, t);
+        let q2 = Quaternion::slerp(b, c, t);
+        Quaternion::slerp(&q1, &q2, 2.0 * t * (1.0 - t))
+    }
+
+    /// 获取两个单位四元数的夹角
+    pub fn angle(a: &Quaternion, b: &Quaternion) -> f32 {
+        let dot = a.dot(b).abs().min(1.0);
+        dot.acos() * 2.0
+    }
+
+    /// 将一个起始单位四元数旋转到一个目标单位四元数
+    pub fn rotate_towards(from: &Quaternion, to: &Quaternion, max_step_degrees: f32) -> Quaternion {
+        let angle = Quaternion::angle(from, to);
+
+        if angle == 0.0 {
+            return *to;
+        }
+
+        let t = (max_step_degrees / to_degree(angle)).min(1.0);
+        Quaternion::slerp(from, to, t)
+    }
 }
 
 impl Default for Quaternion {
@@ -512,6 +697,29 @@ impl Neg for Quaternion {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::math::FLOAT_CMP_PRECISION;
+    use std::f32::consts::PI;
+
+    const EPSILON: f32 = 0.0001;
+
+    fn assert_quat_approx_eq(a: &Quaternion, b: &Quaternion, epsilon: f32) {
+        assert!(
+            (a.x - b.x).abs() < epsilon &&
+            (a.y - b.y).abs() < epsilon &&
+            (a.z - b.z).abs() < epsilon &&
+            (a.w - b.w).abs() < epsilon,
+            "Quaternion not equal: {:?} != {:?}", a, b
+        );
+    }
+
+    fn assert_vec3_approx_eq(a: &Vec3, b: &Vec3, epsilon: f32) {
+        assert!(
+            (a.x - b.x).abs() < epsilon &&
+            (a.y - b.y).abs() < epsilon &&
+            (a.z - b.z).abs() < epsilon,
+            "Vec3 not equal: {:?} != {:?}", a, b
+        );
+    }
 
     #[test]
     fn test_quaternion_identity() {
@@ -524,6 +732,148 @@ mod tests {
         let q = Quaternion::new(1.0, 2.0, 3.0, 4.0);
         let normalized = q.normalize();
         assert!((normalized.length() - 1.0).abs() < FLOAT_CMP_PRECISION);
+    }
+
+    #[test]
+    fn test_from_euler() {
+        // Test zero rotation
+        let q = Quaternion::from_euler(0.0, 0.0, 0.0);
+        assert_quat_approx_eq(&q, &Quaternion::IDENTITY, EPSILON);
+
+        // Test 90 degree rotation around Z axis
+        let q = Quaternion::from_euler(0.0, 0.0, 90.0);
+        let expected = Quaternion::from_axis_angle(&Vec3::UNIT_Z, PI / 2.0);
+        assert_quat_approx_eq(&q, &expected, EPSILON);
+    }
+
+    #[test]
+    fn test_to_euler() {
+        // Test identity quaternion
+        let q = Quaternion::IDENTITY;
+        let euler = q.to_euler();
+        assert!(euler.x.abs() < EPSILON);
+        assert!(euler.y.abs() < EPSILON);
+        assert!(euler.z.abs() < EPSILON);
+
+        // Test round-trip conversion
+        let original = Vec3::new(30.0, 45.0, 60.0);
+        let q = Quaternion::from_euler(original.x, original.y, original.z);
+        let euler = q.to_euler();
+        assert!((euler.x - original.x).abs() < EPSILON);
+        assert!((euler.y - original.y).abs() < EPSILON);
+        assert!((euler.z - original.z).abs() < EPSILON);
+    }
+
+    #[test]
+    fn test_rotate_x() {
+        let q = Quaternion::IDENTITY;
+        let rotated = q.rotate_x(PI / 2.0);
+        let expected = Quaternion::from_axis_angle(&Vec3::UNIT_X, PI / 2.0);
+        assert_quat_approx_eq(&rotated, &expected, EPSILON);
+    }
+
+    #[test]
+    fn test_rotate_y() {
+        let q = Quaternion::IDENTITY;
+        let rotated = q.rotate_y(PI / 2.0);
+        let expected = Quaternion::from_axis_angle(&Vec3::UNIT_Y, PI / 2.0);
+        assert_quat_approx_eq(&rotated, &expected, EPSILON);
+    }
+
+    #[test]
+    fn test_rotate_z() {
+        let q = Quaternion::IDENTITY;
+        let rotated = q.rotate_z(PI / 2.0);
+        let expected = Quaternion::from_axis_angle(&Vec3::UNIT_Z, PI / 2.0);
+        assert_quat_approx_eq(&rotated, &expected, EPSILON);
+    }
+
+    #[test]
+    fn test_rotation_to() {
+        // Test same direction
+        let a = Vec3::UNIT_X;
+        let b = Vec3::UNIT_X;
+        let q = Quaternion::rotation_to(&a, &b);
+        assert_quat_approx_eq(&q, &Quaternion::IDENTITY, EPSILON);
+
+        // Test 90 degree rotation
+        let a = Vec3::UNIT_X;
+        let b = Vec3::UNIT_Y;
+        let q = Quaternion::rotation_to(&a, &b);
+        let v = q.multiply_vec3(&a);
+        assert_vec3_approx_eq(&v, &b, EPSILON);
+    }
+
+    #[test]
+    fn test_get_axis_angle() {
+        let axis = Vec3::UNIT_Y;
+        let angle = PI / 4.0;
+        let q = Quaternion::from_axis_angle(&axis, angle);
+        let (result_axis, result_angle) = q.get_axis_angle();
+        
+        assert_vec3_approx_eq(&result_axis.get_normalized(), &axis, EPSILON);
+        assert!((result_angle - angle).abs() < EPSILON);
+    }
+
+    #[test]
+    fn test_from_view_up() {
+        let view = Vec3::new(0.0, 0.0, -1.0);
+        let up = Vec3::UNIT_Y;
+        let q = Quaternion::from_view_up(&view, Some(&up));
+        
+        // The quaternion should be identity when looking down -Z with Y up
+        // because that's the default orientation
+        assert_quat_approx_eq(&q, &Quaternion::IDENTITY, EPSILON);
+    }
+
+    #[test]
+    fn test_from_axes() {
+        let x_axis = Vec3::UNIT_X;
+        let y_axis = Vec3::UNIT_Y;
+        let z_axis = Vec3::UNIT_Z;
+        let q = Quaternion::from_axes(&x_axis, &y_axis, &z_axis);
+        
+        assert_quat_approx_eq(&q, &Quaternion::IDENTITY, EPSILON);
+    }
+
+    #[test]
+    fn test_sqlerp() {
+        let a = Quaternion::IDENTITY;
+        let b = Quaternion::from_axis_angle(&Vec3::UNIT_X, PI / 4.0);
+        let c = Quaternion::from_axis_angle(&Vec3::UNIT_Y, PI / 4.0);
+        let d = Quaternion::from_axis_angle(&Vec3::UNIT_Z, PI / 4.0);
+
+        // Test at t=0 should be close to a
+        let result = Quaternion::sqlerp(&a, &b, &c, &d, 0.0);
+        assert_quat_approx_eq(&result, &a, EPSILON);
+
+        // Test at t=1 should be close to d
+        let result = Quaternion::sqlerp(&a, &b, &c, &d, 1.0);
+        assert_quat_approx_eq(&result, &d, EPSILON);
+    }
+
+    #[test]
+    fn test_angle() {
+        let a = Quaternion::IDENTITY;
+        let b = Quaternion::from_axis_angle(&Vec3::UNIT_X, PI / 2.0);
+        let angle = Quaternion::angle(&a, &b);
+        
+        assert!((angle - PI / 2.0).abs() < EPSILON);
+    }
+
+    #[test]
+    fn test_rotate_towards() {
+        let from = Quaternion::IDENTITY;
+        let to = Quaternion::from_axis_angle(&Vec3::UNIT_X, PI / 2.0);
+        
+        // Small step should not reach target
+        let result = Quaternion::rotate_towards(&from, &to, 45.0);
+        let angle = Quaternion::angle(&from, &result);
+        assert!(angle < PI / 2.0);
+
+        // Large step should reach target
+        let result = Quaternion::rotate_towards(&from, &to, 180.0);
+        assert_quat_approx_eq(&result, &to, EPSILON);
     }
 
     #[test]

@@ -1,7 +1,8 @@
 use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
 
-const FLOAT_CMP_PRECISION: f32 = 0.00001;
+use super::Mat4;
 
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Vec4 {
     pub x: f32,
@@ -228,6 +229,43 @@ impl Vec4 {
             z: self.z * (1.0 - alpha) + target.z * alpha,
             w: self.w * (1.0 - alpha) + target.w * alpha,
         }
+    }
+
+    /// 用 4x4 矩阵变换向量
+    pub fn transform_mat4(&self, m: &Mat4) -> Vec4 {
+        Vec4 {
+            x: m.m[0] * self.x + m.m[4] * self.y + m.m[8] * self.z + m.m[12] * self.w,
+            y: m.m[1] * self.x + m.m[5] * self.y + m.m[9] * self.z + m.m[13] * self.w,
+            z: m.m[2] * self.x + m.m[6] * self.y + m.m[10] * self.z + m.m[14] * self.w,
+            w: m.m[3] * self.x + m.m[7] * self.y + m.m[11] * self.z + m.m[15] * self.w,
+        }
+    }
+
+    /// 计算两个向量之间的夹角
+    pub fn angle(a: &Vec4, b: &Vec4) -> f32 {
+        let dx = a.y * b.z - a.z * b.y;
+        let dy = a.z * b.x - a.x * b.z;
+        let dz = a.x * b.y - a.y * b.x;
+        
+        let dot_val = a.x * b.x + a.y * b.y + a.z * b.z;
+        (dx * dx + dy * dy + dz * dz).sqrt().atan2(dot_val)
+    }
+
+    /// 计算向量在另一个向量上的投影
+    pub fn project(&self, other: &Vec4) -> Vec4 {
+        let dot_self = self.dot(other);
+        let dot_other = other.dot(other);
+        *other * (dot_self / dot_other)
+    }
+
+    /// 计算向量在另一个向量上的拒绝
+    pub fn reject(&self, other: &Vec4) -> Vec4 {
+        *self - self.project(other)
+    }
+
+    /// 获取两个向量之间的夹角
+    pub fn get_angle(&self, other: &Vec4) -> f32 {
+        Self::angle(self, other)
     }
 }
 

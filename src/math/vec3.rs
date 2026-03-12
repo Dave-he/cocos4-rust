@@ -1,7 +1,8 @@
 use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
 
-const FLOAT_CMP_PRECISION: f32 = 0.00001;
+use super::FLOAT_CMP_PRECISION;
 
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Vec3 {
     pub x: f32,
@@ -319,7 +320,7 @@ impl Vec3 {
             *target
         } else {
             let normalized = dir.get_normalized();
-            normalized * max_step
+            *current + normalized * max_step
         }
     }
 
@@ -339,6 +340,84 @@ impl Vec3 {
             x: m.m[0] * self.x + m.m[3] * self.y + m.m[6] * self.z,
             y: m.m[1] * self.x + m.m[4] * self.y + m.m[7] * self.z,
             z: m.m[2] * self.x + m.m[5] * self.y + m.m[8] * self.z,
+        }
+    }
+
+    /// Projects this vector onto another vector
+    pub fn project_onto(&self, other: &Vec3) -> Vec3 {
+        let other_len_sq = other.length_squared();
+        if other_len_sq == 0.0 {
+            return Vec3::ZERO;
+        }
+        let scale = self.dot(other) / other_len_sq;
+        *other * scale
+    }
+
+    /// Returns the reflection of this vector across a normal
+    pub fn reflect(&self, normal: &Vec3) -> Vec3 {
+        let n = normal.get_normalized();
+        *self - 2.0 * self.dot(&n) * n
+    }
+
+    /// Returns a vector perpendicular to this one
+    pub fn perpendicular(&self) -> Vec3 {
+        if self.x.abs() < self.y.abs() {
+            Vec3::cross_vecs(self, &Vec3::UNIT_X)
+        } else {
+            Vec3::cross_vecs(self, &Vec3::UNIT_Y)
+        }
+    }
+
+    /// 用四元数变换向量
+    pub fn transform_quat(&self, q: &super::Quaternion) -> Vec3 {
+        let x = self.x;
+        let y = self.y;
+        let z = self.z;
+
+        let qx = q.x;
+        let qy = q.y;
+        let qz = q.z;
+        let qw = q.w;
+
+        // calculate quat * vec
+        let ix = qw * x + qy * z - qz * y;
+        let iy = qw * y + qz * x - qx * z;
+        let iz = qw * z + qx * y - qy * x;
+        let iw = -qx * x - qy * y - qz * z;
+
+        // calculate result * inverse quat
+        Vec3 {
+            x: ix * qw + iw * -qx + iy * -qz - iz * -qy,
+            y: iy * qw + iw * -qy + iz * -qx - ix * -qz,
+            z: iz * qw + iw * -qz + ix * -qy - iy * -qx,
+        }
+    }
+
+    /// 计算向量在另一个向量上的投影
+    pub fn project(&self, other: &Vec3) -> Vec3 {
+        self.project_onto(other)
+    }
+
+    /// 计算向量在另一个向量上的拒绝（投影的垂直分量）
+    pub fn reject(&self, other: &Vec3) -> Vec3 {
+        *self - self.project_onto(other)
+    }
+
+    /// 获取两个向量之间的夹角（弧度）
+    pub fn get_angle(&self, other: &Vec3) -> f32 {
+        Self::angle(self, other)
+    }
+
+    /// 获取两个向量之间的有符号夹角（弧度），参考向量为参考平面
+    pub fn signed_angle(from: &Vec3, to: &Vec3, axis: &Vec3) -> f32 {
+        let angle = Self::angle(from, to);
+        let cross = Self::cross_vecs(from, to);
+        let dot = cross.dot(axis);
+        
+        if dot < 0.0 {
+            -angle
+        } else {
+            angle
         }
     }
 }
@@ -456,5 +535,320 @@ impl PartialOrd for Vec3 {
         } else {
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::f32::consts::PI;
+
+    const EPSILON: f32 = 0.0001;
+
+    fn assert_vec3_approx_eq(a: &Vec3, b: &Vec3, epsilon: f32) {
+        assert!(
+            (a.x - b.x).abs() < epsilon &&
+            (a.y - b.y).abs() < epsilon &&
+            (a.z - b.z).abs() < epsilon,
+            "Vec3 not equal: {:?} != {:?}", a, b
+        );
+    }
+
+    #[test]
+    fn test_vec3_constants() {
+        assert_eq!(Vec3::ZERO, Vec3::new(0.0, 0.0, 0.0));
+        assert_eq!(Vec3::ONE, Vec3::new(1.0, 1.0, 1.0));
+        assert_eq!(Vec3::UNIT_X, Vec3::new(1.0, 0.0, 0.0));
+        assert_eq!(Vec3::UNIT_Y, Vec3::new(0.0, 1.0, 0.0));
+        assert_eq!(Vec3::UNIT_Z, Vec3::new(0.0, 0.0, 1.0));
+    }
+
+    #[test]
+    fn test_vec3_new() {
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        assert_eq!(v.x, 1.0);
+        assert_eq!(v.y, 2.0);
+        assert_eq!(v.z, 3.0);
+    }
+
+    #[test]
+    fn test_vec3_from_array() {
+        let arr = [1.0, 2.0, 3.0];
+        let v = Vec3::from_array(&arr);
+        assert_eq!(v, Vec3::new(1.0, 2.0, 3.0));
+
+        let short_arr = [1.0, 2.0];
+        let v2 = Vec3::from_array(&short_arr);
+        assert_eq!(v2, Vec3::ZERO);
+    }
+
+    #[test]
+    fn test_vec3_from_points() {
+        let p1 = Vec3::new(1.0, 2.0, 3.0);
+        let p2 = Vec3::new(4.0, 6.0, 8.0);
+        let v = Vec3::from_points(&p1, &p2);
+        assert_eq!(v, Vec3::new(3.0, 4.0, 5.0));
+    }
+
+    #[test]
+    fn test_vec3_is_zero() {
+        assert!(Vec3::ZERO.is_zero());
+        assert!(!Vec3::ONE.is_zero());
+    }
+
+    #[test]
+    fn test_vec3_is_one() {
+        assert!(Vec3::ONE.is_one());
+        assert!(!Vec3::ZERO.is_one());
+    }
+
+    #[test]
+    fn test_vec3_length() {
+        let v = Vec3::new(3.0, 4.0, 0.0);
+        assert_eq!(v.length(), 5.0);
+
+        let v2 = Vec3::new(1.0, 2.0, 2.0);
+        assert_eq!(v2.length(), 3.0);
+    }
+
+    #[test]
+    fn test_vec3_length_squared() {
+        let v = Vec3::new(3.0, 4.0, 0.0);
+        assert_eq!(v.length_squared(), 25.0);
+    }
+
+    #[test]
+    fn test_vec3_normalize() {
+        let v = Vec3::new(3.0, 4.0, 0.0);
+        let normalized = v.get_normalized();
+        assert!((normalized.length() - 1.0).abs() < EPSILON);
+        assert_vec3_approx_eq(&normalized, &Vec3::new(0.6, 0.8, 0.0), EPSILON);
+    }
+
+    #[test]
+    fn test_vec3_normalize_zero() {
+        let v = Vec3::ZERO;
+        let normalized = v.get_normalized();
+        assert_eq!(normalized, Vec3::ZERO);
+    }
+
+    #[test]
+    fn test_vec3_dot() {
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(4.0, 5.0, 6.0);
+        assert_eq!(v1.dot(&v2), 32.0);
+    }
+
+    #[test]
+    fn test_vec3_cross() {
+        let v1 = Vec3::UNIT_X;
+        let v2 = Vec3::UNIT_Y;
+        let cross = Vec3::cross_vecs(&v1, &v2);
+        assert_vec3_approx_eq(&cross, &Vec3::UNIT_Z, EPSILON);
+
+        let v3 = Vec3::new(1.0, 2.0, 3.0);
+        let v4 = Vec3::new(4.0, 5.0, 6.0);
+        let cross2 = Vec3::cross_vecs(&v3, &v4);
+        assert_vec3_approx_eq(&cross2, &Vec3::new(-3.0, 6.0, -3.0), EPSILON);
+    }
+
+    #[test]
+    fn test_vec3_distance() {
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(4.0, 6.0, 3.0);
+        assert_eq!(v1.distance(&v2), 5.0);
+    }
+
+    #[test]
+    fn test_vec3_distance_squared() {
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(4.0, 6.0, 3.0);
+        assert_eq!(v1.distance_squared(&v2), 25.0);
+    }
+
+    #[test]
+    fn test_vec3_angle() {
+        let v1 = Vec3::UNIT_X;
+        let v2 = Vec3::UNIT_Y;
+        let angle = Vec3::angle(&v1, &v2);
+        assert!((angle - PI / 2.0).abs() < EPSILON);
+
+        let v3 = Vec3::new(1.0, 0.0, 0.0);
+        let v4 = Vec3::new(1.0, 1.0, 0.0).get_normalized();
+        let angle2 = Vec3::angle(&v3, &v4);
+        assert!((angle2 - PI / 4.0).abs() < EPSILON);
+    }
+
+    #[test]
+    fn test_vec3_add() {
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(4.0, 5.0, 6.0);
+        let result = v1 + v2;
+        assert_eq!(result, Vec3::new(5.0, 7.0, 9.0));
+    }
+
+    #[test]
+    fn test_vec3_sub() {
+        let v1 = Vec3::new(5.0, 7.0, 9.0);
+        let v2 = Vec3::new(1.0, 2.0, 3.0);
+        let result = v1 - v2;
+        assert_eq!(result, Vec3::new(4.0, 5.0, 6.0));
+    }
+
+    #[test]
+    fn test_vec3_mul_scalar() {
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        let result = v * 2.0;
+        assert_eq!(result, Vec3::new(2.0, 4.0, 6.0));
+    }
+
+    #[test]
+    fn test_vec3_div_scalar() {
+        let v = Vec3::new(2.0, 4.0, 6.0);
+        let result = v / 2.0;
+        assert_eq!(result, Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn test_vec3_neg() {
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        let result = -v;
+        assert_eq!(result, Vec3::new(-1.0, -2.0, -3.0));
+    }
+
+    #[test]
+    fn test_vec3_lerp() {
+        let v1 = Vec3::new(0.0, 0.0, 0.0);
+        let v2 = Vec3::new(10.0, 10.0, 10.0);
+        let result = v1.lerp(&v2, 0.5);
+        assert_eq!(result, Vec3::new(5.0, 5.0, 5.0));
+    }
+
+    #[test]
+    fn test_vec3_clamp() {
+        let v = Vec3::new(5.0, -2.0, 10.0);
+        let min = Vec3::new(0.0, 0.0, 0.0);
+        let max = Vec3::new(3.0, 3.0, 3.0);
+        let result = Vec3::clamp_vec(&v, &min, &max);
+        assert_eq!(result, Vec3::new(3.0, 0.0, 3.0));
+    }
+
+    #[test]
+    fn test_vec3_min_max() {
+        let v1 = Vec3::new(1.0, 5.0, 3.0);
+        let v2 = Vec3::new(3.0, 2.0, 6.0);
+        let min = Vec3::min_vecs(&v1, &v2);
+        let max = Vec3::max_vecs(&v1, &v2);
+        assert_eq!(min, Vec3::new(1.0, 2.0, 3.0));
+        assert_eq!(max, Vec3::new(3.0, 5.0, 6.0));
+    }
+
+    #[test]
+    fn test_vec3_approx_equals() {
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(1.0001, 2.0001, 3.0001);
+        assert!(v1.approx_equals(&v2, 0.001));
+        assert!(!v1.approx_equals(&v2, 0.00001));
+    }
+
+    #[test]
+    fn test_vec3_move_towards() {
+        let current = Vec3::new(0.0, 0.0, 0.0);
+        let target = Vec3::new(10.0, 0.0, 0.0);
+        let result = Vec3::move_towards(&current, &target, 3.0);
+        assert_vec3_approx_eq(&result, &Vec3::new(3.0, 0.0, 0.0), EPSILON);
+
+        // When max_step is larger than distance, should return target
+        let result2 = Vec3::move_towards(&current, &target, 15.0);
+        assert_eq!(result2, target);
+    }
+
+    #[test]
+    fn test_vec3_project_onto() {
+        let v = Vec3::new(1.0, 1.0, 0.0);
+        let onto = Vec3::new(1.0, 0.0, 0.0);
+        let proj = v.project_onto(&onto);
+        assert_vec3_approx_eq(&proj, &Vec3::new(1.0, 0.0, 0.0), EPSILON);
+
+        let onto_zero = Vec3::ZERO;
+        let proj_zero = v.project_onto(&onto_zero);
+        assert_eq!(proj_zero, Vec3::ZERO);
+    }
+
+    #[test]
+    fn test_vec3_reflect() {
+        let v = Vec3::new(1.0, -1.0, 0.0);
+        let normal = Vec3::new(0.0, 1.0, 0.0);
+        let reflected = v.reflect(&normal);
+        assert_vec3_approx_eq(&reflected, &Vec3::new(1.0, 1.0, 0.0), EPSILON);
+    }
+
+    #[test]
+    fn test_vec3_perpendicular() {
+        let v = Vec3::UNIT_X;
+        let perp = v.perpendicular();
+        assert!(v.dot(&perp).abs() < EPSILON); // Should be orthogonal
+
+        let v2 = Vec3::UNIT_Y;
+        let perp2 = v2.perpendicular();
+        assert!(v2.dot(&perp2).abs() < EPSILON);
+    }
+
+    #[test]
+    fn test_vec3_from_color() {
+        let color = 0xFF8040; // RGB(255, 128, 64)
+        let v = Vec3::from_color(color);
+        assert!((v.x - 1.0).abs() < EPSILON);
+        assert!((v.y - 0.50196).abs() < 0.01);
+        assert!((v.z - 0.25098).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_vec3_default() {
+        let v: Vec3 = Default::default();
+        assert_eq!(v, Vec3::ZERO);
+    }
+
+    #[test]
+    fn test_vec3_add_assign() {
+        let mut v = Vec3::new(1.0, 2.0, 3.0);
+        v += Vec3::new(1.0, 1.0, 1.0);
+        assert_eq!(v, Vec3::new(2.0, 3.0, 4.0));
+    }
+
+    #[test]
+    fn test_vec3_sub_assign() {
+        let mut v = Vec3::new(3.0, 3.0, 3.0);
+        v -= Vec3::new(1.0, 1.0, 1.0);
+        assert_eq!(v, Vec3::new(2.0, 2.0, 2.0));
+    }
+
+    #[test]
+    fn test_vec3_mul_assign() {
+        let mut v = Vec3::new(1.0, 2.0, 3.0);
+        v *= 2.0;
+        assert_eq!(v, Vec3::new(2.0, 4.0, 6.0));
+    }
+
+    #[test]
+    fn test_vec3_scalar_mul() {
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        let result = 2.0 * v;
+        assert_eq!(result, Vec3::new(2.0, 4.0, 6.0));
+    }
+
+    #[test]
+    fn test_vec3_partial_ord() {
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(2.0, 3.0, 4.0);
+        let v3 = Vec3::new(1.0, 2.0, 3.0);
+        
+        assert_eq!(v1.partial_cmp(&v2), Some(std::cmp::Ordering::Less));
+        assert_eq!(v2.partial_cmp(&v1), Some(std::cmp::Ordering::Greater));
+        assert_eq!(v1.partial_cmp(&v3), Some(std::cmp::Ordering::Equal));
+        
+        // Incomparable case
+        let v4 = Vec3::new(2.0, 1.0, 3.0);
+        assert_eq!(v1.partial_cmp(&v4), None);
     }
 }

@@ -1,8 +1,8 @@
 use super::Vec2;
+use super::FLOAT_CMP_PRECISION;
 use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Sub, SubAssign};
 
-const FLOAT_CMP_PRECISION: f32 = 0.00001;
-
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Size {
     pub width: f32,
@@ -101,6 +101,7 @@ impl Div<f32> for Size {
     }
 }
 
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Rect {
     pub x: f32,

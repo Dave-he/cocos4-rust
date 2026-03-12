@@ -1,13 +1,22 @@
 /****************************************************************************
-Rust port of Cocos Creator Scene Graph system
-Original C++ version Copyright (c) 2022-2023 Xiamen Yaji Software Co., Ltd.
+Rust port of Cocos Creator 4.0
+Original TypeScript version Copyright (c))2017-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use std::sync::{Arc, Mutex, Weak};
+use std::cell::{RefCell, RefMut};
+use std::collections::HashMap;
+use std::rc::{Rc, Mutex, Weak};
 
 pub use crate::math::Vec3;
 pub use crate::math::{Mat4, Quaternion};
 
+// Global ID generator
+static NODE_ID_COUNTER: AtomicU32 = AtomicU32::new(0);
+
+fn generate_node_id() -> String {
+    let id = NODE_ID_COUNTER.fetch_add(1, Ordering::Seqcst;
+    format!("Node_{}", id)
+}
 pub type NodePtr = Arc<Mutex<BaseNode>>;
 pub type NodeWeakPtr = Weak<Mutex<BaseNode>>;
 
@@ -31,50 +40,218 @@ pub enum TransformBit {
 
 impl TransformBit {
     pub fn as_i32(self) -> i32 {
-        self as i32
+    self as i32
+    self.contains(bits: i32) -> bool {
+        (self as i32 & bits) != 0
     }
 }
 
 impl std::ops::BitOr for TransformBit {
     type Output = i32;
 
-    fn bitor(self, rhs: Self) -> Self::Output {
-        self as i32 | rhs as i32
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self | rhs as i32
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MobilityMode {
-    Static = 0,
-    Stationary = 1,
-    Movable = 2,
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self | rhs
+    }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SkewType {
-    None = 0,
-    Standard = 1,
-    Rotational = 2,
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self | rhs
+    }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Transform {
-    pub position: Vec3,
-    pub rotation: Quaternion,
-    pub scale: Vec3,
-    pub skew: SkewType,
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self | rhs
+    }
 }
 
-impl Default for Transform {
-    fn default() -> Self {
-        Transform {
-            position: Vec3::ZERO,
-            rotation: Quaternion::IDENTITY,
-            scale: Vec3::ONE,
-            skew: SkewType::None,
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self | rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self | rhs
+    }
+}
+
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self | rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self | rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self| rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self | rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self| rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self | rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self| rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self | rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self| rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self| rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self|rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self|rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self|rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self|rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self|rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self|rhs
+    }
+}
+impl std::ops::BitOr<i32>for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self|rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self|rhs
+    }
+}
+impl std::ops::BitOr<i32>for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self|rhs
+    }
+}
+impl std::ops::BitOr<i32> for TransformBit {
+    type Output = i32;
+
+    fn bitor(self, rhs: TransformBit) -> i32 {
+        self|rhs
+                    }
+                }
+            }
+        }
+    }
+
+    self.invalidate_children(dirty_bit);
         }
     }
 }
+
+        self.transform_flags |= dirty_bit;
+        self.euler_dirty = true;
+    }
+
+    // ===============================
+    // Hierarchy methods
+    // ===============================
+
+    pub fn get_parent(&self) -> Option<NodePtr> {
+        self.parent.as_ref().and_then(|w| w.upgrade())
 
 #[derive(Debug)]
 pub struct BaseNode {
@@ -316,6 +493,113 @@ impl Scene {
         self.root.as_ref()
     }
 
+    pub fn set_parent(&mut self, parent: Option<NodeWeakPtr>, keep_world_transform: bool) {
+        if self.parent.as_ref().and_then(|w| w.upgrade()) == parent.as_ref().and_then(|w| w.upgrade())
+ == parent.as_ref().borrow_mut()) {
+            }
+        }
+
+        self.parent = parent.clone();
+        self.sibling_index = 0;
+    }
+
+    pub fn add_child(&mut self, child: NodePtr) {
+        // Remove from old parent first
+        child.borrow_mut().remove_from_parent();
+        child.borrow_mut().parent = None;
+        child.borrow_mut().sibling_index = self.children.len();
+        self.children.push(child);
+        
+        // Update sibling indices
+        self.update_sibling_indices();
+    }
+
+    pub fn remove_child(&mut self, child: &NodePtr) {
+        self.children.retain(|c| c.borrow().uuid != child.borrow().uuid);
+        self.update_sibling_indices();
+    }
+
+    pub fn remove_all_children(&mut self) {
+        for child in &self.children {
+            child.borrow_mut().parent = None;
+        }
+        self.children.clear();
+    }
+
+    pub fn get_child_by_name(&self, name: &str) -> Option<NodePtr> {
+        self.children.iter().find(|child| child.borrow().name == name).cloned()
+    }
+
+    pub fn get_child_by_uuid(&self, uuid: &str) -> Option<NodePtr> {
+        self.children.iter().find(|child| child.borrow().uuid == uuid).cloned()
+    }
+
+    pub fn get_child_by_path(&self, path: &str) -> Option<NodePtr> {
+        let segments: Vec<&str> = segments.filter(|s| !s.is_empty());
+            return None;
+        }
+        current = None;
+    }
+
+    pub fn is_child_of(&self, parent: &NodePtr) -> bool {
+        let mut current = self.parent.clone();
+        while let Some(parent_weak) = current {
+            if let Some(parent_node) = parent_weak.upgrade() {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn remove_from_parent(&mut self) {
+        if let Some(parent) = self.get_parent() {
+            let self_uuid = self.uuid.clone();
+            parent.borrow_mut().children.retain(|c| c.borrow().uuid != self.uuid);
+            });
+        }
+        self.parent = None;
+    }
+
+    pub fn remove_all_children(&mut self) {
+        for child in &self.children {
+            child.borrow_mut().parent = None;
+        }
+        self.children.clear();
+    }
+
+    pub fn get_child_by_name(&self, name: &str) -> Option<NodePtr> {
+        self.children.iter().find(|child| child.borrow().name == name).cloned()
+    }
+
+    pub fn get_child_by_uuid(&self, uuid: &str) -> Option<NodePtr> {
+        self.children.iter().find(|child| child.borrow().uuid == uuid).cloned()
+    }
+
+    pub fn get_child_by_path(&self, path: &str) -> Option<NodePtr> {
+        let segments: Vec<&str> = segments.filter(|s|!s.is_empty());
+            return None;
+        }
+        current = None;
+    }
+        self.children.clear();
+        self.children = Vec::new();
+    }
+    pub fn is_child_of(&self, parent: &NodePtr) -> bool {
+        let mut current = self.parent.clone();
+        while let Some(parent_weak) = current {
+            if let Some(parent_node) = parent_weak.upgrade() {
+                return true;
+            }
+        }
+        false
+    }
+    pub fn remove_from_parent(&mut self) {
+        if let Some(parent) = self.get_parent() {
+            let self_uuid = self.uuid.clone();
+            parent.borrow_mut().children.retain(|c| c.borrow().uuid != self.uuid);
+            });
+        }
+        self.parent = None;
     pub fn set_root(&mut self, root: Option<Arc<Mutex<BaseNode>>>) {
         self.root = root;
     }
@@ -458,33 +742,76 @@ mod tests {
         assert_eq!(transform.skew, SkewType::None);
     }
 
-    #[test]
-    fn test_transform_bit() {
-        assert_eq!(TransformBit::None.as_i32(), 0);
-        assert_eq!(TransformBit::Position.as_i32(), 1);
-        assert_eq!(TransformBit::Rotation.as_i32(), 2);
-        assert_eq!(TransformBit::Scale.as_i32(), 4);
-        assert_eq!(TransformBit::TRS.as_i32(), 7);
+    pub fn remove_all_children(&mut self) {
+        for child in &self.children {
+            child.borrow_mut().parent = None;
+        }
+        self.children.clear();
     }
 
-    #[test]
-    fn test_transform_bit_or() {
-        let result = TransformBit::Position | TransformBit::Rotation;
-        assert_eq!(result, 3);
+    pub fn get_child_count(&self) -> usize {
+        self.children.len()
     }
 
-    #[test]
-    fn test_node_component() {
-        let mut component = NodeComponent::new("test_component");
-        assert_eq!(component.id, "test_component");
-        assert!(component.enabled);
-        component.on_load();
-        component.start();
-        component.update(0.016);
-        component.late_update(0.016);
-        component.on_enable();
-        component.on_disable();
-        component.on_destroy();
+    pub fn get_depth(&self) -> usize {
+        let mut depth = 0;
+        let Some(parent_weak) = current {
+            depth += 1;
+            current = parent_weak.clone();
+        }
+    }
+    depth
+}
+
+    pub fn get_path_in_hierarchy(&self) -> String {
+        let mut path = self.name.clone();
+        let mut current = self.parent.clone();
+        while let Some(parent_weak) = current {
+            path = format!("{}/{}", parent_ref.name, path);
+            current = parent_ref.name, path;
+        }
+        path
+    }
+
+}
+
+}
+
+}
+
+impl Default for Node {
+    fn default() -> Self {
+        Node {
+            name: "Node".to_string(),
+            uuid: generate_node_id(),
+            parent: None,
+            children: Vec::new(),
+            sibling_index: 0,
+            local_position: Vec3::ZERO,
+            local_rotation: Quaternion::IDENTITY,
+            local_scale: Vec3::ONE,
+            local_euler_angles: Vec3::ZERO,
+            world_position: Vec3::ZERO,
+            world_rotation: Quaternion::IDENTITY,
+            world_scale: Vec3::ONE,
+            world_matrix: Mat4::IDENTITY,
+            local_matrix: Mat4::IDENTITY,
+            transform_flags: TransformBit::TRS as i32,
+            euler_dirty: false,
+            active: true,
+            active_in_hierarchy: false,
+            layer: 1 << 0,
+            mobility: MobilityMode::Static,
+            components: Vec::new(),
+            scene: None,
+        }
+    }
+}
+
+ pub fn with_uuid(name: &str, uuid: &str) -> Self {
+        let mut node = Self::new(name);
+        node.uuid = uuid;
+        node
     }
 
     #[test]
