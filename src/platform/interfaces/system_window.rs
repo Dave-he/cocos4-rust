@@ -33,13 +33,9 @@ impl WindowFlags {
 pub const MAIN_WINDOW_ID: u32 = 1;
 
 /// System window interface
-pub trait ISystemWindow {
-    /// Get the window's unique ID
+pub trait ISystemWindow: Send + Sync {
     fn get_window_id(&self) -> u32;
-
-    /// Get the native window handle
     fn get_window_handle(&self) -> usize;
-
-    /// Get the view size
     fn get_view_size(&self) -> Size;
+    fn set_cursor_enabled(&mut self, value: bool);
 }

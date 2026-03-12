@@ -5,7 +5,6 @@ pub mod event;
 pub mod geometry;
 #[path = "scene-graph.rs"]
 pub mod scene_graph;
-pub use animation::*;
 pub use assets::*;
 pub use data::*;
 pub use event::*;

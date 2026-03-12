@@ -36,17 +36,17 @@ impl Value {
 
     pub fn get_type(&self) -> ValueType {
         match self {
-            Value::None => ValueType::NONE,
-            Value::Byte(_) => ValueType::BYTE,
-            Value::Integer(_) => ValueType::INTEGER,
-            Value::Unsigned(_) => ValueType::UNSIGNED,
-            Value::Float(_) => ValueType::FLOAT,
-            Value::Double(_) => ValueType::DOUBLE,
-            Value::Boolean(_) => ValueType::BOOLEAN,
-            Value::String(_) => ValueType::STRING,
-            Value::Vector(_) => ValueType::VECTOR,
-            Value::Map(_) => ValueType::MAP,
-            Value::IntKeyMap(_) => ValueType::INT_KEY_MAP,
+            Value::None => ValueType::None,
+            Value::Byte(_) => ValueType::Byte,
+            Value::Integer(_) => ValueType::Integer,
+            Value::Unsigned(_) => ValueType::Unsigned,
+            Value::Float(_) => ValueType::Float,
+            Value::Double(_) => ValueType::Double,
+            Value::Boolean(_) => ValueType::Boolean,
+            Value::String(_) => ValueType::String,
+            Value::Vector(_) => ValueType::Vector,
+            Value::Map(_) => ValueType::Map,
+            Value::IntKeyMap(_) => ValueType::IntKeyMap,
         }
     }
 
@@ -171,17 +171,17 @@ impl Default for Value {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValueType {
-    NONE = 0,
-    BYTE,
-    INTEGER,
-    UNSIGNED,
-    FLOAT,
-    DOUBLE,
-    BOOLEAN,
-    STRING,
-    VECTOR,
-    MAP,
-    INT_KEY_MAP,
+    None,
+    Byte,
+    Integer,
+    Unsigned,
+    Float,
+    Double,
+    Boolean,
+    String,
+    Vector,
+    Map,
+    IntKeyMap,
 }
 
 #[cfg(test)]

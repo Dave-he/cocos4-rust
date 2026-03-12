@@ -4,9 +4,9 @@ Original C++ version Copyright (c) 2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
 use crate::base::RefCounted;
-use crate::math::Vec3;
-
-pub trait World: RefCounted {}
+use crate::base::RefCountedImpl;
+use crate::math::{Vec3, Quaternion};
+use crate::core::geometry::Ray;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PhysicsWorldType {
@@ -16,177 +16,327 @@ pub enum PhysicsWorldType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DebugDrawMode {
+pub enum PhysicsDrawFlags {
     None = 0,
-    Wireframe = 1,
-    Aabb = 2,
-    ContactPoint = 4,
-    ContactNormal = 8,
-    All = 15,
+    Wireframe = 1 << 0,
+    Aabb = 1 << 1,
+    ContactPoint = 1 << 2,
+    ContactNormal = 1 << 3,
+    Joint = 1 << 4,
+    Shape = 1 << 5,
+    All = 0xffffffff,
 }
 
-#[derive(Clone)]
-pub struct PhysicsRaycastOptions {
-    pub collision_mask: u32,
-    pub group: u32,
-    pub report_trigger: bool,
-    pub check_terrain: bool,
-    pub check_rigid_body: bool,
-    pub single_hit: bool,
-}
-
-impl Default for PhysicsRaycastOptions {
+impl Default for PhysicsDrawFlags {
     fn default() -> Self {
-        PhysicsRaycastOptions {
-            collision_mask: u32::MAX,
-            group: u32::MAX,
-            report_trigger: true,
-            check_terrain: true,
-            check_rigid_body: true,
-            single_hit: true,
+        PhysicsDrawFlags::None
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PhysicsMaterial {
+    pub friction: f32,
+    pub restitution: f32,
+}
+
+impl Default for PhysicsMaterial {
+    fn default() -> Self {
+        PhysicsMaterial {
+            friction: 0.5,
+            restitution: 0.1,
         }
     }
 }
 
-#[derive(Clone)]
-pub struct RaycastHit {
-    pub collider: Option<()>,
-    pub point: Vec3,
-    pub normal: Vec3,
+#[derive(Debug, Clone)]
+pub struct PhysicsRayResult {
+    pub hit_point: Vec3,
     pub distance: f32,
-    pub bullet: Option<()>,
+    pub hit_normal: Vec3,
 }
 
-impl RaycastHit {
+impl PhysicsRayResult {
     pub fn new() -> Self {
-        RaycastHit {
-            collider: None,
-            point: Vec3::ZERO,
-            normal: Vec3::ZERO,
+        PhysicsRayResult {
+            hit_point: Vec3::ZERO,
             distance: 0.0,
-            bullet: None,
+            hit_normal: Vec3::ZERO,
         }
     }
 }
 
-impl Default for RaycastHit {
+impl Default for PhysicsRayResult {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[derive(Clone)]
-pub struct PhysicsWorldConfig {
+#[derive(Debug, Clone, Default)]
+pub struct RaycastOptions {
+    pub mask: u32,
+    pub group: i32,
+    pub query_trigger: bool,
+    pub max_distance: f32,
+}
+
+pub trait PhysicsWorld: RefCounted {
+    fn get_impl(&self) -> Option<&dyn std::any::Any>;
+
+    fn set_gravity(&mut self, gravity: Vec3);
+
+    fn set_allow_sleep(&mut self, allow: bool);
+
+    fn set_default_material(&mut self, material: PhysicsMaterial);
+
+    fn step(&mut self, fixed_time_step: f32, time_since_last_called: f32, max_sub_steps: i32);
+
+    fn raycast(&self, world_ray: &Ray, options: &RaycastOptions, results: &mut Vec<PhysicsRayResult>) -> bool;
+
+    fn raycast_closest(&self, world_ray: &Ray, options: &RaycastOptions, out: &mut PhysicsRayResult) -> bool;
+
+    fn sweep_box(
+        &self,
+        world_ray: &Ray,
+        half_extents: &Vec3,
+        orientation: &Quaternion,
+        options: &RaycastOptions,
+        results: &mut Vec<PhysicsRayResult>,
+    ) -> bool;
+
+    fn sweep_box_closest(
+        &self,
+        world_ray: &Ray,
+        half_extents: &Vec3,
+        orientation: &Quaternion,
+        options: &RaycastOptions,
+        out: &mut PhysicsRayResult,
+    ) -> bool;
+
+    fn sweep_sphere(
+        &self,
+        world_ray: &Ray,
+        radius: f32,
+        options: &RaycastOptions,
+        results: &mut Vec<PhysicsRayResult>,
+    ) -> bool;
+
+    fn sweep_sphere_closest(
+        &self,
+        world_ray: &Ray,
+        radius: f32,
+        options: &RaycastOptions,
+        out: &mut PhysicsRayResult,
+    ) -> bool;
+
+    fn sweep_capsule(
+        &self,
+        world_ray: &Ray,
+        radius: f32,
+        height: f32,
+        orientation: &Quaternion,
+        options: &RaycastOptions,
+        results: &mut Vec<PhysicsRayResult>,
+    ) -> bool;
+
+    fn sweep_capsule_closest(
+        &self,
+        world_ray: &Ray,
+        radius: f32,
+        height: f32,
+        orientation: &Quaternion,
+        options: &RaycastOptions,
+        out: &mut PhysicsRayResult,
+    ) -> bool;
+
+    fn emit_events(&mut self);
+
+    fn sync_scene_to_physics(&mut self);
+
+    fn sync_after_events(&mut self);
+
+    fn destroy(&mut self);
+
+    fn get_debug_draw_flags(&self) -> PhysicsDrawFlags;
+
+    fn set_debug_draw_flags(&mut self, flags: PhysicsDrawFlags);
+
+    fn get_debug_draw_constraint_size(&self) -> f32;
+
+    fn set_debug_draw_constraint_size(&mut self, size: f32);
+}
+
+#[derive(Debug)]
+pub struct PhysicsWorldImpl {
     pub gravity: Vec3,
-    pub world_type: PhysicsWorldType,
-    pub fixed_time_step: f32,
-    pub max_sub_steps: u32,
-    pub sleeping_threshold: f32,
-    pub friction_restitution_threshold: f32,
-    pub max_velocity: f32,
-    pub enable: bool,
     pub allow_sleep: bool,
-    pub use_collision_matrix: bool,
+    pub default_material: PhysicsMaterial,
+    pub debug_draw_flags: PhysicsDrawFlags,
+    pub debug_draw_constraint_size: f32,
+    pub fixed_time_step: f32,
+    pub max_sub_steps: i32,
+    pub auto_simulation: bool,
+    ref_count: RefCountedImpl,
 }
 
-impl Default for PhysicsWorldConfig {
+impl Default for PhysicsWorldImpl {
     fn default() -> Self {
-        PhysicsWorldConfig {
-            gravity: Vec3::new(0.0, -9.81, 0.0),
-            world_type: PhysicsWorldType::Bullet,
-            fixed_time_step: 1.0 / 60.0,
-            max_sub_steps: 3,
-            sleeping_threshold: 0.2,
-            friction_restitution_threshold: 0.05,
-            max_velocity: 100.0,
-            enable: true,
+        PhysicsWorldImpl {
+            gravity: Vec3::new(0.0, -10.0, 0.0),
             allow_sleep: true,
-            use_collision_matrix: true,
+            default_material: PhysicsMaterial::default(),
+            debug_draw_flags: PhysicsDrawFlags::None,
+            debug_draw_constraint_size: 0.3,
+            fixed_time_step: 1.0 / 60.0,
+            max_sub_steps: 1,
+            auto_simulation: true,
+            ref_count: RefCountedImpl::new(),
         }
     }
 }
 
-pub struct PhysicsWorld {
-    config: PhysicsWorldConfig,
-    debug_draw_mode: DebugDrawMode,
-    wrapped_world: Option<()>,
-}
-
-impl PhysicsWorld {
+impl PhysicsWorldImpl {
     pub fn new() -> Self {
-        PhysicsWorld {
-            config: PhysicsWorldConfig::default(),
-            debug_draw_mode: DebugDrawMode::None,
-            wrapped_world: None,
-        }
+        Self::default()
+    }
+}
+
+impl RefCounted for PhysicsWorldImpl {
+    fn add_ref(&self) {
+        self.ref_count.add_ref();
     }
 
-    pub fn with_config(config: PhysicsWorldConfig) -> Self {
-        PhysicsWorld {
-            config,
-            debug_draw_mode: DebugDrawMode::None,
-            wrapped_world: None,
-        }
+    fn release(&self) {
+        self.ref_count.release();
     }
 
-    pub fn step(&mut self, _dt: f32) {}
-
-    pub fn raycast(&self, _origin: Vec3, _direction: Vec3, _distance: f32, _options: &PhysicsRaycastOptions) -> Vec<RaycastHit> {
-        Vec::new()
+    fn get_ref_count(&self) -> u32 {
+        self.ref_count.get_ref_count()
     }
 
-    pub fn raycast_closest(&self, _origin: Vec3, _direction: Vec3, _distance: f32, _options: &PhysicsRaycastOptions) -> Option<Box<RaycastHit>> {
+    fn is_last_reference(&self) -> bool {
+        self.ref_count.is_last_reference()
+    }
+}
+
+impl PhysicsWorld for PhysicsWorldImpl {
+    fn get_impl(&self) -> Option<&dyn std::any::Any> {
         None
     }
 
-    pub fn get_gravity(&self) -> Vec3 {
-        self.config.gravity
+    fn set_gravity(&mut self, gravity: Vec3) {
+        self.gravity = gravity;
     }
 
-    pub fn set_gravity(&mut self, gravity: Vec3) {
-        self.config.gravity = gravity;
+    fn set_allow_sleep(&mut self, allow: bool) {
+        self.allow_sleep = allow;
     }
 
-    pub fn get_fixed_time_step(&self) -> f32 {
-        self.config.fixed_time_step
+    fn set_default_material(&mut self, material: PhysicsMaterial) {
+        self.default_material = material;
     }
 
-    pub fn set_fixed_time_step(&mut self, step: f32) {
-        self.config.fixed_time_step = step;
+    fn step(&mut self, _fixed_time_step: f32, _time_since_last_called: f32, _max_sub_steps: i32) {
     }
 
-    pub fn get_max_sub_steps(&self) -> u32 {
-        self.config.max_sub_steps
+    fn raycast(&self, _world_ray: &Ray, _options: &RaycastOptions, _results: &mut Vec<PhysicsRayResult>) -> bool {
+        false
     }
 
-    pub fn set_max_sub_steps(&mut self, steps: u32) {
-        self.config.max_sub_steps = steps;
+    fn raycast_closest(&self, _world_ray: &Ray, _options: &RaycastOptions, _out: &mut PhysicsRayResult) -> bool {
+        false
     }
 
-    pub fn get_debug_draw_mode(&self) -> DebugDrawMode {
-        self.debug_draw_mode
+    fn sweep_box(
+        &self,
+        _world_ray: &Ray,
+        _half_extents: &Vec3,
+        _orientation: &Quaternion,
+        _options: &RaycastOptions,
+        _results: &mut Vec<PhysicsRayResult>,
+    ) -> bool {
+        false
     }
 
-    pub fn set_debug_draw_mode(&mut self, mode: DebugDrawMode) {
-        self.debug_draw_mode = mode;
+    fn sweep_box_closest(
+        &self,
+        _world_ray: &Ray,
+        _half_extents: &Vec3,
+        _orientation: &Quaternion,
+        _options: &RaycastOptions,
+        _out: &mut PhysicsRayResult,
+    ) -> bool {
+        false
     }
 
-    pub fn enable(&mut self, enable: bool) {
-        self.config.enable = enable;
+    fn sweep_sphere(
+        &self,
+        _world_ray: &Ray,
+        _radius: f32,
+        _options: &RaycastOptions,
+        _results: &mut Vec<PhysicsRayResult>,
+    ) -> bool {
+        false
     }
 
-    pub fn is_enabled(&self) -> bool {
-        self.config.enable
+    fn sweep_sphere_closest(
+        &self,
+        _world_ray: &Ray,
+        _radius: f32,
+        _options: &RaycastOptions,
+        _out: &mut PhysicsRayResult,
+    ) -> bool {
+        false
     }
 
-    pub fn emit_trigger_enter(_a: &(), _b: &()) {}
-    pub fn emit_trigger_exit(_a: &(), _b: &()) {}
-    pub fn emit_collision_enter(_a: &(), _b: &()) {}
-    pub fn emit_collision_exit(_a: &(), _b: &()) {}
-}
+    fn sweep_capsule(
+        &self,
+        _world_ray: &Ray,
+        _radius: f32,
+        _height: f32,
+        _orientation: &Quaternion,
+        _options: &RaycastOptions,
+        _results: &mut Vec<PhysicsRayResult>,
+    ) -> bool {
+        false
+    }
 
-impl Default for PhysicsWorld {
-    fn default() -> Self {
-        Self::new()
+    fn sweep_capsule_closest(
+        &self,
+        _world_ray: &Ray,
+        _radius: f32,
+        _height: f32,
+        _orientation: &Quaternion,
+        _options: &RaycastOptions,
+        _out: &mut PhysicsRayResult,
+    ) -> bool {
+        false
+    }
+
+    fn emit_events(&mut self) {
+    }
+
+    fn sync_scene_to_physics(&mut self) {
+    }
+
+    fn sync_after_events(&mut self) {
+    }
+
+    fn destroy(&mut self) {
+    }
+
+    fn get_debug_draw_flags(&self) -> PhysicsDrawFlags {
+        self.debug_draw_flags
+    }
+
+    fn set_debug_draw_flags(&mut self, flags: PhysicsDrawFlags) {
+        self.debug_draw_flags = flags;
+    }
+
+    fn get_debug_draw_constraint_size(&self) -> f32 {
+        self.debug_draw_constraint_size
+    }
+
+    fn set_debug_draw_constraint_size(&mut self, size: f32) {
+        self.debug_draw_constraint_size = size;
     }
 }

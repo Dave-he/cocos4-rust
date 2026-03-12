@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::{Arc, Weak};
 
 use super::system_window::ISystemWindow;
 
@@ -15,10 +16,10 @@ pub struct SystemWindowInfo {
 }
 
 /// System window map type
-pub type SystemWindowMap = HashMap<u32, Box<dyn ISystemWindow>>;
+pub type SystemWindowMap = HashMap<u32, Weak<dyn ISystemWindow>>;
 
 /// System window manager interface
-pub trait ISystemWindowManager {
+pub trait ISystemWindowManager: Send + Sync {
     /// Initialize the NativeWindow environment
     /// Returns 0 on success, -1 on failure
     fn init(&mut self) -> i32;
@@ -28,11 +29,11 @@ pub trait ISystemWindowManager {
 
     /// Create a system window
     /// Returns the created window or None if failed
-    fn create_window(&mut self, info: &SystemWindowInfo) -> Option<u32>;
+    fn create_window(&mut self, info: &SystemWindowInfo) -> Option<Arc<dyn ISystemWindow>>;
 
     /// Find a system window by ID
-    fn get_window(&self, window_id: u32) -> Option<&dyn ISystemWindow>;
+    fn get_window(&self, window_id: u32) -> Option<Arc<dyn ISystemWindow>>;
 
     /// Get all windows
-    fn get_windows(&self) -> &SystemWindowMap;
+    fn get_windows(&self) -> SystemWindowMap;
 }

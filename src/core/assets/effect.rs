@@ -1,6 +1,3 @@
-use super::asset::Asset;
-use crate::base::RefCounted;
-
 pub struct EffectAsset {
     pub name: String,
 }

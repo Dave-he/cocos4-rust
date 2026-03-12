@@ -4,6 +4,7 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
 use crate::base::RefCounted;
+use super::material::MaterialInstance;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PassType {
@@ -43,13 +44,13 @@ pub trait IPass: RefCounted {
 pub trait RenderableComponent: RefCounted {}
 
 pub struct PassInstance {
-    pub parent: Option<*const ()>,
+    pub parent: Option<*const dyn MaterialInstance>,
     pub owner: Option<*const dyn RenderableComponent>,
     pub sub_model_index: usize,
 }
 
 impl PassInstance {
-    pub fn new(parent: Option<*const ()>) -> Self {
+    pub fn new(parent: Option<*const dyn MaterialInstance>) -> Self {
         PassInstance {
             parent,
             owner: None,
