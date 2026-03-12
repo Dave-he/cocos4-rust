@@ -5,6 +5,7 @@ pub mod math;
 pub mod physics;
 pub mod platform;
 pub mod renderer;
+pub mod scene;
 pub mod storage;
 pub mod xr;
 

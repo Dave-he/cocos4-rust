@@ -11,7 +11,6 @@ pub enum SchedulePriority {
 
 pub const CC_REPEAT_FOREVER: u32 = u32::MAX;
 
-#[derive(Debug, Clone)]
 pub struct TimerInfo {
     pub key: String,
     pub elapsed: f32,
@@ -51,6 +50,10 @@ impl TimerInfo {
     pub fn update(&mut self, dt: f32) -> bool {
         if self.paused {
             return false;
+        }
+
+        if self.elapsed < 0.0 {
+            self.elapsed = 0.0;
         }
 
         if self.use_delay {

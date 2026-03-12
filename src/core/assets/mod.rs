@@ -1,4 +1,5 @@
 pub mod asset;
+pub mod asset_enum;
 pub mod effect;
 pub mod font;
 pub mod image;
@@ -8,6 +9,7 @@ pub mod scene;
 pub mod texture;
 
 pub use asset::*;
+pub use asset_enum::*;
 pub use effect::*;
 pub use font::*;
 pub use image::*;

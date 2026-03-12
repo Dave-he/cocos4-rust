@@ -192,56 +192,56 @@ mod tests {
     fn test_value_none() {
         let v = Value::None;
         assert!(v.is_null());
-        assert_eq!(v.get_type(), ValueType::NONE);
+        assert_eq!(v.get_type(), ValueType::None);
     }
 
     #[test]
     fn test_value_byte() {
         let v = Value::Byte(42);
         assert!(!v.is_null());
-        assert_eq!(v.get_type(), ValueType::BYTE);
+        assert_eq!(v.get_type(), ValueType::Byte);
         assert_eq!(v.as_byte(), Some(42));
     }
 
     #[test]
     fn test_value_integer() {
         let v = Value::Integer(-123);
-        assert_eq!(v.get_type(), ValueType::INTEGER);
+        assert_eq!(v.get_type(), ValueType::Integer);
         assert_eq!(v.as_int(), Some(-123));
     }
 
     #[test]
     fn test_value_unsigned() {
         let v = Value::Unsigned(456);
-        assert_eq!(v.get_type(), ValueType::UNSIGNED);
+        assert_eq!(v.get_type(), ValueType::Unsigned);
         assert_eq!(v.as_unsigned(), Some(456));
     }
 
     #[test]
     fn test_value_float() {
         let v = Value::Float(3.14);
-        assert_eq!(v.get_type(), ValueType::FLOAT);
+        assert_eq!(v.get_type(), ValueType::Float);
         assert_eq!(v.as_float(), Some(3.14));
     }
 
     #[test]
     fn test_value_double() {
         let v = Value::Double(2.718);
-        assert_eq!(v.get_type(), ValueType::DOUBLE);
+        assert_eq!(v.get_type(), ValueType::Double);
         assert_eq!(v.as_double(), Some(2.718));
     }
 
     #[test]
     fn test_value_boolean() {
         let v = Value::Boolean(true);
-        assert_eq!(v.get_type(), ValueType::BOOLEAN);
+        assert_eq!(v.get_type(), ValueType::Boolean);
         assert_eq!(v.as_bool(), Some(true));
     }
 
     #[test]
     fn test_value_string() {
         let v = Value::String("hello".to_string());
-        assert_eq!(v.get_type(), ValueType::STRING);
+        assert_eq!(v.get_type(), ValueType::String);
         assert_eq!(v.as_string(), Some(&"hello".to_string()));
     }
 
@@ -249,7 +249,7 @@ mod tests {
     fn test_value_vector() {
         let vec_val = vec![Value::Integer(1), Value::Integer(2)];
         let v = Value::Vector(vec_val.clone());
-        assert_eq!(v.get_type(), ValueType::VECTOR);
+        assert_eq!(v.get_type(), ValueType::Vector);
         assert_eq!(v.as_value_vector(), Some(&vec_val));
     }
 
@@ -258,7 +258,7 @@ mod tests {
         let mut map_val = HashMap::new();
         map_val.insert("key".to_string(), Value::Integer(123));
         let v = Value::Map(map_val);
-        assert_eq!(v.get_type(), ValueType::MAP);
+        assert_eq!(v.get_type(), ValueType::Map);
         assert!(v.as_value_map().is_some());
     }
 
@@ -267,7 +267,7 @@ mod tests {
         let mut map_val = BTreeMap::new();
         map_val.insert(1, Value::Integer(100));
         let v = Value::IntKeyMap(map_val);
-        assert_eq!(v.get_type(), ValueType::INT_KEY_MAP);
+        assert_eq!(v.get_type(), ValueType::IntKeyMap);
         assert!(v.as_int_key_map().is_some());
     }
 

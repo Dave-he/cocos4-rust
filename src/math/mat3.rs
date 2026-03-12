@@ -70,13 +70,13 @@ impl Mat3 {
         Mat3 {
             m: [
                 1.0 - yy - zz,
-                yx - wz,
-                zx + wy,
                 yx + wz,
-                1.0 - xx - zz,
-                zy - wx,
                 zx - wy,
+                yx - wz,
+                1.0 - xx - zz,
                 zy + wx,
+                zx + wy,
+                zy - wx,
                 1.0 - xx - yy,
             ],
         }
@@ -295,6 +295,30 @@ impl Mat3 {
         let mut result = Mat3::IDENTITY;
         result.scale(x, y);
         result
+    }
+
+    pub fn from_view_up(view: &Vec3, up: Option<&Vec3>) -> Mat3 {
+        let default_up = Vec3::new(0.0, 1.0, 0.0);
+        let up = up.unwrap_or(&default_up);
+
+        if view.length_squared() < EPSILON * EPSILON {
+            return Mat3::IDENTITY;
+        }
+
+        let mut right = Vec3::cross_vecs(up, view);
+        right.normalize();
+
+        if right.length_squared() < EPSILON * EPSILON {
+            return Mat3::IDENTITY;
+        }
+
+        let adjusted_up = Vec3::cross_vecs(view, &right);
+
+        Mat3::new(
+            right.x, right.y, right.z,
+            adjusted_up.x, adjusted_up.y, adjusted_up.z,
+            view.x, view.y, view.z,
+        )
     }
 
     pub fn is_identity(&self) -> bool {

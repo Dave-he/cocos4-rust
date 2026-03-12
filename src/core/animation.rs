@@ -5,7 +5,7 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 
 use crate::math::Mat4;
 use std::sync::{Arc, Weak};
-use crate::core::scene_graph::{Node, NodePtr};
+use crate::core::scene_graph::{BaseNode, NodePtr};
 
 pub trait Texture {}
 

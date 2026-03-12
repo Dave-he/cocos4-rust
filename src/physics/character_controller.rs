@@ -4,7 +4,7 @@ Original C++ version Copyright (c) 2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
 use crate::base::RefCounted;
-use crate::core::scene_graph::Node;
+use crate::core::scene_graph::BaseNode;
 use crate::math::Vec3;
 
 #[derive(Debug, Clone)]
