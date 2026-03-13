@@ -635,7 +635,7 @@ mod tests {
 
     #[test]
     fn test_normalize() {
-        let v = Vec2::new(3.0, 4.0);
+        let mut v = Vec2::new(3.0, 4.0);
         v.normalize();
         assert_float_eq(v.length(), 1.0, EPSILON);
     }
@@ -695,7 +695,7 @@ mod tests {
     fn test_add() {
         let mut v1 = Vec2::new(1.0, 2.0);
         let v2 = Vec2::new(3.0, 4.0);
-        v1.add(&v2);
+        Vec2::add(&mut v1, &v2);
         assert_eq!(v1, Vec2::new(4.0, 6.0));
     }
 

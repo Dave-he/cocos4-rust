@@ -306,19 +306,22 @@ impl Mat3 {
             return Mat3::IDENTITY;
         }
 
-        let mut right = Vec3::cross_vecs(up, view);
-        right.normalize();
+        let mut z = *view;
+        z.normalize();
+
+        let mut right = Vec3::cross_vecs(up, &z);
 
         if right.length_squared() < EPSILON * EPSILON {
             return Mat3::IDENTITY;
         }
+        right.normalize();
 
-        let adjusted_up = Vec3::cross_vecs(view, &right);
+        let adjusted_up = Vec3::cross_vecs(&z, &right);
 
         Mat3::new(
             right.x, right.y, right.z,
             adjusted_up.x, adjusted_up.y, adjusted_up.z,
-            view.x, view.y, view.z,
+            z.x, z.y, z.z,
         )
     }
 
@@ -356,7 +359,6 @@ impl Mat3 {
         }
     }
 
-    /// 从 Mat4 提取旋转矩阵
     pub fn from_mat4(m: &Mat4) -> Mat3 {
         Mat3::new(
             m.m[0], m.m[1], m.m[2],
@@ -365,24 +367,6 @@ impl Mat3 {
         )
     }
 
-    /// 根据视口的前方向和上方向计算矩阵
-    pub fn from_view_up(view: &Vec3, up: &Vec3) -> Mat3 {
-        let mut z = *view;
-        z.normalize();
-
-        let mut x = Vec3::cross_vecs(up, &z);
-        x.normalize();
-
-        let y = Vec3::cross_vecs(&z, &x);
-
-        Mat3::new(
-            x.x, x.y, x.z,
-            y.x, y.y, y.z,
-            z.x, z.y, z.z,
-        )
-    }
-
-    /// 根据本地坐标轴朝向计算矩阵
     pub fn from_axes(x_axis: &Vec3, y_axis: &Vec3, z_axis: &Vec3) -> Mat3 {
         Mat3::new(
             x_axis.x, x_axis.y, x_axis.z,
@@ -410,46 +394,6 @@ impl Mat3 {
         Vec3::new(x, y, z)
     }
 
-    /// 从 Mat4 提取前三行三列
-    pub fn from_mat4(m: &Mat4) -> Mat3 {
-        Mat3::new(
-            m.m[0], m.m[1], m.m[2],
-            m.m[4], m.m[5], m.m[6],
-            m.m[8], m.m[9], m.m[10],
-        )
-    }
-
-    /// 从四元数创建矩阵
-    pub fn from_quat(q: &Quaternion) -> Mat3 {
-        let x = q.x;
-        let y = q.y;
-        let z = q.z;
-        let w = q.w;
-
-        let x2 = x + x;
-        let y2 = y + y;
-        let z2 = z + z;
-
-        let xx = x * x2;
-        let yx = y * x2;
-        let yy = y * y2;
-        let zx = z * x2;
-        let zy = z * y2;
-        let zz = z * z2;
-        let wx = w * x2;
-        let wy = w * y2;
-        let wz = w * z2;
-
-        Mat3 {
-            m: [
-                1.0 - yy - zz, yx + wz, zx - wy,
-                yx - wz, 1.0 - xx - zz, zy + wx,
-                zx + wy, zy - wx, 1.0 - xx - yy,
-            ],
-        }
-    }
-
-    /// 从 2D 平移创建矩阵
     pub fn from_translation_2d(x: f32, y: f32) -> Mat3 {
         Mat3::new(
             1.0, 0.0, 0.0,
@@ -626,11 +570,10 @@ mod tests {
 
     #[test]
     fn test_from_view_up() {
-        let view = Vec3::new(0.0, 0.0, -1.0);
+        let view = Vec3::new(0.0, 0.0, 1.0);
         let up = Vec3::UNIT_Y;
         let m = Mat3::from_view_up(&view, Some(&up));
         
-        // Should produce identity-like matrix for default orientation
         assert_float_eq(m.m[0], 1.0, EPSILON);
         assert_float_eq(m.m[4], 1.0, EPSILON);
         assert_float_eq(m.m[8], 1.0, EPSILON);

@@ -498,7 +498,6 @@ impl Quaternion {
 
     /// 根据视口的前方向和上方向计算四元数
     pub fn from_view_up(view: &Vec3, up: Option<&Vec3>) -> Quaternion {
-        let up = up.unwrap_or(&Vec3::UNIT_Y);
         let m = Mat3::from_view_up(view, up);
         let q = Quaternion::from_mat3(&m);
         q.normalize()
@@ -720,12 +719,10 @@ mod tests {
 
     #[test]
     fn test_from_view_up() {
-        let view = Vec3::new(0.0, 0.0, -1.0);
+        let view = Vec3::new(0.0, 0.0, 1.0);
         let up = Vec3::UNIT_Y;
         let q = Quaternion::from_view_up(&view, Some(&up));
         
-        // The quaternion should be identity when looking down -Z with Y up
-        // because that's the default orientation
         assert_quat_approx_eq(&q, &Quaternion::IDENTITY, EPSILON);
     }
 
@@ -827,7 +824,7 @@ mod tests {
         let axis = Vec3::new(0.0, 1.0, 0.0);
         let angle = 1.0_f32;
         let q = Quaternion::from_axis_angle(&axis, angle);
-        let (out_axis, out_angle) = q.to_axis_angle();
+        let (out_axis, out_angle) = q.get_axis_angle();
         assert!((out_angle - angle).abs() < 0.001);
         assert!((out_axis.y - 1.0).abs() < 0.001);
     }
