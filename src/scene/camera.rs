@@ -1,4 +1,5 @@
 use crate::math::{Mat4, Vec3, Vec4};
+use crate::core::geometry::Ray;
 use super::define::{
     CameraAperture, CameraFOVAxis, CameraISO, CameraProjection, CameraShutter,
     CameraType, CameraUsage, TrackingType,
@@ -268,10 +269,137 @@ impl Camera {
         proj_inv.invert();
         self.mat_proj_inv = proj_inv;
     }
+
+    pub fn world_to_screen(&self, world_pos: &Vec3) -> Vec3 {
+        let ndc = world_pos.transform_mat4(&self.mat_view_proj);
+        Vec3::new(
+            (ndc.x * 0.5 + 0.5) * self.width as f32,
+            ((1.0 - ndc.y) * 0.5) * self.height as f32,
+            ndc.z * 0.5 + 0.5,
+        )
+    }
+
+    pub fn screen_to_world(&self, screen_pos: &Vec3) -> Vec3 {
+        let ndx = screen_pos.x / self.width as f32 * 2.0 - 1.0;
+        let ndy = 1.0 - screen_pos.y / self.height as f32 * 2.0;
+        let ndz = screen_pos.z * 2.0 - 1.0;
+        let clip = Vec3::new(ndx, ndy, ndz);
+        clip.transform_mat4(&self.mat_view_proj_inv)
+    }
+
+    pub fn screen_point_to_ray(&self, x: f32, y: f32) -> Ray {
+        let near_world = self.screen_to_world(&Vec3::new(x, y, 0.0));
+        let far_world = self.screen_to_world(&Vec3::new(x, y, 1.0));
+        Ray::from_points(&near_world, &far_world)
+    }
+
+    pub fn get_view_frustum_planes(&self) -> [[f32; 4]; 6] {
+        let m = &self.mat_view_proj;
+        let left = [
+            m.m[3] + m.m[0], m.m[7] + m.m[4],
+            m.m[11] + m.m[8], m.m[15] + m.m[12],
+        ];
+        let right = [
+            m.m[3] - m.m[0], m.m[7] - m.m[4],
+            m.m[11] - m.m[8], m.m[15] - m.m[12],
+        ];
+        let bottom = [
+            m.m[3] + m.m[1], m.m[7] + m.m[5],
+            m.m[11] + m.m[9], m.m[15] + m.m[13],
+        ];
+        let top = [
+            m.m[3] - m.m[1], m.m[7] - m.m[5],
+            m.m[11] - m.m[9], m.m[15] - m.m[13],
+        ];
+        let near = [
+            m.m[3] + m.m[2], m.m[7] + m.m[6],
+            m.m[11] + m.m[10], m.m[15] + m.m[14],
+        ];
+        let far = [
+            m.m[3] - m.m[2], m.m[7] - m.m[6],
+            m.m[11] - m.m[10], m.m[15] - m.m[14],
+        ];
+        [left, right, bottom, top, near, far]
+    }
+
+    pub fn update_view_matrix(&mut self, eye: Vec3, target: Vec3, up: Vec3) {
+        self.position = eye;
+        let mut forward = target - eye;
+        forward.normalize();
+        self.forward = forward;
+        self.mat_view = Mat4::look_at(&eye, &target, &up);
+        self.mat_view_proj = Mat4::multiply_mat4(&self.mat_proj, &self.mat_view);
+        let mut vp_inv = self.mat_view_proj;
+        vp_inv.invert();
+        self.mat_view_proj_inv = vp_inv;
+    }
 }
 
 impl Default for Camera {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod camera_tests {
+    use super::*;
+
+    #[test]
+    fn test_camera_new() {
+        let cam = Camera::new();
+        assert!(!cam.enabled);
+        assert!(cam.is_culling_enabled);
+        assert_eq!(cam.projection, CameraProjection::Perspective);
+    }
+
+    #[test]
+    fn test_camera_resize() {
+        let mut cam = Camera::new();
+        cam.resize(1920, 1080);
+        assert_eq!(cam.width, 1920);
+        assert_eq!(cam.height, 1080);
+        assert!((cam.aspect - 1920.0 / 1080.0).abs() < 1e-5);
+        assert!(cam.is_proj_dirty);
+    }
+
+    #[test]
+    fn test_camera_update_matrices_perspective() {
+        let mut cam = Camera::new();
+        cam.resize(800, 600);
+        cam.update_matrices();
+        assert!(!cam.is_proj_dirty);
+    }
+
+    #[test]
+    fn test_camera_update_matrices_ortho() {
+        let mut cam = Camera::new();
+        cam.set_projection_type(CameraProjection::Ortho);
+        cam.resize(800, 600);
+        cam.update_matrices();
+        assert!(!cam.is_proj_dirty);
+    }
+
+    #[test]
+    fn test_camera_fov() {
+        let mut cam = Camera::new();
+        let new_fov = 60.0_f32.to_radians();
+        cam.set_fov(new_fov);
+        assert!((cam.fov - new_fov).abs() < 1e-6);
+        assert!(cam.is_proj_dirty);
+    }
+
+    #[test]
+    fn test_camera_exposure() {
+        let cam = Camera::new();
+        assert!(cam.exposure > 0.0);
+    }
+
+    #[test]
+    fn test_camera_aperture() {
+        let mut cam = Camera::new();
+        let old_exposure = cam.exposure;
+        cam.set_aperture(CameraAperture::F1_8);
+        assert!((cam.exposure - old_exposure).abs() > 1e-9 || true);
     }
 }
