@@ -54,3 +54,39 @@ impl GfxQueryPool {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_query_pool_new() {
+        let pool = GfxQueryPool::new(1, QueryPoolInfo {
+            max_queries: 8,
+            ..Default::default()
+        });
+        assert_eq!(pool.id, 1);
+        assert_eq!(pool.results.len(), 8);
+        assert_eq!(pool.get_result(0), 0);
+    }
+
+    #[test]
+    fn test_query_pool_reset() {
+        let mut pool = GfxQueryPool::new(1, QueryPoolInfo::default());
+        pool.results[0] = 42;
+        pool.reset();
+        assert_eq!(pool.get_result(0), 0);
+    }
+
+    #[test]
+    fn test_query_pool_out_of_bounds() {
+        let pool = GfxQueryPool::new(1, QueryPoolInfo { max_queries: 2, ..Default::default() });
+        assert_eq!(pool.get_result(100), 0);
+    }
+
+    #[test]
+    fn test_query_types() {
+        assert_ne!(QueryType::Occlusion, QueryType::Timestamp);
+        assert_ne!(QueryType::Timestamp, QueryType::PipelineStatistics);
+    }
+}

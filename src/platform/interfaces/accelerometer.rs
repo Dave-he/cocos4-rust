@@ -25,3 +25,29 @@ pub trait IAccelerometer: OSInterface {
     /// Get the motion value of current device
     fn get_device_motion_value(&self) -> MotionValue;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_motion_value_default() {
+        let m = MotionValue::default();
+        assert_eq!(m.acceleration_x, 0.0);
+        assert_eq!(m.acceleration_y, 0.0);
+        assert_eq!(m.acceleration_z, 0.0);
+        assert_eq!(m.rotation_rate_alpha, 0.0);
+    }
+
+    #[test]
+    fn test_motion_value_set() {
+        let m = MotionValue {
+            acceleration_x: 1.0,
+            acceleration_y: -9.8,
+            acceleration_z: 0.5,
+            ..Default::default()
+        };
+        assert_eq!(m.acceleration_x, 1.0);
+        assert_eq!(m.acceleration_y, -9.8);
+    }
+}

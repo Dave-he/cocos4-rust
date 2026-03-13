@@ -36,6 +36,40 @@ impl Default for GeneralBarrierInfo {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_general_barrier_default() {
+        let b = GeneralBarrierInfo::default();
+        assert_eq!(b.prev_accesses, 0);
+        assert_eq!(b.next_accesses, 0);
+    }
+
+    #[test]
+    fn test_texture_barrier_default() {
+        let b = TextureBarrierInfo::default();
+        assert!(!b.discard_contents);
+        assert_eq!(b.range_mip_levels, 1);
+        assert_eq!(b.range_layers, 1);
+    }
+
+    #[test]
+    fn test_buffer_barrier_default() {
+        let b = BufferBarrierInfo::default();
+        assert!(!b.discard_contents);
+        assert_eq!(b.offset, 0);
+        assert_eq!(b.size, 0);
+    }
+
+    #[test]
+    fn test_access_flags() {
+        assert_ne!(AccessFlagBit::None as u32, AccessFlagBit::IndexBuffer as u32);
+        assert_eq!(AccessFlagBit::None as u32, 0);
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TextureBarrierInfo {
     pub prev_accesses: u64,

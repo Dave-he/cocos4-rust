@@ -76,3 +76,50 @@ impl GfxDescriptorSet {
         GfxDescriptorSet { id, layout_id }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_descriptor_set_layout_new() {
+        let layout = GfxDescriptorSetLayout::new(1, DescriptorSetLayoutInfo::default());
+        assert_eq!(layout.id, 1);
+        assert_eq!(layout.get_binding_count(), 0);
+    }
+
+    #[test]
+    fn test_descriptor_set_layout_with_bindings() {
+        let info = DescriptorSetLayoutInfo {
+            bindings: vec![
+                DescriptorSetLayoutBinding {
+                    binding: 0,
+                    descriptor_type: DescriptorType::UniformBuffer,
+                    count: 1,
+                    stage_flags: 0b1,
+                },
+                DescriptorSetLayoutBinding {
+                    binding: 1,
+                    descriptor_type: DescriptorType::SamplerTexture,
+                    count: 4,
+                    stage_flags: 0b10,
+                },
+            ],
+        };
+        let layout = GfxDescriptorSetLayout::new(1, info);
+        assert_eq!(layout.get_binding_count(), 2);
+    }
+
+    #[test]
+    fn test_descriptor_set_new() {
+        let ds = GfxDescriptorSet::new(5, 1);
+        assert_eq!(ds.id, 5);
+        assert_eq!(ds.layout_id, 1);
+    }
+
+    #[test]
+    fn test_descriptor_types() {
+        assert_ne!(DescriptorType::UniformBuffer as u32, DescriptorType::Sampler as u32);
+        assert_eq!(DescriptorType::Unknown as u32, 0);
+    }
+}

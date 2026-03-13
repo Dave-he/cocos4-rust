@@ -263,3 +263,20 @@ pub trait ICanvasRenderingContext2D: OSInterface {
     /// Fetch data
     fn fetch_data(&mut self);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_text_align_values() {
+        assert_ne!(TextAlign::Left, TextAlign::Center);
+        assert_ne!(TextAlign::Center, TextAlign::Right);
+    }
+
+    #[test]
+    fn test_text_baseline_values() {
+        assert_ne!(TextBaseline::Top, TextBaseline::Bottom);
+        assert_ne!(TextBaseline::Middle, TextBaseline::Alphabetic);
+    }
+}

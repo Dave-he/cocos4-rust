@@ -617,6 +617,7 @@ pub struct NodeComponent {
     pub id: String,
     pub node: Option<NodeWeakPtr>,
     pub enabled: bool,
+    execution_order: i32,
 }
 
 impl NodeComponent {
@@ -625,7 +626,20 @@ impl NodeComponent {
             id: id.to_string(),
             node: None,
             enabled: true,
+            execution_order: 0,
         }
+    }
+
+    pub fn get_execution_order(&self) -> i32 {
+        self.execution_order
+    }
+
+    pub fn set_execution_order(&mut self, order: i32) {
+        self.execution_order = order;
+    }
+
+    pub fn get_node(&self) -> Option<NodePtr> {
+        self.node.as_ref().and_then(|w| w.upgrade())
     }
 
     pub fn on_load(&mut self) {}
@@ -635,6 +649,48 @@ impl NodeComponent {
     pub fn on_enable(&mut self) {}
     pub fn on_disable(&mut self) {}
     pub fn on_destroy(&mut self) {}
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum NodeEventType {
+    TransformChanged(u32),
+    ParentChanged,
+    ChildAdded(String),
+    ChildRemoved(String),
+    ActiveChanged(bool),
+    MobilityChanged(MobilityMode),
+}
+
+pub type NodeEventListener = Box<dyn Fn(&NodeEventType) + Send + Sync>;
+
+pub struct NodeEventEmitter {
+    listeners: Vec<NodeEventListener>,
+}
+
+impl NodeEventEmitter {
+    pub fn new() -> Self {
+        NodeEventEmitter { listeners: Vec::new() }
+    }
+
+    pub fn on(&mut self, listener: NodeEventListener) {
+        self.listeners.push(listener);
+    }
+
+    pub fn emit(&self, event: &NodeEventType) {
+        for listener in &self.listeners {
+            listener(event);
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.listeners.clear();
+    }
+}
+
+impl Default for NodeEventEmitter {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]
@@ -791,5 +847,55 @@ mod tests {
         root.lock().unwrap().add_child(Arc::clone(&child));
 
         assert_eq!(child.lock().unwrap().get_path_in_hierarchy(), "Root/Child");
+    }
+
+    #[test]
+    fn test_node_component() {
+        let mut comp = NodeComponent::new("TestComp");
+        assert_eq!(comp.id, "TestComp");
+        assert!(comp.enabled);
+        assert!(comp.get_node().is_none());
+
+        comp.set_execution_order(5);
+        assert_eq!(comp.get_execution_order(), 5);
+    }
+
+    #[test]
+    fn test_node_event_emitter() {
+        let results = Arc::new(Mutex::new(Vec::<String>::new()));
+        let mut emitter = NodeEventEmitter::new();
+
+        let r = Arc::clone(&results);
+        emitter.on(Box::new(move |e| {
+            r.lock().unwrap().push(format!("{:?}", e));
+        }));
+
+        emitter.emit(&NodeEventType::ActiveChanged(true));
+        emitter.emit(&NodeEventType::ParentChanged);
+
+        let r = results.lock().unwrap();
+        assert_eq!(r.len(), 2);
+    }
+
+    #[test]
+    fn test_node_event_emitter_clear() {
+        let count = Arc::new(Mutex::new(0usize));
+        let mut emitter = NodeEventEmitter::new();
+        let c = Arc::clone(&count);
+        emitter.on(Box::new(move |_| { *c.lock().unwrap() += 1; }));
+        emitter.emit(&NodeEventType::ParentChanged);
+        assert_eq!(*count.lock().unwrap(), 1);
+        emitter.clear();
+        emitter.emit(&NodeEventType::ParentChanged);
+        assert_eq!(*count.lock().unwrap(), 1);
+    }
+
+    #[test]
+    fn test_node_event_types() {
+        let e1 = NodeEventType::TransformChanged(3);
+        let e2 = NodeEventType::ChildAdded("child-uuid".to_string());
+        let e3 = NodeEventType::MobilityChanged(MobilityMode::Movable);
+        assert_ne!(format!("{:?}", e1), format!("{:?}", e2));
+        assert_eq!(e3, NodeEventType::MobilityChanged(MobilityMode::Movable));
     }
 }

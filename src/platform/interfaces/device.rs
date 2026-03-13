@@ -57,3 +57,39 @@ impl Device {
         Vec4::new(0.0, 0.0, 0.0, 0.0)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_device_dpi() {
+        let dpi = Device::get_dpi();
+        assert_eq!(dpi, 0);
+    }
+
+    #[test]
+    fn test_device_pixel_ratio() {
+        let ratio = Device::get_device_pixel_ratio();
+        assert_eq!(ratio, 1.0);
+    }
+
+    #[test]
+    fn test_device_battery_level() {
+        let level = Device::get_battery_level();
+        assert!(level >= 0.0 && level <= 1.0);
+    }
+
+    #[test]
+    fn test_device_safe_area() {
+        let edge = Device::get_safe_area_edge();
+        assert_eq!(edge.x, 0.0);
+        assert_eq!(edge.y, 0.0);
+    }
+
+    #[test]
+    fn test_device_motion_value_default() {
+        let motion = Device::get_device_motion_value();
+        assert_eq!(motion.acceleration_x, 0.0);
+    }
+}
