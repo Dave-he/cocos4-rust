@@ -1,4 +1,5 @@
 pub mod application;
+pub mod audio;
 pub mod base;
 pub mod core;
 pub mod math;
@@ -8,6 +9,12 @@ pub mod renderer;
 pub mod scene;
 pub mod storage;
 pub mod xr;
+
+#[path = "2d/mod.rs"]
+pub mod _2d;
+
+#[path = "3d/mod.rs"]
+pub mod _3d;
 
 pub use base::{
     Clonable, Log, LogLevel, LogType, RefCounted,
