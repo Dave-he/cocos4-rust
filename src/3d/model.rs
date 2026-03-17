@@ -133,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_aabb_new() {
-        let aabb = AABB::new(Vec3::ZERO, Vec3::new(1.0, 1.0, 1.0));
+        let aabb = AABB::from_center_extents(Vec3::ZERO, Vec3::new(1.0, 1.0, 1.0));
         assert!(aabb.contains_point(&Vec3::ZERO));
         assert!(aabb.contains_point(&Vec3::new(0.9, 0.9, 0.9)));
         assert!(!aabb.contains_point(&Vec3::new(1.5, 0.0, 0.0)));
@@ -148,9 +148,9 @@ mod tests {
 
     #[test]
     fn test_aabb_intersects() {
-        let a = AABB::new(Vec3::ZERO, Vec3::new(1.0, 1.0, 1.0));
-        let b = AABB::new(Vec3::new(1.5, 0.0, 0.0), Vec3::new(1.0, 1.0, 1.0));
-        let c = AABB::new(Vec3::new(3.0, 0.0, 0.0), Vec3::new(1.0, 1.0, 1.0));
+        let a = AABB::from_center_extents(Vec3::ZERO, Vec3::new(1.0, 1.0, 1.0));
+        let b = AABB::from_center_extents(Vec3::new(1.5, 0.0, 0.0), Vec3::new(1.0, 1.0, 1.0));
+        let c = AABB::from_center_extents(Vec3::new(3.0, 0.0, 0.0), Vec3::new(1.0, 1.0, 1.0));
         assert!(a.intersects(&b));
         assert!(!a.intersects(&c));
     }
