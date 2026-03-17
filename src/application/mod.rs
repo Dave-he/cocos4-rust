@@ -3,6 +3,8 @@ Rust port of Cocos Creator Application Manager
 Original C++ version Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
+pub mod root;
+
 use crate::base::RefCounted;
 use crate::base::RefCountedImpl;
 

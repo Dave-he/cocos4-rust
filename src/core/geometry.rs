@@ -93,6 +93,21 @@ impl AABB {
         );
     }
 
+    /// Create an AABB from min and max corner points.
+    pub fn from_min_max(min: Vec3, max: Vec3) -> Self {
+        let center = Vec3::new(
+            (min.x + max.x) * 0.5,
+            (min.y + max.y) * 0.5,
+            (min.z + max.z) * 0.5,
+        );
+        let half_extents = Vec3::new(
+            (max.x - min.x) * 0.5,
+            (max.y - min.y) * 0.5,
+            (max.z - min.z) * 0.5,
+        );
+        AABB { center, half_extents, is_valid: true }
+    }
+
     pub fn contains(&self, point: &Vec3) -> bool {
         point.x >= self.center.x - self.half_extents.x
             && point.x <= self.center.x + self.half_extents.x
@@ -100,6 +115,23 @@ impl AABB {
             && point.y <= self.center.y + self.half_extents.y
             && point.z >= self.center.z - self.half_extents.z
             && point.z <= self.center.z + self.half_extents.z
+    }
+
+    /// Alias for contains, using abs-distance comparison (handles floating-point edge cases).
+    pub fn contains_point(&self, point: &Vec3) -> bool {
+        (point.x - self.center.x).abs() <= self.half_extents.x
+            && (point.y - self.center.y).abs() <= self.half_extents.y
+            && (point.z - self.center.z).abs() <= self.half_extents.z
+    }
+
+    /// Test if two AABBs overlap.
+    pub fn intersects(&self, other: &AABB) -> bool {
+        let dx = (self.center.x - other.center.x).abs();
+        let dy = (self.center.y - other.center.y).abs();
+        let dz = (self.center.z - other.center.z).abs();
+        dx <= self.half_extents.x + other.half_extents.x
+            && dy <= self.half_extents.y + other.half_extents.y
+            && dz <= self.half_extents.z + other.half_extents.z
     }
 
     pub fn get_boundary(&self) -> (Vec3, Vec3) {

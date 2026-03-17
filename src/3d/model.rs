@@ -4,66 +4,8 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
 use crate::math::{Mat4, Vec3};
+use crate::core::geometry::AABB;
 use super::mesh::Mesh3D;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ModelType {
-    Default = 0,
-    Skinning = 1,
-    BakedSkinning = 2,
-    Morphing = 3,
-    Particle = 4,
-}
-
-#[derive(Debug, Clone)]
-pub struct AABB {
-    pub center: Vec3,
-    pub half_extents: Vec3,
-}
-
-impl AABB {
-    pub fn new(center: Vec3, half_extents: Vec3) -> Self {
-        AABB { center, half_extents }
-    }
-
-    pub fn from_min_max(min: Vec3, max: Vec3) -> Self {
-        let center = Vec3::new(
-            (min.x + max.x) * 0.5,
-            (min.y + max.y) * 0.5,
-            (min.z + max.z) * 0.5,
-        );
-        let half_extents = Vec3::new(
-            (max.x - min.x) * 0.5,
-            (max.y - min.y) * 0.5,
-            (max.z - min.z) * 0.5,
-        );
-        AABB { center, half_extents }
-    }
-
-    pub fn contains_point(&self, point: &Vec3) -> bool {
-        (point.x - self.center.x).abs() <= self.half_extents.x
-            && (point.y - self.center.y).abs() <= self.half_extents.y
-            && (point.z - self.center.z).abs() <= self.half_extents.z
-    }
-
-    pub fn intersects(&self, other: &AABB) -> bool {
-        let dx = (self.center.x - other.center.x).abs();
-        let dy = (self.center.y - other.center.y).abs();
-        let dz = (self.center.z - other.center.z).abs();
-        dx <= self.half_extents.x + other.half_extents.x
-            && dy <= self.half_extents.y + other.half_extents.y
-            && dz <= self.half_extents.z + other.half_extents.z
-    }
-}
-
-impl Default for AABB {
-    fn default() -> Self {
-        AABB {
-            center: Vec3::ZERO,
-            half_extents: Vec3::new(0.5, 0.5, 0.5),
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct MorphTarget {

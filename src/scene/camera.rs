@@ -1,5 +1,5 @@
 use crate::math::{Mat4, Vec3, Vec4};
-use crate::core::geometry::Ray;
+use crate::core::geometry::{Frustum, Plane, Ray};
 use super::define::{
     CameraAperture, CameraFOVAxis, CameraISO, CameraProjection, CameraShutter,
     CameraType, CameraUsage, TrackingType,
@@ -332,6 +332,30 @@ impl Camera {
         let mut vp_inv = self.mat_view_proj;
         vp_inv.invert();
         self.mat_view_proj_inv = vp_inv;
+    }
+
+    pub fn get_frustum(&self) -> Option<Frustum> {
+        if !self.enabled {
+            return None;
+        }
+        let m = &self.mat_view_proj;
+        let make_plane = |nx: f32, ny: f32, nz: f32, d: f32| -> Plane {
+            let len = (nx * nx + ny * ny + nz * nz).sqrt();
+            if len < 1e-6 {
+                Plane::default()
+            } else {
+                Plane::new(Vec3::new(nx / len, ny / len, nz / len), -d / len)
+            }
+        };
+
+        let mut f = Frustum::new();
+        f.planes[0] = make_plane(m.m[3]+m.m[0], m.m[7]+m.m[4], m.m[11]+m.m[8],  m.m[15]+m.m[12]);
+        f.planes[1] = make_plane(m.m[3]-m.m[0], m.m[7]-m.m[4], m.m[11]-m.m[8],  m.m[15]-m.m[12]);
+        f.planes[2] = make_plane(m.m[3]+m.m[1], m.m[7]+m.m[5], m.m[11]+m.m[9],  m.m[15]+m.m[13]);
+        f.planes[3] = make_plane(m.m[3]-m.m[1], m.m[7]-m.m[5], m.m[11]-m.m[9],  m.m[15]-m.m[13]);
+        f.planes[4] = make_plane(m.m[3]+m.m[2], m.m[7]+m.m[6], m.m[11]+m.m[10], m.m[15]+m.m[14]);
+        f.planes[5] = make_plane(m.m[3]-m.m[2], m.m[7]-m.m[6], m.m[11]-m.m[10], m.m[15]-m.m[14]);
+        Some(f)
     }
 }
 
