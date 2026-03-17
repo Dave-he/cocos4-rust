@@ -49,7 +49,7 @@ impl TimerInfo {
 
     pub fn update(&mut self, dt: f32) -> bool {
         if self.paused {
-            return false;
+            return true;
         }
 
         if self.elapsed < 0.0 {
@@ -102,6 +102,8 @@ pub struct Scheduler {
     timers_to_add: Vec<TimerInfo>,
     timers_to_remove: Vec<String>,
     update_locked: bool,
+    time_scale: f32,
+    paused: bool,
 }
 
 impl Scheduler {
@@ -114,10 +116,54 @@ impl Scheduler {
             timers_to_add: Vec::new(),
             timers_to_remove: Vec::new(),
             update_locked: false,
+            time_scale: 1.0,
+            paused: false,
+        }
+    }
+
+    pub fn get_time_scale(&self) -> f32 {
+        self.time_scale
+    }
+
+    pub fn set_time_scale(&mut self, scale: f32) {
+        self.time_scale = scale;
+    }
+
+    pub fn pause_all(&mut self) {
+        self.paused = true;
+    }
+
+    pub fn resume_all(&mut self) {
+        self.paused = false;
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.paused
+    }
+
+    pub fn pause_all_targets(&mut self) {
+        for timer in self.timers.values_mut() {
+            timer.paused = true;
+        }
+        for handler in self.update_handlers.iter_mut() {
+            handler.paused = true;
+        }
+    }
+
+    pub fn resume_all_targets(&mut self) {
+        for timer in self.timers.values_mut() {
+            timer.paused = false;
+        }
+        for handler in self.update_handlers.iter_mut() {
+            handler.paused = false;
         }
     }
 
     pub fn update(&mut self, dt: f32) {
+        if self.paused {
+            return;
+        }
+        let scaled_dt = dt * self.time_scale;
         self.update_locked = true;
 
         let keys: Vec<String> = self.timers.keys().cloned().collect();
@@ -125,7 +171,7 @@ impl Scheduler {
 
         for key in &keys {
             if let Some(timer) = self.timers.get_mut(key) {
-                if !timer.update(dt) {
+                if !timer.update(scaled_dt) {
                     expired.push(key.clone());
                 }
             }
@@ -143,7 +189,7 @@ impl Scheduler {
             .collect();
 
         for cb in handlers {
-            cb(dt);
+            cb(scaled_dt);
         }
 
         self.update_handlers.retain(|h| !h.marked_for_removal);
@@ -437,6 +483,77 @@ mod tests {
             counter_clone.fetch_add(1, Ordering::SeqCst);
         }));
 
+        scheduler.update(0.016);
+        assert_eq!(counter.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn test_time_scale() {
+        let mut scheduler = Scheduler::new();
+        let elapsed = Arc::new(std::sync::Mutex::new(0.0f32));
+        let elapsed_clone = Arc::clone(&elapsed);
+
+        scheduler.schedule_forever(
+            Arc::new(move |dt| {
+                *elapsed_clone.lock().unwrap() += dt;
+            }),
+            0.0,
+            false,
+            "ts_test".to_string(),
+        );
+
+        scheduler.set_time_scale(2.0);
+        assert!((scheduler.get_time_scale() - 2.0).abs() < 1e-6);
+        scheduler.update(0.1);
+        assert!((*elapsed.lock().unwrap() - 0.2).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_pause_all_resume_all() {
+        let mut scheduler = Scheduler::new();
+        let counter = Arc::new(AtomicI32::new(0));
+        let counter_clone = Arc::clone(&counter);
+
+        scheduler.schedule_forever(
+            Arc::new(move |_dt| {
+                counter_clone.fetch_add(1, Ordering::SeqCst);
+            }),
+            0.0,
+            false,
+            "pause_test".to_string(),
+        );
+
+        scheduler.pause_all();
+        assert!(scheduler.is_paused());
+        scheduler.update(0.016);
+        assert_eq!(counter.load(Ordering::SeqCst), 0);
+
+        scheduler.resume_all();
+        assert!(!scheduler.is_paused());
+        scheduler.update(0.016);
+        assert_eq!(counter.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn test_pause_all_targets_resume_all_targets() {
+        let mut scheduler = Scheduler::new();
+        let counter = Arc::new(AtomicI32::new(0));
+        let counter_clone = Arc::clone(&counter);
+
+        scheduler.schedule_forever(
+            Arc::new(move |_dt| {
+                counter_clone.fetch_add(1, Ordering::SeqCst);
+            }),
+            0.0,
+            false,
+            "pat_test".to_string(),
+        );
+
+        scheduler.pause_all_targets();
+        scheduler.update(0.016);
+        assert_eq!(counter.load(Ordering::SeqCst), 0);
+
+        scheduler.resume_all_targets();
         scheduler.update(0.016);
         assert_eq!(counter.load(Ordering::SeqCst), 1);
     }

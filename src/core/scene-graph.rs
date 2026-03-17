@@ -1,8 +1,25 @@
 use std::sync::{Arc, Mutex, Weak};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::any::{Any, TypeId};
+use std::collections::HashMap;
 
 pub use crate::math::Vec3;
 pub use crate::math::{Mat4, Quaternion};
+
+pub trait Component: Any + Send + Sync {
+    fn get_type_id(&self) -> TypeId;
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn on_load(&mut self) {}
+    fn start(&mut self) {}
+    fn update(&mut self, _dt: f32) {}
+    fn late_update(&mut self, _dt: f32) {}
+    fn on_enable(&mut self) {}
+    fn on_disable(&mut self) {}
+    fn on_destroy(&mut self) {}
+}
+
+pub type ComponentPtr = Box<dyn Component>;
 
 static NODE_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
 
@@ -99,7 +116,6 @@ impl Default for Transform {
     }
 }
 
-#[derive(Debug)]
 pub struct BaseNode {
     pub name: String,
     pub uuid: String,
@@ -123,6 +139,27 @@ pub struct BaseNode {
     parent: Option<NodeWeakPtr>,
     children: Vec<NodePtr>,
     sibling_index: usize,
+
+    components: HashMap<TypeId, ComponentPtr>,
+    event_emitter: NodeEventEmitter,
+}
+
+impl std::fmt::Debug for BaseNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BaseNode")
+            .field("name", &self.name)
+            .field("uuid", &self.uuid)
+            .field("layer", &self.layer)
+            .field("active", &self.active)
+            .field("mobility", &self.mobility)
+            .field("local_position", &self.local_position)
+            .field("local_rotation", &self.local_rotation)
+            .field("local_scale", &self.local_scale)
+            .field("transform_flags", &self.transform_flags)
+            .field("child_count", &self.children.len())
+            .field("component_count", &self.components.len())
+            .finish()
+    }
 }
 
 impl BaseNode {
@@ -146,6 +183,8 @@ impl BaseNode {
             parent: None,
             children: Vec::new(),
             sibling_index: 0,
+            components: HashMap::new(),
+            event_emitter: NodeEventEmitter::new(),
         }
     }
 
@@ -299,11 +338,13 @@ impl BaseNode {
     pub fn set_position(&mut self, position: Vec3) {
         self.local_position = position;
         self.invalidate(TransformBit::Position);
+        self.event_emitter.emit(&NodeEventType::TransformChanged(TransformBit::Position as u32));
     }
 
     pub fn set_position_xyz(&mut self, x: f32, y: f32, z: f32) {
         self.local_position = Vec3::new(x, y, z);
         self.invalidate(TransformBit::Position);
+        self.event_emitter.emit(&NodeEventType::TransformChanged(TransformBit::Position as u32));
     }
 
     pub fn get_rotation(&self) -> Quaternion {
@@ -314,6 +355,7 @@ impl BaseNode {
         self.local_rotation = rotation;
         self.euler_dirty = true;
         self.invalidate(TransformBit::Rotation);
+        self.event_emitter.emit(&NodeEventType::TransformChanged(TransformBit::Rotation as u32));
     }
 
     pub fn set_rotation_from_euler(&mut self, x: f32, y: f32, z: f32) {
@@ -321,6 +363,7 @@ impl BaseNode {
         self.local_rotation = Quaternion::from_euler(x, y, z);
         self.euler_dirty = false;
         self.invalidate(TransformBit::Rotation);
+        self.event_emitter.emit(&NodeEventType::TransformChanged(TransformBit::Rotation as u32));
     }
 
     pub fn get_euler_angles(&self) -> Vec3 {
@@ -338,11 +381,13 @@ impl BaseNode {
     pub fn set_scale(&mut self, scale: Vec3) {
         self.local_scale = scale;
         self.invalidate(TransformBit::Scale);
+        self.event_emitter.emit(&NodeEventType::TransformChanged(TransformBit::Scale as u32));
     }
 
     pub fn set_scale_xyz(&mut self, x: f32, y: f32, z: f32) {
         self.local_scale = Vec3::new(x, y, z);
         self.invalidate(TransformBit::Scale);
+        self.event_emitter.emit(&NodeEventType::TransformChanged(TransformBit::Scale as u32));
     }
 
     pub fn get_world_position(&self) -> Vec3 {
@@ -366,8 +411,41 @@ impl BaseNode {
         self.world_rotation
     }
 
+    pub fn set_world_rotation(&mut self, rot: Quaternion) {
+        self.world_rotation = rot;
+        if let Some(parent) = self.get_parent() {
+            if let Ok(p) = parent.lock() {
+                let parent_inv = p.world_rotation.inverse();
+                self.local_rotation = parent_inv * rot;
+            }
+        } else {
+            self.local_rotation = rot;
+        }
+        self.euler_dirty = true;
+        self.invalidate(TransformBit::Rotation);
+    }
+
     pub fn get_world_scale(&self) -> Vec3 {
         self.world_scale
+    }
+
+    pub fn set_world_scale(&mut self, scale: Vec3) {
+        self.world_scale = scale;
+        if let Some(parent) = self.get_parent() {
+            if let Ok(p) = parent.lock() {
+                let px = p.world_scale.x;
+                let py = p.world_scale.y;
+                let pz = p.world_scale.z;
+                self.local_scale = Vec3::new(
+                    if px.abs() > 1e-6 { scale.x / px } else { scale.x },
+                    if py.abs() > 1e-6 { scale.y / py } else { scale.y },
+                    if pz.abs() > 1e-6 { scale.z / pz } else { scale.z },
+                );
+            }
+        } else {
+            self.local_scale = scale;
+        }
+        self.invalidate(TransformBit::Scale);
     }
 
     pub fn get_world_matrix(&self) -> &Mat4 {
@@ -432,6 +510,7 @@ impl BaseNode {
 
     pub fn set_active(&mut self, active: bool) {
         self.active = active;
+        self.event_emitter.emit(&NodeEventType::ActiveChanged(active));
     }
 
     pub fn is_active_in_hierarchy(&self) -> bool {
@@ -468,6 +547,48 @@ impl BaseNode {
 
     pub fn set_mobility(&mut self, mobility: MobilityMode) {
         self.mobility = mobility;
+        self.event_emitter.emit(&NodeEventType::MobilityChanged(mobility));
+    }
+
+    pub fn add_component<C: Component + 'static>(&mut self, component: C) {
+        let type_id = TypeId::of::<C>();
+        self.components.insert(type_id, Box::new(component));
+    }
+
+    pub fn get_component<C: Component + 'static>(&self) -> Option<&C> {
+        let type_id = TypeId::of::<C>();
+        self.components.get(&type_id)?.as_any().downcast_ref::<C>()
+    }
+
+    pub fn get_component_mut<C: Component + 'static>(&mut self) -> Option<&mut C> {
+        let type_id = TypeId::of::<C>();
+        self.components.get_mut(&type_id)?.as_any_mut().downcast_mut::<C>()
+    }
+
+    pub fn remove_component<C: Component + 'static>(&mut self) -> Option<ComponentPtr> {
+        let type_id = TypeId::of::<C>();
+        self.components.remove(&type_id)
+    }
+
+    pub fn has_component<C: Component + 'static>(&self) -> bool {
+        let type_id = TypeId::of::<C>();
+        self.components.contains_key(&type_id)
+    }
+
+    pub fn get_component_count(&self) -> usize {
+        self.components.len()
+    }
+
+    pub fn on_event(&mut self, listener: NodeEventListener) {
+        self.event_emitter.on(listener);
+    }
+
+    pub fn emit_event(&self, event: &NodeEventType) {
+        self.event_emitter.emit(event);
+    }
+
+    pub fn clear_event_listeners(&mut self) {
+        self.event_emitter.clear();
     }
 
     pub fn get_depth(&self) -> usize {
@@ -569,6 +690,7 @@ pub struct Scene {
     pub name: String,
     root: Option<NodePtr>,
     pub auto_release_assets: bool,
+    pub globals: HashMap<String, String>,
 }
 
 impl Scene {
@@ -577,6 +699,7 @@ impl Scene {
             name: name.to_string(),
             root: None,
             auto_release_assets: false,
+            globals: HashMap::new(),
         }
     }
 
@@ -605,6 +728,34 @@ impl Scene {
         }
         None
     }
+
+    pub fn set_global(&mut self, key: &str, value: &str) {
+        self.globals.insert(key.to_string(), value.to_string());
+    }
+
+    pub fn get_global(&self, key: &str) -> Option<&str> {
+        self.globals.get(key).map(|s| s.as_str())
+    }
+
+    pub fn get_node_count(&self) -> usize {
+        if let Some(ref root) = self.root {
+            if let Ok(r) = root.lock() {
+                return 1 + count_descendants(&r);
+            }
+        }
+        0
+    }
+}
+
+fn count_descendants(node: &BaseNode) -> usize {
+    let mut count = 0;
+    for child in node.get_children() {
+        count += 1;
+        if let Ok(c) = child.lock() {
+            count += count_descendants(&c);
+        }
+    }
+    count
 }
 
 impl Default for Scene {
@@ -665,6 +816,14 @@ pub type NodeEventListener = Box<dyn Fn(&NodeEventType) + Send + Sync>;
 
 pub struct NodeEventEmitter {
     listeners: Vec<NodeEventListener>,
+}
+
+impl std::fmt::Debug for NodeEventEmitter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NodeEventEmitter")
+            .field("listener_count", &self.listeners.len())
+            .finish()
+    }
 }
 
 impl NodeEventEmitter {
@@ -897,5 +1056,102 @@ mod tests {
         let e3 = NodeEventType::MobilityChanged(MobilityMode::Movable);
         assert_ne!(format!("{:?}", e1), format!("{:?}", e2));
         assert_eq!(e3, NodeEventType::MobilityChanged(MobilityMode::Movable));
+    }
+
+    struct TestComponent {
+        pub value: i32,
+    }
+
+    impl Component for TestComponent {
+        fn get_type_id(&self) -> TypeId {
+            TypeId::of::<TestComponent>()
+        }
+        fn as_any(&self) -> &dyn Any { self }
+        fn as_any_mut(&mut self) -> &mut dyn Any { self }
+    }
+
+    #[test]
+    fn test_base_node_add_get_component() {
+        let mut node = BaseNode::new("Node");
+        node.add_component(TestComponent { value: 42 });
+        assert!(node.has_component::<TestComponent>());
+        let comp = node.get_component::<TestComponent>();
+        assert!(comp.is_some());
+        assert_eq!(comp.unwrap().value, 42);
+        assert_eq!(node.get_component_count(), 1);
+    }
+
+    #[test]
+    fn test_base_node_remove_component() {
+        let mut node = BaseNode::new("Node");
+        node.add_component(TestComponent { value: 10 });
+        assert!(node.has_component::<TestComponent>());
+        let removed = node.remove_component::<TestComponent>();
+        assert!(removed.is_some());
+        assert!(!node.has_component::<TestComponent>());
+        assert_eq!(node.get_component_count(), 0);
+    }
+
+    #[test]
+    fn test_base_node_get_component_mut() {
+        let mut node = BaseNode::new("Node");
+        node.add_component(TestComponent { value: 5 });
+        {
+            let comp = node.get_component_mut::<TestComponent>().unwrap();
+            comp.value = 99;
+        }
+        assert_eq!(node.get_component::<TestComponent>().unwrap().value, 99);
+    }
+
+    #[test]
+    fn test_base_node_event_emitter_integration() {
+        let mut node = BaseNode::new("Node");
+        let changed = Arc::new(Mutex::new(false));
+        let changed_clone = Arc::clone(&changed);
+        node.on_event(Box::new(move |e| {
+            if let NodeEventType::TransformChanged(_) = e {
+                *changed_clone.lock().unwrap() = true;
+            }
+        }));
+        node.set_position_xyz(1.0, 2.0, 3.0);
+        assert!(*changed.lock().unwrap());
+    }
+
+    #[test]
+    fn test_base_node_set_world_rotation() {
+        let mut node = BaseNode::new("Node");
+        let rot = Quaternion::from_axis_angle(&Vec3::UNIT_Y, std::f32::consts::FRAC_PI_2);
+        node.set_world_rotation(rot);
+        let wr = node.get_world_rotation();
+        assert!((wr.x - rot.x).abs() < 1e-5);
+        assert!((wr.w - rot.w).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_base_node_set_world_scale() {
+        let mut node = BaseNode::new("Node");
+        node.set_world_scale(Vec3::new(2.0, 3.0, 4.0));
+        let ws = node.get_world_scale();
+        assert!((ws.x - 2.0).abs() < 1e-5);
+        assert!((ws.y - 3.0).abs() < 1e-5);
+        assert!((ws.z - 4.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_scene_globals() {
+        let mut scene = Scene::new("TestScene");
+        scene.set_global("gravity", "-9.8");
+        assert_eq!(scene.get_global("gravity"), Some("-9.8"));
+        assert_eq!(scene.get_global("nonexistent"), None);
+    }
+
+    #[test]
+    fn test_scene_node_count() {
+        let mut scene = Scene::new("Scene");
+        let root = Arc::new(Mutex::new(BaseNode::new("Root")));
+        let child = Arc::new(Mutex::new(BaseNode::new("Child")));
+        root.lock().unwrap().add_child(Arc::clone(&child));
+        scene.set_root(Some(root));
+        assert_eq!(scene.get_node_count(), 2);
     }
 }

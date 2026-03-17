@@ -1,5 +1,22 @@
 use super::asset::AssetBase;
 use std::collections::HashMap;
+use crate::math::{Vec4, Mat4, Color};
+
+#[derive(Debug, Clone)]
+pub enum UniformValue {
+    Float(f32),
+    Vec2([f32; 2]),
+    Vec3([f32; 3]),
+    Vec4(Vec4),
+    Int(i32),
+    IVec2([i32; 2]),
+    IVec3([i32; 3]),
+    IVec4([i32; 4]),
+    Mat3([f32; 9]),
+    Mat4(Mat4),
+    Color(Color),
+    Texture(String),
+}
 
 #[derive(Debug, Clone)]
 pub struct MacroPatch {
@@ -65,6 +82,7 @@ pub struct Material {
     pub technique_index: u32,
     passes: Vec<PassInfo>,
     pub hash: u64,
+    uniforms: HashMap<String, UniformValue>,
 }
 
 impl Material {
@@ -75,6 +93,7 @@ impl Material {
             technique_index: 0,
             passes: Vec::new(),
             hash: 0,
+            uniforms: HashMap::new(),
         }
     }
 
@@ -147,6 +166,50 @@ impl Material {
         self.passes.get(pass_index)?.defines.get(name)
     }
 
+    pub fn set_uniform(&mut self, name: &str, value: UniformValue) {
+        self.uniforms.insert(name.to_string(), value);
+    }
+
+    pub fn get_uniform(&self, name: &str) -> Option<&UniformValue> {
+        self.uniforms.get(name)
+    }
+
+    pub fn get_uniform_float(&self, name: &str) -> Option<f32> {
+        match self.uniforms.get(name)? {
+            UniformValue::Float(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn get_uniform_vec4(&self, name: &str) -> Option<Vec4> {
+        match self.uniforms.get(name)? {
+            UniformValue::Vec4(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn get_uniform_color(&self, name: &str) -> Option<Color> {
+        match self.uniforms.get(name)? {
+            UniformValue::Color(c) => Some(*c),
+            _ => None,
+        }
+    }
+
+    pub fn get_uniform_texture(&self, name: &str) -> Option<&str> {
+        match self.uniforms.get(name)? {
+            UniformValue::Texture(t) => Some(t.as_str()),
+            _ => None,
+        }
+    }
+
+    pub fn remove_uniform(&mut self, name: &str) {
+        self.uniforms.remove(name);
+    }
+
+    pub fn get_uniform_count(&self) -> usize {
+        self.uniforms.len()
+    }
+
     fn update_hash(&mut self) {
         let mut h: u64 = 0;
         h = h.wrapping_mul(31).wrapping_add(self.effect_name.len() as u64);
@@ -216,5 +279,48 @@ mod tests {
         assert_eq!(mat.get_pass_count(), 2);
         mat.clear_passes();
         assert_eq!(mat.get_pass_count(), 0);
+    }
+
+    #[test]
+    fn test_material_uniform_float() {
+        let mut mat = Material::new();
+        mat.set_uniform("alpha", UniformValue::Float(0.5));
+        assert!((mat.get_uniform_float("alpha").unwrap() - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_material_uniform_vec4() {
+        let mut mat = Material::new();
+        let v = Vec4::new(1.0, 0.0, 0.0, 1.0);
+        mat.set_uniform("mainColor", UniformValue::Vec4(v));
+        let got = mat.get_uniform_vec4("mainColor").unwrap();
+        assert!((got.x - 1.0).abs() < 1e-6);
+        assert!((got.w - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_material_uniform_texture() {
+        let mut mat = Material::new();
+        mat.set_uniform("mainTexture", UniformValue::Texture("texture-uuid-001".to_string()));
+        assert_eq!(mat.get_uniform_texture("mainTexture"), Some("texture-uuid-001"));
+    }
+
+    #[test]
+    fn test_material_uniform_color() {
+        let mut mat = Material::new();
+        let c = Color::new(255, 128, 0, 255);
+        mat.set_uniform("tintColor", UniformValue::Color(c));
+        let got = mat.get_uniform_color("tintColor").unwrap();
+        assert_eq!(got.r, 255);
+        assert_eq!(got.g, 128);
+    }
+
+    #[test]
+    fn test_material_remove_uniform() {
+        let mut mat = Material::new();
+        mat.set_uniform("alpha", UniformValue::Float(1.0));
+        assert_eq!(mat.get_uniform_count(), 1);
+        mat.remove_uniform("alpha");
+        assert_eq!(mat.get_uniform_count(), 0);
     }
 }
