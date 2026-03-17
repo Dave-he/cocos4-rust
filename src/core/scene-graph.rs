@@ -678,6 +678,79 @@ impl BaseNode {
             2.0 * (r.x * r.z - r.w * r.y),
         ).get_normalized()
     }
+
+    /// Depth-first traversal of the node hierarchy.
+    /// The visitor receives each node as a `&BaseNode`.
+    /// Returns early if the visitor returns `false`.
+    pub fn visit_nodes<F>(&self, visitor: &mut F) -> bool
+    where
+        F: FnMut(&BaseNode) -> bool,
+    {
+        if !visitor(self) {
+            return false;
+        }
+        for child in &self.children {
+            if let Ok(c) = child.lock() {
+                if !c.visit_nodes(visitor) {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    /// Collect UUIDs of all nodes in the subtree (including self).
+    pub fn collect_uuids(&self) -> Vec<String> {
+        let mut result = Vec::new();
+        self.visit_nodes(&mut |n| {
+            result.push(n.uuid.clone());
+            true
+        });
+        result
+    }
+
+    /// Find the first node in the subtree satisfying `predicate`.
+    pub fn find_node<F>(&self, predicate: F) -> Option<NodePtr>
+    where
+        F: Fn(&BaseNode) -> bool,
+    {
+        self.find_node_ref(&predicate)
+    }
+
+    fn find_node_ref<F>(&self, predicate: &F) -> Option<NodePtr>
+    where
+        F: Fn(&BaseNode) -> bool,
+    {
+        for child in &self.children {
+            if let Ok(c) = child.lock() {
+                if predicate(&c) {
+                    return Some(Arc::clone(child));
+                }
+                if let Some(found) = c.find_node_ref(predicate) {
+                    return Some(found);
+                }
+            }
+        }
+        None
+    }
+
+    /// Collect all NodePtrs in subtree (children only, not self) matching predicate.
+    pub fn find_nodes_matching<F>(&self, predicate: &F) -> Vec<NodePtr>
+    where
+        F: Fn(&BaseNode) -> bool,
+    {
+        let mut result = Vec::new();
+        for child in &self.children {
+            if let Ok(c) = child.lock() {
+                if predicate(&c) {
+                    result.push(Arc::clone(child));
+                }
+                let sub = c.find_nodes_matching(predicate);
+                result.extend(sub);
+            }
+        }
+        result
+    }
 }
 
 impl Default for BaseNode {
@@ -744,6 +817,36 @@ impl Scene {
             }
         }
         0
+    }
+
+    /// Visit every node in the scene using DFS. Stops early if visitor returns false.
+    pub fn for_each_node<F>(&self, mut visitor: F)
+    where
+        F: FnMut(&BaseNode) -> bool,
+    {
+        if let Some(ref root) = self.root {
+            if let Ok(r) = root.lock() {
+                r.visit_nodes(&mut visitor);
+            }
+        }
+    }
+
+    /// Collect all nodes that match a predicate.
+    pub fn find_nodes<F>(&self, predicate: F) -> Vec<NodePtr>
+    where
+        F: Fn(&BaseNode) -> bool,
+    {
+        let mut result = Vec::new();
+        if let Some(ref root) = self.root {
+            if let Ok(r) = root.lock() {
+                if predicate(&r) {
+                    result.push(Arc::clone(root));
+                }
+                let children_results = r.find_nodes_matching(&predicate);
+                result.extend(children_results);
+            }
+        }
+        result
     }
 }
 
@@ -1153,5 +1256,106 @@ mod tests {
         root.lock().unwrap().add_child(Arc::clone(&child));
         scene.set_root(Some(root));
         assert_eq!(scene.get_node_count(), 2);
+    }
+
+    #[test]
+    fn test_visit_nodes() {
+        let mut root = BaseNode::new("Root");
+        let child_a = Arc::new(Mutex::new(BaseNode::new("A")));
+        let child_b = Arc::new(Mutex::new(BaseNode::new("B")));
+        root.add_child(Arc::clone(&child_a));
+        root.add_child(Arc::clone(&child_b));
+
+        let mut visited = Vec::new();
+        root.visit_nodes(&mut |n| {
+            visited.push(n.name.clone());
+            true
+        });
+        // Root is visited first, then children DFS
+        assert_eq!(visited, vec!["Root", "A", "B"]);
+    }
+
+    #[test]
+    fn test_visit_nodes_early_exit() {
+        let mut root = BaseNode::new("Root");
+        let child_a = Arc::new(Mutex::new(BaseNode::new("A")));
+        let child_b = Arc::new(Mutex::new(BaseNode::new("B")));
+        root.add_child(Arc::clone(&child_a));
+        root.add_child(Arc::clone(&child_b));
+
+        let mut count = 0;
+        root.visit_nodes(&mut |_| {
+            count += 1;
+            count < 2 // stop after 2 visits
+        });
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn test_collect_uuids() {
+        let mut root = BaseNode::new("Root");
+        let child = Arc::new(Mutex::new(BaseNode::new("Child")));
+        root.add_child(Arc::clone(&child));
+
+        let uuids = root.collect_uuids();
+        assert_eq!(uuids.len(), 2);
+        assert!(uuids.contains(&root.uuid));
+    }
+
+    #[test]
+    fn test_find_node_predicate() {
+        let mut root = BaseNode::new("Root");
+        let child_a = Arc::new(Mutex::new(BaseNode::new("A")));
+        let child_b = Arc::new(Mutex::new(BaseNode::new("B")));
+        root.add_child(Arc::clone(&child_a));
+        root.add_child(Arc::clone(&child_b));
+
+        let found = root.find_node(|n| n.name == "B");
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().lock().unwrap().name, "B");
+
+        let not_found = root.find_node(|n| n.name == "C");
+        assert!(not_found.is_none());
+    }
+
+    #[test]
+    fn test_scene_for_each_node() {
+        let mut scene = Scene::new("Scene");
+        let root = Arc::new(Mutex::new(BaseNode::new("Root")));
+        let child_a = Arc::new(Mutex::new(BaseNode::new("A")));
+        let child_b = Arc::new(Mutex::new(BaseNode::new("B")));
+        root.lock().unwrap().add_child(Arc::clone(&child_a));
+        root.lock().unwrap().add_child(Arc::clone(&child_b));
+        scene.set_root(Some(root));
+
+        let mut names = Vec::new();
+        scene.for_each_node(|n| {
+            names.push(n.name.clone());
+            true
+        });
+        assert_eq!(names.len(), 3);
+        assert!(names.contains(&"Root".to_string()));
+        assert!(names.contains(&"A".to_string()));
+        assert!(names.contains(&"B".to_string()));
+    }
+
+    #[test]
+    fn test_scene_find_nodes() {
+        let mut scene = Scene::new("Scene");
+        let root = Arc::new(Mutex::new(BaseNode::new("Root")));
+        root.lock().unwrap().layer = 1;
+        let child_a = Arc::new(Mutex::new(BaseNode::new("A")));
+        child_a.lock().unwrap().layer = 2;
+        let child_b = Arc::new(Mutex::new(BaseNode::new("B")));
+        child_b.lock().unwrap().layer = 1;
+        root.lock().unwrap().add_child(Arc::clone(&child_a));
+        root.lock().unwrap().add_child(Arc::clone(&child_b));
+        scene.set_root(Some(root));
+
+        let layer1_nodes = scene.find_nodes(|n| n.layer == 1);
+        assert_eq!(layer1_nodes.len(), 2); // Root + B
+
+        let layer2_nodes = scene.find_nodes(|n| n.layer == 2);
+        assert_eq!(layer2_nodes.len(), 1); // A
     }
 }

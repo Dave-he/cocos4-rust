@@ -7,6 +7,15 @@ use crate::math::{Mat4, Vec3};
 use crate::core::geometry::AABB;
 use super::mesh::Mesh3D;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModelType {
+    Default = 0,
+    Skinning = 1,
+    BakedSkinning = 2,
+    Morphing = 3,
+    Particle = 4,
+}
+
 #[derive(Debug, Clone)]
 pub struct MorphTarget {
     pub name: String,
