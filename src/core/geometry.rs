@@ -108,6 +108,11 @@ impl AABB {
         AABB { center, half_extents, is_valid: true }
     }
 
+    /// Create an AABB from a center point and half-extents vector.
+    pub fn from_center_extents(center: Vec3, half_extents: Vec3) -> Self {
+        AABB { center, half_extents, is_valid: true }
+    }
+
     pub fn contains(&self, point: &Vec3) -> bool {
         point.x >= self.center.x - self.half_extents.x
             && point.x <= self.center.x + self.half_extents.x
