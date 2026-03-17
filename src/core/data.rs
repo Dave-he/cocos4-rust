@@ -360,7 +360,7 @@ mod tests {
     fn test_object_pool_alloc_free() {
         let mut pool: ObjectPool<i32> = ObjectPool::new();
         let h1 = pool.alloc(10);
-        let h2 = pool.alloc(20);
+        let _h2 = pool.alloc(20);
         assert_eq!(pool.len(), 2);
 
         let v1 = pool.get(h1).unwrap();

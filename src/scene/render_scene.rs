@@ -181,7 +181,6 @@ impl Default for RenderScene {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::super::camera::CameraInfo;
 
     #[test]
     fn test_render_scene_new() {
