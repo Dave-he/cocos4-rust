@@ -27,6 +27,7 @@ pub enum PlaneIntersectResult {
 pub struct AABB {
     pub center: Vec3,
     pub half_extents: Vec3,
+    #[allow(dead_code)]
     is_valid: bool,
 }
 

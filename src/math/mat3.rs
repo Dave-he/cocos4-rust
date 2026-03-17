@@ -380,11 +380,11 @@ impl Mat3 {
         let m00 = self.m[0];
         let m01 = self.m[1];
         let m02 = self.m[2];
-        let m10 = self.m[3];
-        let m11 = self.m[4];
+        let _m10 = self.m[3];
+        let _m11 = self.m[4];
         let m12 = self.m[5];
-        let m20 = self.m[6];
-        let m21 = self.m[7];
+        let _m20 = self.m[6];
+        let _m21 = self.m[7];
         let m22 = self.m[8];
 
         let x = m12.atan2(m22);
@@ -449,6 +449,18 @@ impl Mat3 {
 impl Default for Mat3 {
     fn default() -> Self {
         Mat3::ZERO
+    }
+}
+
+impl std::fmt::Display for Mat3 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Mat3([{:.2}, {:.2}, {:.2}], [{:.2}, {:.2}, {:.2}], [{:.2}, {:.2}, {:.2}])",
+            self.m[0], self.m[1], self.m[2],
+            self.m[3], self.m[4], self.m[5],
+            self.m[6], self.m[7], self.m[8]
+        )
     }
 }
 

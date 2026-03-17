@@ -1,3 +1,5 @@
+#![allow(ambiguous_glob_reexports)]
+
 pub mod application;
 pub mod audio;
 pub mod base;

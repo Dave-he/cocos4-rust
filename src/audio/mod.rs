@@ -10,7 +10,6 @@ pub use decoder::*;
 pub use utils::*;
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AudioState {

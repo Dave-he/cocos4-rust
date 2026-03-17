@@ -3,8 +3,6 @@ Rust port of Cocos Creator GFX State
 Original C++ version Copyright (c) 2019-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use super::{BlendState, DepthStencilState, PrimitiveMode, RasterizerState};
-
 #[derive(Debug, Clone)]
 pub struct InputState {
     pub attributes: Vec<super::VertexAttribute>,

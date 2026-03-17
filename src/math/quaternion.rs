@@ -596,6 +596,12 @@ impl Neg for Quaternion {
     }
 }
 
+impl std::fmt::Display for Quaternion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Quat({:.2}, {:.2}, {:.2}, {:.2})", self.x, self.y, self.z, self.w)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

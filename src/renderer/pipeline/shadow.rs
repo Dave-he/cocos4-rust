@@ -1,4 +1,4 @@
-use crate::math::{Color, Mat4, Vec2, Vec3};
+use crate::math::{Color, Mat4, Vec3};
 use super::defines::{ShadowType, PCFType, CSMLevel};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

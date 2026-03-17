@@ -1,5 +1,3 @@
-use crate::math::{Color, Vec3};
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LightType {
     Directional = 0,

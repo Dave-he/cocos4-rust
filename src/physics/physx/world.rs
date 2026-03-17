@@ -143,13 +143,53 @@ impl PhysicsWorld for PhysXWorld {
 
     fn emit_events(&mut self) {
         let count = self.event_manager.pending_count();
+        let _ = count;
     }
 
-    fn sync_scene_to_physics(&mut self) {}
+    fn sync_scene_to_physics(&mut self) {
+        let rb_ids: Vec<u32> = self.rigid_body_manager.get_all_ids();
+        for rb_id in rb_ids {
+            let shared_id = match self.rigid_body_manager.get_body(rb_id) {
+                Some(rb) => rb.shared_body_id,
+                None => continue,
+            };
+            let node_uuid = match self.shared_body_manager.get_body(shared_id) {
+                Some(b) => b.node_uuid.clone(),
+                None => continue,
+            };
+            if node_uuid.is_none() {
+                continue;
+            }
+            if let Some(shared) = self.shared_body_manager.get_body_mut(shared_id) {
+                shared.wake_up();
+            }
+        }
+    }
 
-    fn sync_after_events(&mut self) {}
+    fn sync_after_events(&mut self) {
+        let rb_ids: Vec<u32> = self.rigid_body_manager.get_all_ids();
+        for rb_id in rb_ids {
+            let (shared_id, is_sleeping) = match self.rigid_body_manager.get_body(rb_id) {
+                Some(rb) => (rb.shared_body_id, rb.is_sleeping()),
+                None => continue,
+            };
+            if is_sleeping {
+                if let Some(shared) = self.shared_body_manager.get_body_mut(shared_id) {
+                    shared.put_to_sleep();
+                }
+            }
+        }
+        self.event_manager.clear();
+    }
 
-    fn destroy(&mut self) {}
+    fn destroy(&mut self) {
+        let rb_ids: Vec<u32> = self.rigid_body_manager.get_all_ids();
+        for id in rb_ids {
+            self.rigid_body_manager.destroy_body(id);
+        }
+        self.shared_body_manager.destroy_all();
+        self.event_manager.clear();
+    }
 
     fn get_debug_draw_flags(&self) -> PhysicsDrawFlags { self.debug_draw_flags }
     fn set_debug_draw_flags(&mut self, flags: PhysicsDrawFlags) { self.debug_draw_flags = flags; }
@@ -190,5 +230,31 @@ mod tests {
         let mut world = PhysXWorld::new();
         world.set_gravity(Vec3::new(0.0, -20.0, 0.0));
         assert_eq!(world.gravity.y, -20.0);
+    }
+
+    #[test]
+    fn test_physx_world_sync_after_events() {
+        let mut world = PhysXWorld::new();
+        let (_shared_id, rb_id) = world.create_dynamic_body();
+        world.rigid_body_manager.get_body_mut(rb_id).unwrap().put_to_sleep();
+        world.sync_after_events();
+        assert_eq!(world.event_manager.pending_count(), 0);
+    }
+
+    #[test]
+    fn test_physx_world_destroy() {
+        let mut world = PhysXWorld::new();
+        world.create_dynamic_body();
+        world.create_static_body();
+        world.destroy();
+        assert_eq!(world.rigid_body_manager.get_count(), 0);
+        assert_eq!(world.shared_body_manager.get_count(), 0);
+    }
+
+    #[test]
+    fn test_physx_world_sync_scene_to_physics() {
+        let mut world = PhysXWorld::new();
+        let (_shared_id, _rb_id) = world.create_dynamic_body();
+        world.sync_scene_to_physics();
     }
 }

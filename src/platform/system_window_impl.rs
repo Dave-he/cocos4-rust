@@ -4,17 +4,20 @@ Original C++ version Copyright (c) 2022-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Mutex};
 use crate::platform::interfaces::{ISystemWindow, ISystemWindowManager, SystemWindowInfo, SystemWindowMap};
 
 #[derive(Debug)]
 pub struct SystemWindow {
     id: u32,
     title: String,
+    #[allow(dead_code)]
     x: i32,
+    #[allow(dead_code)]
     y: i32,
     width: u32,
     height: u32,
+    #[allow(dead_code)]
     flags: u32,
     cursor_enabled: bool,
 }
@@ -113,7 +116,7 @@ impl ISystemWindowManager for SystemWindowManager {
         Some(arc_interface)
     }
 
-    fn get_window(&self, window_id: u32) -> Option<Arc<dyn ISystemWindow>> {
+    fn get_window(&self, _window_id: u32) -> Option<Arc<dyn ISystemWindow>> {
         None
     }
 
@@ -125,6 +128,7 @@ impl ISystemWindowManager for SystemWindowManager {
 #[derive(Debug)]
 struct SystemWindowProxy {
     id: u32,
+    #[allow(dead_code)]
     title: String,
     width: u32,
     height: u32,

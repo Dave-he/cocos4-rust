@@ -3,8 +3,6 @@ Rust port of Cocos Creator GFX Swapchain
 Original C++ version Copyright (c) 2019-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use super::{Format, SampleCount, TextureUsage};
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SurfaceTransform {
     Identity = 0,

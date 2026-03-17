@@ -1,5 +1,4 @@
 use crate::base::{RefCounted, RefCountedImpl};
-use crate::core::scene_graph::BaseNode;
 use crate::math::Vec3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -249,7 +248,7 @@ impl Joint for JointImpl {
     fn is_enabled(&self) -> bool { self.enabled }
 }
 
-pub trait RigidBody: RefCounted {}
+pub trait IRigidBody: RefCounted {}
 
 pub trait World: RefCounted {}
 

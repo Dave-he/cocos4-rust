@@ -85,7 +85,7 @@ impl CharacterController {
         self.config.controller_type
     }
 
-    pub fn move_controller(&mut self, displacement: Vec3, min_dist: f32, elapsed_time: f32) -> u32 {
+    pub fn move_controller(&mut self, displacement: Vec3, min_dist: f32, _elapsed_time: f32) -> u32 {
         if !self.enabled {
             return ControllerCollisionFlag::None as u32;
         }

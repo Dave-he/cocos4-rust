@@ -538,6 +538,12 @@ impl PartialOrd for Vec3 {
     }
 }
 
+impl std::fmt::Display for Vec3 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Vec3({:.2}, {:.2}, {:.2})", self.x, self.y, self.z)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

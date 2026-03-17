@@ -3,7 +3,6 @@ Rust port of Cocos Creator Renderer Program System
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use crate::base::RefCounted;
 use super::material::MacroRecord;
 
 #[derive(Debug, Clone)]

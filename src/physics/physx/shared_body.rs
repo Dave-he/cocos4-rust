@@ -191,6 +191,14 @@ impl PhysXSharedBodyManager {
         self.bodies.len()
     }
 
+    pub fn get_all_ids(&self) -> Vec<u32> {
+        self.bodies.keys().copied().collect()
+    }
+
+    pub fn destroy_all(&mut self) {
+        self.bodies.clear();
+    }
+
     pub fn step_all(&mut self, dt: f32) {
         for body in self.bodies.values_mut() {
             body.step(dt);

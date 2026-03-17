@@ -1,9 +1,7 @@
 use super::os_interface::OSInterface;
 use crate::math::Mat4;
 use crate::renderer::gfx_base::{Format, API};
-use crate::xr::{
-    self, XRActivityLifecycleType, XRConfigKey, XRConfigValue, XREye, XRSwapchain, XRVendor,
-};
+use crate::xr::{XRConfigKey, XRConfigValue, XREye, XRSwapchain, XRVendor};
 
 /// EGL surface type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

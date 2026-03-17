@@ -141,6 +141,96 @@ impl Color {
         ((self.r as u32 + self.g as u32 + self.b as u32) / 3) as u8
     }
 
+    pub fn to_hsl(&self) -> (f32, f32, f32) {
+        let r = self.r as f32 / 255.0;
+        let g = self.g as f32 / 255.0;
+        let b = self.b as f32 / 255.0;
+        let max = r.max(g).max(b);
+        let min = r.min(g).min(b);
+        let l = (max + min) / 2.0;
+        if (max - min).abs() < 1e-6 {
+            return (0.0, 0.0, l);
+        }
+        let d = max - min;
+        let s = if l > 0.5 { d / (2.0 - max - min) } else { d / (max + min) };
+        let h = if (max - r).abs() < 1e-6 {
+            (g - b) / d + if g < b { 6.0 } else { 0.0 }
+        } else if (max - g).abs() < 1e-6 {
+            (b - r) / d + 2.0
+        } else {
+            (r - g) / d + 4.0
+        } / 6.0;
+        (h * 360.0, s, l)
+    }
+
+    pub fn from_hsl(h: f32, s: f32, l: f32, a: u8) -> Self {
+        if s.abs() < 1e-6 {
+            let v = (l * 255.0) as u8;
+            return Color::new(v, v, v, a);
+        }
+        let q = if l < 0.5 { l * (1.0 + s) } else { l + s - l * s };
+        let p = 2.0 * l - q;
+        let hue = h / 360.0;
+        let hue_to_rgb = |mut t: f32| -> f32 {
+            if t < 0.0 { t += 1.0; }
+            if t > 1.0 { t -= 1.0; }
+            if t < 1.0 / 6.0 { return p + (q - p) * 6.0 * t; }
+            if t < 1.0 / 2.0 { return q; }
+            if t < 2.0 / 3.0 { return p + (q - p) * (2.0 / 3.0 - t) * 6.0; }
+            p
+        };
+        Color::new(
+            (hue_to_rgb(hue + 1.0 / 3.0) * 255.0) as u8,
+            (hue_to_rgb(hue) * 255.0) as u8,
+            (hue_to_rgb(hue - 1.0 / 3.0) * 255.0) as u8,
+            a,
+        )
+    }
+
+    pub fn to_hsv(&self) -> (f32, f32, f32) {
+        let r = self.r as f32 / 255.0;
+        let g = self.g as f32 / 255.0;
+        let b = self.b as f32 / 255.0;
+        let max = r.max(g).max(b);
+        let min = r.min(g).min(b);
+        let d = max - min;
+        let v = max;
+        let s = if max < 1e-6 { 0.0 } else { d / max };
+        if d < 1e-6 {
+            return (0.0, s, v);
+        }
+        let h = if (max - r).abs() < 1e-6 {
+            (g - b) / d + if g < b { 6.0 } else { 0.0 }
+        } else if (max - g).abs() < 1e-6 {
+            (b - r) / d + 2.0
+        } else {
+            (r - g) / d + 4.0
+        } / 6.0;
+        (h * 360.0, s, v)
+    }
+
+    pub fn from_hsv(h: f32, s: f32, v: f32, a: u8) -> Self {
+        if s.abs() < 1e-6 {
+            let val = (v * 255.0) as u8;
+            return Color::new(val, val, val, a);
+        }
+        let h = (h / 60.0).rem_euclid(6.0);
+        let i = h as u32;
+        let f = h - i as f32;
+        let p = v * (1.0 - s);
+        let q = v * (1.0 - f * s);
+        let t = v * (1.0 - (1.0 - f) * s);
+        let (r, g, b) = match i {
+            0 => (v, t, p),
+            1 => (q, v, p),
+            2 => (p, v, t),
+            3 => (p, q, v),
+            4 => (t, p, v),
+            _ => (v, p, q),
+        };
+        Color::new((r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8, a)
+    }
+
     pub const WHITE: Color = Color {
         r: 255,
         g: 255,
@@ -206,6 +296,12 @@ impl Color {
 impl Default for Color {
     fn default() -> Self {
         Color::WHITE
+    }
+}
+
+impl std::fmt::Display for Color {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Color(r:{}, g:{}, b:{}, a:{})", self.r, self.g, self.b, self.a)
     }
 }
 
@@ -303,5 +399,49 @@ mod tests {
         assert_eq!(Color::RED, Color::new(255, 0, 0, 255));
         assert_eq!(Color::GREEN, Color::new(0, 255, 0, 255));
         assert_eq!(Color::BLUE, Color::new(0, 0, 255, 255));
+    }
+
+    #[test]
+    fn test_color_to_hsl() {
+        let c = Color::new(255, 0, 0, 255);
+        let (h, s, l) = c.to_hsl();
+        assert!((h - 0.0).abs() < 1.0 || (h - 360.0).abs() < 1.0);
+        assert!((s - 1.0).abs() < 0.01);
+        assert!((l - 0.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_color_from_hsl_roundtrip() {
+        let original = Color::new(100, 150, 200, 255);
+        let (h, s, l) = original.to_hsl();
+        let restored = Color::from_hsl(h, s, l, 255);
+        assert!((original.r as i32 - restored.r as i32).abs() <= 2);
+        assert!((original.g as i32 - restored.g as i32).abs() <= 2);
+        assert!((original.b as i32 - restored.b as i32).abs() <= 2);
+    }
+
+    #[test]
+    fn test_color_to_hsv() {
+        let c = Color::new(255, 0, 0, 255);
+        let (h, s, v) = c.to_hsv();
+        assert!((h - 0.0).abs() < 1.0 || (h - 360.0).abs() < 1.0);
+        assert!((s - 1.0).abs() < 0.01);
+        assert!((v - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_color_from_hsv_roundtrip() {
+        let original = Color::new(100, 150, 200, 255);
+        let (h, s, v) = original.to_hsv();
+        let restored = Color::from_hsv(h, s, v, 255);
+        assert!((original.r as i32 - restored.r as i32).abs() <= 2);
+        assert!((original.g as i32 - restored.g as i32).abs() <= 2);
+        assert!((original.b as i32 - restored.b as i32).abs() <= 2);
+    }
+
+    #[test]
+    fn test_color_display() {
+        let c = Color::new(255, 128, 64, 255);
+        assert_eq!(format!("{}", c), "Color(r:255, g:128, b:64, a:255)");
     }
 }

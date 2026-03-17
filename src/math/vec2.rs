@@ -553,6 +553,12 @@ impl PartialOrd for Vec2 {
 
 pub type Point = Vec2;
 
+impl std::fmt::Display for Vec2 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Vec2({:.2}, {:.2})", self.x, self.y)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -941,5 +947,11 @@ mod tests {
     fn test_default() {
         let v: Vec2 = Default::default();
         assert_eq!(v, Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_display() {
+        let v = Vec2::new(1.0, 2.0);
+        assert_eq!(format!("{}", v), "Vec2(1.00, 2.00)");
     }
 }

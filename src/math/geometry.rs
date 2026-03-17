@@ -1,6 +1,6 @@
 use super::Vec2;
 use super::FLOAT_CMP_PRECISION;
-use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Sub, SubAssign};
+use std::ops::{Add, Div, Mul, MulAssign, Sub};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]

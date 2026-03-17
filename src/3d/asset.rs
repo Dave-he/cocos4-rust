@@ -4,7 +4,7 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
 use crate::base::{RefCounted, RefCountedImpl};
-use crate::math::{Vec2, Vec3, Vec4, Mat4};
+use crate::math::Vec3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AssetType {

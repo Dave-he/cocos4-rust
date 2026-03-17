@@ -1,5 +1,3 @@
-use crate::math::Mat4;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RenderPriority {
     Min = 0,
