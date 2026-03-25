@@ -2,6 +2,7 @@ pub mod color;
 pub mod geometry;
 pub mod mat3;
 pub mod mat4;
+pub mod mathf;
 pub mod quaternion;
 pub mod vec2;
 pub mod vec3;
@@ -11,6 +12,12 @@ pub use color::Color;
 pub use geometry::{Rect, Size};
 pub use mat3::Mat3;
 pub use mat4::Mat4;
+pub use mathf::{
+    lerp as mathf_lerp, clamp as mathf_clamp, clamp01 as mathf_clamp01,
+    smooth_step, smoother_step, ping_pong, repeat as mathf_repeat,
+    remap, move_towards, deg_to_rad, rad_to_deg, approximately, sign,
+    BezierCurve2D, AnimationCurve, catmull_rom, hermite,
+};
 pub use quaternion::Quaternion;
 pub use vec2::Vec2;
 pub use vec2::Vec2 as Point;

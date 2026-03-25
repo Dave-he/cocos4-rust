@@ -1,19 +1,23 @@
 pub mod asset;
 pub mod asset_enum;
+pub mod asset_manager;
 pub mod effect;
 pub mod font;
 pub mod image;
 pub mod material;
 pub mod mesh;
+pub mod resource_loader;
 pub mod scene;
 pub mod texture;
 
 pub use asset::*;
 pub use asset_enum::*;
+pub use asset_manager::{AssetManager, Asset, LoadState};
 pub use effect::*;
 pub use font::*;
 pub use image::*;
 pub use material::*;
 pub use mesh::*;
+pub use resource_loader::{ResourceLoader, LoadHandle, LoadStatus};
 pub use scene::*;
 pub use texture::*;

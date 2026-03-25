@@ -8,9 +8,12 @@ pub mod mesh;
 pub mod skeletal_animation;
 pub mod asset;
 pub mod skinning;
+pub mod baked_skinning;
+pub mod models;
 
 pub use model::*;
 pub use mesh::*;
 pub use skeletal_animation::*;
 pub use asset::*;
 pub use skinning::*;
+pub use baked_skinning::*;

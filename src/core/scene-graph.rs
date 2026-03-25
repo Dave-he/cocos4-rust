@@ -555,6 +555,11 @@ impl BaseNode {
         self.components.insert(type_id, Box::new(component));
     }
 
+    pub fn add_component_boxed(&mut self, component: Box<dyn Component>) {
+        let type_id = component.get_type_id();
+        self.components.insert(type_id, component);
+    }
+
     pub fn get_component<C: Component + 'static>(&self) -> Option<&C> {
         let type_id = TypeId::of::<C>();
         self.components.get(&type_id)?.as_any().downcast_ref::<C>()

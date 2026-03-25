@@ -13,6 +13,7 @@ default = ["std"]
 std = []
 
 [dependencies]
+bitflags = "2"
 
 [dev-dependencies]
 
