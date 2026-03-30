@@ -88,6 +88,24 @@ impl GfxBuffer {
             0
         }
     }
+
+    pub fn new_view(id: u32, info: BufferViewInfo) -> Self {
+        GfxBuffer {
+            id,
+            info: BufferInfo {
+                usage: BufferUsage::NONE,
+                mem_usage: MemoryUsage::NONE,
+                size: info.range,
+                stride: 0,
+                flags: BufferFlags::NONE,
+            },
+            data: Vec::new(),
+        }
+    }
+
+    pub fn is_view(&self) -> bool {
+        self.data.is_empty() && self.info.size > 0
+    }
 }
 
 #[cfg(test)]

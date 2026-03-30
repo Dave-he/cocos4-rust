@@ -3,6 +3,7 @@ pub mod log;
 pub mod object_pool;
 pub mod refcount;
 pub mod scheduler;
+pub mod threading;
 pub mod timer;
 pub mod types;
 pub mod util;
@@ -16,6 +17,10 @@ pub use log::{Log, LogLevel, LogType};
 pub use object_pool::{ObjectPool, Poolable};
 
 pub use timer::{TimerManager, TimerHandle};
+
+pub use threading::{
+    AutoReleasePool, MessageQueue, ReadWriteLock, ThreadPool, ThreadSafeCounter,
+};
 
 pub use util::{
     align_to, clear_lowest_bit, get_bit_position, get_bit_position64, get_lowest_bit,

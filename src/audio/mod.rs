@@ -11,6 +11,16 @@ pub use utils::*;
 
 use std::collections::HashMap;
 
+pub const INVALID_AUDIO_ID: i32 = -1;
+pub const TIME_UNKNOWN: f32 = -1.0;
+
+#[derive(Debug, Clone, Default)]
+pub struct AudioProfile {
+    pub name: String,
+    pub max_instances: u32,
+    pub min_delay: f64,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AudioState {
     Initializing,

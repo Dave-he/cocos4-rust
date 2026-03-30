@@ -38,6 +38,7 @@ pub trait UIMeshBuffer: RefCounted {
     fn get_vertex_count(&self) -> u32;
     fn get_index_count(&self) -> u32;
     fn reset(&mut self);
+    fn upload(&mut self) {}
     fn destroy(&mut self);
     fn request_mesh_render_data(&mut self, vertex_count: u32, index_count: u32) -> bool;
 }

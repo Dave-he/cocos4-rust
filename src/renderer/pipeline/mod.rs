@@ -4,6 +4,7 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
 pub mod defines;
+pub mod pipeline_scene_data;
 pub mod render_flow;
 pub mod render_pipeline;
 pub mod render_queue;
@@ -13,6 +14,7 @@ pub mod shadow;
 pub mod states;
 
 pub use defines::*;
+pub use pipeline_scene_data::*;
 pub use render_flow::*;
 pub use render_pipeline::*;
 pub use render_queue::*;

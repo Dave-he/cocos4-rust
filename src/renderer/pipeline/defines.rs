@@ -6,6 +6,59 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 use crate::math::Vec3;
 use crate::math::Vec4;
 use crate::math::Color;
+use crate::renderer::gfx_base::{Format, TextureType, TextureUsage};
+
+pub const SHADOW_CAMERA_MAX_FAR: f32 = 2000.0;
+pub const SKINNING_JOINT_UNIFORM_CAPACITY: u32 = 30;
+
+#[derive(Debug, Clone, Default)]
+pub struct RenderObject {
+    pub depth: f32,
+    pub model_id: u64,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct RenderPassDesc {
+    pub index: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct RenderTextureDesc {
+    pub name: String,
+    pub tex_type: TextureType,
+    pub usage: TextureUsage,
+    pub format: Format,
+    pub width: i32,
+    pub height: i32,
+}
+
+impl Default for RenderTextureDesc {
+    fn default() -> Self {
+        RenderTextureDesc {
+            name: String::new(),
+            tex_type: TextureType::Tex2D,
+            usage: TextureUsage::COLOR_ATTACHMENT,
+            format: Format::Unknown,
+            width: -1,
+            height: -1,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct FrameBufferDesc {
+    pub name: String,
+    pub render_pass: u32,
+    pub color_textures: Vec<String>,
+    pub depth_stencil_texture: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RenderFlowType {
+    Scene = 0,
+    Postprocess = 1,
+    UI = 2,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DefineType {

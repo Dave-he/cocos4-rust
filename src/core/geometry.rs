@@ -1273,3 +1273,509 @@ mod tests {
         assert_vec3_eq(&max, &Vec3::new(1.0, 1.0, 1.0), FLOAT_CMP_PRECISION);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Capsule
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CapsuleAxis {
+    X = 0,
+    Y = 1,
+    Z = 2,
+}
+
+#[derive(Debug, Clone)]
+pub struct Capsule {
+    pub radius: f32,
+    pub half_height: f32,
+    pub axis: CapsuleAxis,
+    pub center: Vec3,
+    pub rotation: Quaternion,
+    pub ellipse_center0: Vec3,
+    pub ellipse_center1: Vec3,
+}
+
+impl Capsule {
+    pub fn new(radius: f32, half_height: f32, axis: CapsuleAxis) -> Self {
+        let (ec0, ec1) = match axis {
+            CapsuleAxis::X => (Vec3::new(half_height, 0.0, 0.0), Vec3::new(-half_height, 0.0, 0.0)),
+            CapsuleAxis::Y => (Vec3::new(0.0, half_height, 0.0), Vec3::new(0.0, -half_height, 0.0)),
+            CapsuleAxis::Z => (Vec3::new(0.0, 0.0, half_height), Vec3::new(0.0, 0.0, -half_height)),
+        };
+        Capsule {
+            radius,
+            half_height,
+            axis,
+            center: Vec3::ZERO,
+            rotation: Quaternion::IDENTITY,
+            ellipse_center0: ec0,
+            ellipse_center1: ec1,
+        }
+    }
+
+    pub fn transform(&self, m: &Mat4, _pos: &Vec3, rot: &Quaternion, scale: &Vec3) -> Capsule {
+        let max_scale = scale.x.abs().max(scale.y.abs()).max(scale.z.abs());
+        let new_center = self.center.transform_mat4(m);
+        let new_radius = self.radius * max_scale;
+        let new_half_height = self.half_height * max_scale;
+        let new_rot = Quaternion::multiply(&self.rotation, rot);
+        let (ec0, ec1) = match self.axis {
+            CapsuleAxis::X => (Vec3::new(new_half_height, 0.0, 0.0), Vec3::new(-new_half_height, 0.0, 0.0)),
+            CapsuleAxis::Y => (Vec3::new(0.0, new_half_height, 0.0), Vec3::new(0.0, -new_half_height, 0.0)),
+            CapsuleAxis::Z => (Vec3::new(0.0, 0.0, new_half_height), Vec3::new(0.0, 0.0, -new_half_height)),
+        };
+        Capsule {
+            radius: new_radius,
+            half_height: new_half_height,
+            axis: self.axis,
+            center: new_center,
+            rotation: new_rot,
+            ellipse_center0: ec0,
+            ellipse_center1: ec1,
+        }
+    }
+}
+
+impl Default for Capsule {
+    fn default() -> Self {
+        Self::new(0.5, 0.5, CapsuleAxis::Y)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Triangle
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy)]
+pub struct Triangle {
+    pub a: Vec3,
+    pub b: Vec3,
+    pub c: Vec3,
+}
+
+impl Triangle {
+    pub fn new(
+        ax: f32, ay: f32, az: f32,
+        bx: f32, by: f32, bz: f32,
+        cx: f32, cy: f32, cz: f32,
+    ) -> Self {
+        Triangle {
+            a: Vec3::new(ax, ay, az),
+            b: Vec3::new(bx, by, bz),
+            c: Vec3::new(cx, cy, cz),
+        }
+    }
+
+    pub fn from_points(a: Vec3, b: Vec3, c: Vec3) -> Self {
+        Triangle { a, b, c }
+    }
+
+    pub fn set(
+        &mut self,
+        ax: f32, ay: f32, az: f32,
+        bx: f32, by: f32, bz: f32,
+        cx: f32, cy: f32, cz: f32,
+    ) {
+        self.a.set(ax, ay, az);
+        self.b.set(bx, by, bz);
+        self.c.set(cx, cy, cz);
+    }
+
+    pub fn normal(&self) -> Vec3 {
+        let ab = self.b - self.a;
+        let ac = self.c - self.a;
+        let mut n = Vec3::cross_vecs(&ab, &ac);
+        n.normalize();
+        n
+    }
+
+    pub fn area(&self) -> f32 {
+        let ab = self.b - self.a;
+        let ac = self.c - self.a;
+        Vec3::cross_vecs(&ab, &ac).length() * 0.5
+    }
+}
+
+impl Default for Triangle {
+    fn default() -> Self {
+        Triangle {
+            a: Vec3::new(0.0, 0.0, 0.0),
+            b: Vec3::new(1.0, 0.0, 0.0),
+            c: Vec3::new(0.0, 1.0, 0.0),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Spline
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SplineMode {
+    Linear = 0,
+    Bezier = 1,
+    CatmullRom = 2,
+}
+
+pub const SPLINE_WHOLE_INDEX: u32 = 0xFFFFFFFF;
+
+#[derive(Debug, Clone)]
+pub struct Spline {
+    mode: SplineMode,
+    knots: Vec<Vec3>,
+}
+
+impl Spline {
+    pub fn new(mode: SplineMode) -> Self {
+        Spline { mode, knots: Vec::new() }
+    }
+
+    pub fn get_mode(&self) -> SplineMode {
+        self.mode
+    }
+
+    pub fn set_mode(&mut self, mode: SplineMode) {
+        self.mode = mode;
+    }
+
+    pub fn get_knots(&self) -> &[Vec3] {
+        &self.knots
+    }
+
+    pub fn set_knots(&mut self, knots: Vec<Vec3>) {
+        self.knots = knots;
+    }
+
+    pub fn add_knot(&mut self, knot: Vec3) {
+        self.knots.push(knot);
+    }
+
+    pub fn insert_knot(&mut self, index: u32, knot: Vec3) {
+        self.knots.insert(index as usize, knot);
+    }
+
+    pub fn remove_knot(&mut self, index: u32) {
+        if (index as usize) < self.knots.len() {
+            self.knots.remove(index as usize);
+        }
+    }
+
+    pub fn set_knot(&mut self, index: u32, knot: Vec3) {
+        if let Some(k) = self.knots.get_mut(index as usize) {
+            *k = knot;
+        }
+    }
+
+    pub fn get_knot(&self, index: u32) -> Option<&Vec3> {
+        self.knots.get(index as usize)
+    }
+
+    pub fn get_knot_count(&self) -> u32 {
+        self.knots.len() as u32
+    }
+
+    pub fn clear_knots(&mut self) {
+        self.knots.clear();
+    }
+
+    pub fn get_point(&self, t: f32, index: u32) -> Vec3 {
+        let t = t.clamp(0.0, 1.0);
+        match self.mode {
+            SplineMode::Linear => self.get_point_linear(t, index),
+            SplineMode::Bezier => self.get_point_bezier(t, index),
+            SplineMode::CatmullRom => self.get_point_catmull_rom(t, index),
+        }
+    }
+
+    pub fn get_points(&self, num: u32, index: u32) -> Vec<Vec3> {
+        if num < 2 {
+            return Vec::new();
+        }
+        (0..num).map(|i| self.get_point(i as f32 / (num - 1) as f32, index)).collect()
+    }
+
+    fn get_segments(&self) -> u32 {
+        match self.mode {
+            SplineMode::Linear => self.knots.len().saturating_sub(1) as u32,
+            SplineMode::Bezier => (self.knots.len() / 4) as u32,
+            SplineMode::CatmullRom => self.knots.len().saturating_sub(1) as u32,
+        }
+    }
+
+    fn get_point_linear(&self, t: f32, seg_index: u32) -> Vec3 {
+        let n = self.knots.len();
+        if n < 2 { return Vec3::ZERO; }
+        let segments = (n - 1) as f32;
+        let (v0, v1) = if seg_index == SPLINE_WHOLE_INDEX {
+            let s = t * segments;
+            let i = (s as usize).min(n - 2);
+            let local_t = s - i as f32;
+            (self.knots[i], self.knots[i + 1])
+        } else {
+            let i = (seg_index as usize).min(n - 2);
+            (self.knots[i], self.knots[i + 1])
+        };
+        Self::lerp_vec3(&v0, &v1, if seg_index == SPLINE_WHOLE_INDEX {
+            t * segments - (t * segments) as u32 as f32
+        } else { t })
+    }
+
+    fn get_point_bezier(&self, t: f32, seg_index: u32) -> Vec3 {
+        let n = self.knots.len();
+        if n < 4 { return Vec3::ZERO; }
+        let seg_count = n / 4;
+        let i = if seg_index == SPLINE_WHOLE_INDEX {
+            ((t * seg_count as f32) as usize).min(seg_count - 1) * 4
+        } else {
+            ((seg_index as usize) * 4).min(n - 4)
+        };
+        let local_t = if seg_index == SPLINE_WHOLE_INDEX {
+            (t * seg_count as f32).fract()
+        } else { t };
+        Self::calc_bezier(&self.knots[i], &self.knots[i+1], &self.knots[i+2], &self.knots[i+3], local_t)
+    }
+
+    fn get_point_catmull_rom(&self, t: f32, seg_index: u32) -> Vec3 {
+        let n = self.knots.len();
+        if n < 2 { return Vec3::ZERO; }
+        let segments = (n - 1) as f32;
+        let s = if seg_index == SPLINE_WHOLE_INDEX { t * segments } else { t };
+        let i = (s as usize).clamp(0, n - 2);
+        let local_t = s - i as f32;
+        let p0 = self.knots[i.saturating_sub(1)];
+        let p1 = self.knots[i];
+        let p2 = self.knots[(i + 1).min(n - 1)];
+        let p3 = self.knots[(i + 2).min(n - 1)];
+        Self::calc_catmull_rom(&p0, &p1, &p2, &p3, local_t)
+    }
+
+    fn lerp_vec3(a: &Vec3, b: &Vec3, t: f32) -> Vec3 {
+        Vec3::new(
+            a.x + (b.x - a.x) * t,
+            a.y + (b.y - a.y) * t,
+            a.z + (b.z - a.z) * t,
+        )
+    }
+
+    fn calc_bezier(v0: &Vec3, v1: &Vec3, v2: &Vec3, v3: &Vec3, t: f32) -> Vec3 {
+        let u = 1.0 - t;
+        let b0 = u * u * u;
+        let b1 = 3.0 * u * u * t;
+        let b2 = 3.0 * u * t * t;
+        let b3 = t * t * t;
+        Vec3::new(
+            b0 * v0.x + b1 * v1.x + b2 * v2.x + b3 * v3.x,
+            b0 * v0.y + b1 * v1.y + b2 * v2.y + b3 * v3.y,
+            b0 * v0.z + b1 * v1.z + b2 * v2.z + b3 * v3.z,
+        )
+    }
+
+    fn calc_catmull_rom(v0: &Vec3, v1: &Vec3, v2: &Vec3, v3: &Vec3, t: f32) -> Vec3 {
+        let t2 = t * t;
+        let t3 = t2 * t;
+        let f0 = -0.5 * t3 + t2 - 0.5 * t;
+        let f1 = 1.5 * t3 - 2.5 * t2 + 1.0;
+        let f2 = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
+        let f3 = 0.5 * t3 - 0.5 * t2;
+        Vec3::new(
+            f0 * v0.x + f1 * v1.x + f2 * v2.x + f3 * v3.x,
+            f0 * v0.y + f1 * v1.y + f2 * v2.y + f3 * v3.y,
+            f0 * v0.z + f1 * v1.z + f2 * v2.z + f3 * v3.z,
+        )
+    }
+}
+
+impl Default for Spline {
+    fn default() -> Self {
+        Self::new(SplineMode::CatmullRom)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AnimationCurve (Keyframe + Hermite interpolation)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Keyframe {
+    pub time: f32,
+    pub value: f32,
+    pub in_tangent: f32,
+    pub out_tangent: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WrapMode {
+    Default = 0,
+    Normal = 1,
+    Loop = 2,
+    PingPong = 3,
+    Clamp = 4,
+}
+
+#[derive(Debug, Clone)]
+pub struct AnimationCurve {
+    pub keyframes: Vec<Keyframe>,
+    pub pre_wrap_mode: WrapMode,
+    pub post_wrap_mode: WrapMode,
+}
+
+impl AnimationCurve {
+    pub fn new() -> Self {
+        AnimationCurve {
+            keyframes: Vec::new(),
+            pre_wrap_mode: WrapMode::Loop,
+            post_wrap_mode: WrapMode::Clamp,
+        }
+    }
+
+    pub fn constant(value: f32) -> Self {
+        AnimationCurve {
+            keyframes: vec![
+                Keyframe { time: 0.0, value, in_tangent: 0.0, out_tangent: 0.0 },
+                Keyframe { time: 1.0, value, in_tangent: 0.0, out_tangent: 0.0 },
+            ],
+            pre_wrap_mode: WrapMode::Clamp,
+            post_wrap_mode: WrapMode::Clamp,
+        }
+    }
+
+    pub fn add_key(&mut self, kf: Keyframe) {
+        let pos = self.keyframes.partition_point(|k| k.time <= kf.time);
+        self.keyframes.insert(pos, kf);
+    }
+
+    pub fn evaluate(&self, time: f32) -> f32 {
+        let n = self.keyframes.len();
+        if n == 0 { return 0.0; }
+        if n == 1 { return self.keyframes[0].value; }
+
+        let start = self.keyframes[0].time;
+        let end = self.keyframes[n - 1].time;
+        let duration = end - start;
+
+        let t = if duration <= 0.0 {
+            start
+        } else {
+            match self.post_wrap_mode {
+                WrapMode::Loop => start + ((time - start) % duration + duration) % duration,
+                WrapMode::PingPong => {
+                    let cycle = ((time - start) / duration).abs();
+                    if (cycle as u32) % 2 == 0 {
+                        start + (time - start).abs() % duration
+                    } else {
+                        end - (time - start).abs() % duration
+                    }
+                }
+                _ => time.clamp(start, end),
+            }
+        };
+
+        let pos = self.keyframes.partition_point(|k| k.time <= t);
+        let right = pos.min(n - 1);
+        let left = right.saturating_sub(1);
+        if left == right { return self.keyframes[left].value; }
+
+        let lk = &self.keyframes[left];
+        let rk = &self.keyframes[right];
+        let dx = rk.time - lk.time;
+        if dx < 1e-7 { return lk.value; }
+        let s = (t - lk.time) / dx;
+        Self::hermite(lk.value, lk.out_tangent * dx, rk.value, rk.in_tangent * dx, s)
+    }
+
+    fn hermite(p0: f32, m0: f32, p1: f32, m1: f32, t: f32) -> f32 {
+        let t2 = t * t;
+        let t3 = t2 * t;
+        (2.0 * t3 - 3.0 * t2 + 1.0) * p0
+            + (t3 - 2.0 * t2 + t) * m0
+            + (-2.0 * t3 + 3.0 * t2) * p1
+            + (t3 - t2) * m1
+    }
+}
+
+impl Default for AnimationCurve {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod geometry_extra_tests {
+    use super::*;
+
+    #[test]
+    fn test_capsule_default() {
+        let c = Capsule::default();
+        assert_eq!(c.radius, 0.5);
+        assert_eq!(c.half_height, 0.5);
+        assert_eq!(c.axis, CapsuleAxis::Y);
+    }
+
+    #[test]
+    fn test_triangle_normal() {
+        let t = Triangle::new(
+            0.0, 0.0, 0.0,
+            1.0, 0.0, 0.0,
+            0.0, 1.0, 0.0,
+        );
+        let n = t.normal();
+        assert!((n.z - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_triangle_area() {
+        let t = Triangle::new(
+            0.0, 0.0, 0.0,
+            2.0, 0.0, 0.0,
+            0.0, 2.0, 0.0,
+        );
+        assert!((t.area() - 2.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_spline_linear() {
+        let mut s = Spline::new(SplineMode::Linear);
+        s.add_knot(Vec3::ZERO);
+        s.add_knot(Vec3::new(1.0, 0.0, 0.0));
+        let mid = s.get_point(0.5, SPLINE_WHOLE_INDEX);
+        assert!((mid.x - 0.5).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_spline_catmull_rom() {
+        let mut s = Spline::new(SplineMode::CatmullRom);
+        s.add_knot(Vec3::ZERO);
+        s.add_knot(Vec3::new(1.0, 0.0, 0.0));
+        s.add_knot(Vec3::new(2.0, 0.0, 0.0));
+        let p = s.get_point(1.0, SPLINE_WHOLE_INDEX);
+        assert!((p.x - 2.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_animation_curve_constant() {
+        let curve = AnimationCurve::constant(3.0);
+        assert!((curve.evaluate(0.0) - 3.0).abs() < 1e-5);
+        assert!((curve.evaluate(0.5) - 3.0).abs() < 1e-5);
+        assert!((curve.evaluate(1.0) - 3.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_animation_curve_add_key_and_evaluate() {
+        let mut curve = AnimationCurve::new();
+        curve.add_key(Keyframe { time: 0.0, value: 0.0, in_tangent: 0.0, out_tangent: 1.0 });
+        curve.add_key(Keyframe { time: 1.0, value: 1.0, in_tangent: 1.0, out_tangent: 0.0 });
+        let v = curve.evaluate(0.5);
+        assert!(v > 0.0 && v < 1.0);
+    }
+
+    #[test]
+    fn test_spline_knot_ops() {
+        let mut s = Spline::new(SplineMode::Linear);
+        s.add_knot(Vec3::ZERO);
+        s.add_knot(Vec3::new(1.0, 0.0, 0.0));
+        assert_eq!(s.get_knot_count(), 2);
+        s.remove_knot(0);
+        assert_eq!(s.get_knot_count(), 1);
+    }
+}

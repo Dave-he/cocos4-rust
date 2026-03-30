@@ -172,6 +172,58 @@ impl Batcher2D {
         self.mesh_buffers.clear();
         self.initialized = false;
     }
+
+    pub fn update(&mut self) {
+        if self.dirty {
+            self.fill_buffers_and_merge_batches();
+        }
+    }
+
+    pub fn upload_buffers(&mut self) {
+        for buf in &mut self.mesh_buffers {
+            buf.upload();
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.batch_commands.clear();
+        for buf in &mut self.mesh_buffers {
+            buf.reset();
+        }
+        self.dirty = true;
+    }
+
+    pub fn fill_buffers_and_merge_batches(&mut self) {
+        self.flush();
+    }
+
+    pub fn generate_batch_for_draw_info(&mut self, draw_info_idx: usize) {
+        if draw_info_idx >= self.draw_infos.len() { return; }
+        let info = &self.draw_infos[draw_info_idx];
+        let cmd = BatchCommand {
+            draw_info_index: draw_info_idx,
+            vertex_start: self.vertex_count,
+            vertex_count: info.vertex_count,
+            index_start: self.index_count,
+            index_count: info.index_count,
+            texture_id: info.texture_id,
+            material_hash: info.material_hash,
+        };
+        self.batch_commands.push(cmd);
+    }
+
+    pub fn reset_render_states(&mut self) {
+        self.batch_commands.clear();
+        self.dirty = true;
+    }
+
+    pub fn get_mesh_buffer_count(&self) -> usize {
+        self.mesh_buffers.len()
+    }
+
+    pub fn sync_mesh_buffers(&mut self, buffers: Vec<UIMeshBufferImpl>) {
+        self.mesh_buffers = buffers;
+    }
 }
 
 impl Default for Batcher2D {

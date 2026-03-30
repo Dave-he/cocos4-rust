@@ -8,6 +8,7 @@ pub mod event;
 pub mod event_bus;
 pub mod event_target;
 pub mod geometry;
+pub mod memop;
 #[path = "scene-graph.rs"]
 pub mod scene_graph;
 pub mod scriptable_object;
@@ -23,6 +24,7 @@ pub use event::*;
 pub use event_bus::{EventBus, EventBusKey};
 pub use event_target::{EventTarget, EventKey};
 pub use geometry::*;
+pub use memop::{CachedArray, Pool, RecyclePool};
 pub use scene_graph::*;
 pub use scriptable_object::{ScriptableObject, ScriptableObjectRegistry, SoDatabase};
 pub use spatial_grid::SpatialGrid;

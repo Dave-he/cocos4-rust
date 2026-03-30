@@ -127,6 +127,29 @@ impl GfxTexture {
             self.data[offset..end].copy_from_slice(data);
         }
     }
+
+    pub fn new_view(id: u32, info: TextureViewInfo) -> Self {
+        let view_info = TextureInfo {
+            tex_type: info.tex_type,
+            usage: TextureUsage::SAMPLED,
+            format: info.format,
+            width: 1,
+            height: 1,
+            depth: 1,
+            array_layers: info.layer_count,
+            mip_levels: info.level_count,
+            ..Default::default()
+        };
+        GfxTexture {
+            id,
+            info: view_info,
+            data: Vec::new(),
+        }
+    }
+
+    pub fn is_view(&self) -> bool {
+        self.data.is_empty()
+    }
 }
 
 #[cfg(test)]
