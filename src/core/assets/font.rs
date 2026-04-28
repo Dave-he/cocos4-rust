@@ -1,16 +1,11 @@
 use super::asset::AssetBase;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum FontType {
+    #[default]
     TrueType,
     SystemFont,
     Bitmap,
-}
-
-impl Default for FontType {
-    fn default() -> Self {
-        FontType::TrueType
-    }
 }
 
 #[derive(Debug)]

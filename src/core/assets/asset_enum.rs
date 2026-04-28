@@ -1,10 +1,11 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum PixelFormat {
     Rgb565 = 1,
     Rgb5A1 = 2,
     Rgba4444 = 3,
     Rgb888 = 4,
     Rgb32F = 5,
+    #[default]
     Rgba8888 = 6,
     Rgba32F = 7,
     A8 = 8,
@@ -34,12 +35,6 @@ pub enum PixelFormat {
     RgbaAstc10X10 = 29,
     RgbaAstc12X10 = 30,
     RgbaAstc12X12 = 31,
-}
-
-impl Default for PixelFormat {
-    fn default() -> Self {
-        PixelFormat::Rgba8888
-    }
 }
 
 impl PixelFormat {
@@ -108,21 +103,10 @@ pub enum WrapMode {
     ClampToBorder = 3,
 }
 
-impl Default for WrapMode {
-    fn default() -> Self {
-        WrapMode::Repeat
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Filter {
     None = 0,
+    #[default]
     Linear = 1,
     Nearest = 2,
-}
-
-impl Default for Filter {
-    fn default() -> Self {
-        Filter::Linear
-    }
 }

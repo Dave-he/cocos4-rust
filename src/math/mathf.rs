@@ -113,7 +113,7 @@ impl BezierCurve2D {
     }
 
     pub fn quadratic(p0: Vec2, p1: Vec2, p2: Vec2) -> Self {
-        BezierCurve2D { p0, p1: p1, p2: p1, p3: p2 }
+        BezierCurve2D { p0, p1, p2: p1, p3: p2 }
     }
 
     pub fn evaluate(&self, t: f32) -> Vec2 {

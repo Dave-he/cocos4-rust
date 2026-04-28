@@ -18,6 +18,7 @@ impl Mat4 {
         ],
     };
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         m00: f32,
         m01: f32,
@@ -37,9 +38,7 @@ impl Mat4 {
         m15: f32,
     ) -> Self {
         Mat4 {
-            m: [
-                m00, m01, m02, m03, m04, m05, m06, m07, m08, m09, m10, m11, m12, m13, m14, m15,
-            ],
+            m: [m00, m01, m02, m03, m04, m05, m06, m07, m08, m09, m10, m11, m12, m13, m14, m15],
         }
     }
 
@@ -57,6 +56,7 @@ impl Mat4 {
         *copy
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn set(
         &mut self,
         m00: f32,
@@ -464,10 +464,10 @@ impl Mat4 {
         let y = vec.y;
         let z = vec.z;
 
-        self.m[12] = self.m[0] * x + self.m[4] * y + self.m[8] * z + self.m[12];
-        self.m[13] = self.m[1] * x + self.m[5] * y + self.m[9] * z + self.m[13];
-        self.m[14] = self.m[2] * x + self.m[6] * y + self.m[10] * z + self.m[14];
-        self.m[15] = self.m[3] * x + self.m[7] * y + self.m[11] * z + self.m[15];
+        self.m[12] += self.m[0] * x + self.m[4] * y + self.m[8] * z;
+        self.m[13] += self.m[1] * x + self.m[5] * y + self.m[9] * z;
+        self.m[14] += self.m[2] * x + self.m[6] * y + self.m[10] * z;
+        self.m[15] += self.m[3] * x + self.m[7] * y + self.m[11] * z;
     }
 
     pub fn scale_vec(&mut self, vec: &Vec3) {

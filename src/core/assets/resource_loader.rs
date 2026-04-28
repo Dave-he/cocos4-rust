@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LoadStatus {
@@ -9,6 +8,7 @@ pub enum LoadStatus {
     Failed,
 }
 
+#[allow(clippy::type_complexity)]
 pub struct LoadTask {
     pub url: String,
     pub status: LoadStatus,
@@ -299,7 +299,7 @@ mod tests {
         let mut loader = make_loader();
         let count = Arc::new(Mutex::new(0u32));
         let c1 = Arc::clone(&count);
-        let h1 = loader.load("cached/asset.png", move |_| { *c1.lock().unwrap() += 1; }, |_| {});
+        let _h1 = loader.load("cached/asset.png", move |_| { *c1.lock().unwrap() += 1; }, |_| {});
         loader.pump();
         let c2 = Arc::clone(&count);
         let h2 = loader.load("cached/asset.png", move |_| { *c2.lock().unwrap() += 1; }, |_| {});
@@ -324,7 +324,7 @@ mod tests {
     #[test]
     fn test_clear_cache() {
         let mut loader = make_loader();
-        let h = loader.load("file.png", |_| {}, |_| {});
+        let _h = loader.load("file.png", |_| {}, |_| {});
         loader.pump();
         assert!(loader.get_cached("file.png").is_some());
         loader.clear_cache();
@@ -372,7 +372,7 @@ mod tests {
         loader.register_provider("file://", |url| Ok(format!("local:{}", url).into_bytes()));
         let result = Arc::new(Mutex::new(String::new()));
         let r = Arc::clone(&result);
-        let h = loader.load("http://example.com/img.png", move |data| {
+        let _h = loader.load("http://example.com/img.png", move |data| {
             *r.lock().unwrap() = String::from_utf8_lossy(data).to_string();
         }, |_| {});
         loader.pump();

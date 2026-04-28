@@ -188,6 +188,7 @@ pub trait ICanvasRenderingContext2D: OSInterface {
     fn restore(&mut self);
 
     /// Set canvas buffer updated callback
+    #[allow(clippy::type_complexity)]
     fn set_canvas_buffer_updated_callback(&mut self, callback: Box<dyn Fn(&[u8]) + Send + Sync>);
 
     /// Set width

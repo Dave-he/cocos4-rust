@@ -422,8 +422,7 @@ mod camera_tests {
     #[test]
     fn test_camera_aperture() {
         let mut cam = Camera::new();
-        let old_exposure = cam.exposure;
+        let _old_exposure = cam.exposure;
         cam.set_aperture(CameraAperture::F1_8);
-        assert!((cam.exposure - old_exposure).abs() > 1e-9 || true);
     }
 }

@@ -11,15 +11,9 @@ use crate::scene::lights::{SpotLight, PointLight, SphereLight};
 use crate::renderer::pipeline::render_pipeline::RenderPipeline;
 use crate::renderer::core::material::MaterialPool;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct RootInfo {
     pub enable_hdr: bool,
-}
-
-impl Default for RootInfo {
-    fn default() -> Self {
-        RootInfo { enable_hdr: false }
-    }
 }
 
 #[derive(Debug, Clone)]

@@ -93,6 +93,7 @@ impl Light {
         let g;
         let b;
 
+        #[allow(clippy::excessive_precision)]
         if k <= 66.0 {
             r = 1.0;
             g = (99.4708025861 * k.ln() - 161.1195681661) / 255.0;
@@ -101,6 +102,7 @@ impl Light {
             g = (288.1221695283 * (k - 60.0).powf(-0.0755148492)) / 255.0;
         }
 
+        #[allow(clippy::excessive_precision)]
         if k >= 66.0 {
             b = 1.0;
         } else if k <= 19.0 {

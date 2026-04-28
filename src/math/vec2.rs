@@ -361,11 +361,7 @@ impl Vec2 {
         let (a_slope, a_intercept) = Self::line_equation(a, b);
         let (b_slope, b_intercept) = Self::line_equation(c, d);
 
-        if a_slope == b_slope && a_intercept == b_intercept {
-            true
-        } else {
-            false
-        }
+        a_slope == b_slope && a_intercept == b_intercept
     }
 
     pub fn is_line_parallel(a: &Vec2, b: &Vec2, c: &Vec2, d: &Vec2) -> bool {
@@ -387,7 +383,7 @@ impl Vec2 {
             return false;
         }
 
-        let mut points = vec![a, b, c, d];
+        let mut points = [a, b, c, d];
         points.sort_by(|p1, p2| p1.x.partial_cmp(&p2.x).unwrap());
 
         let start = points.first();
@@ -420,7 +416,7 @@ impl Vec2 {
         let s_val = s.unwrap();
         let t_val = t.unwrap();
 
-        s_val >= 0.0 && s_val <= 1.0 && t_val >= 0.0 && t_val <= 1.0
+        (0.0..=1.0).contains(&s_val) && (0.0..=1.0).contains(&t_val)
     }
 
     pub fn get_intersect_point(a: &Vec2, b: &Vec2, c: &Vec2, d: &Vec2) -> Vec2 {

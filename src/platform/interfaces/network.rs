@@ -1,6 +1,7 @@
 /// Network type
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum NetworkType {
+    #[default]
     None,
     Lan,
     Wwan,
@@ -35,12 +36,6 @@ pub trait INetwork {
 #[derive(Debug, Default)]
 pub struct DefaultNetwork {
     pub network_type: NetworkType,
-}
-
-impl Default for NetworkType {
-    fn default() -> Self {
-        NetworkType::None
-    }
 }
 
 impl DefaultNetwork {

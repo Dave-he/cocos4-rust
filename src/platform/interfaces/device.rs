@@ -77,7 +77,7 @@ mod tests {
     #[test]
     fn test_device_battery_level() {
         let level = Device::get_battery_level();
-        assert!(level >= 0.0 && level <= 1.0);
+        assert!((0.0..=1.0).contains(&level));
     }
 
     #[test]

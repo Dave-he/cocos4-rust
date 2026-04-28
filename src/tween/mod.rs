@@ -1,3 +1,4 @@
+#[allow(clippy::module_inception)]
 pub mod tween;
 pub mod tween_action;
 pub mod tween_system;

@@ -409,7 +409,7 @@ impl AudioManager {
     pub fn is_music_playing(&self) -> bool {
         self.current_music_id
             .and_then(|id| self.players.get(&id))
-            .map_or(false, |p| p.source.is_playing())
+            .is_some_and(|p| p.source.is_playing())
     }
 
     pub fn update(&mut self, dt: f32) {

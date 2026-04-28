@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use crate::base::scheduler::{Scheduler, CC_REPEAT_FOREVER};
+use crate::base::scheduler::Scheduler;
 
 static TIMER_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 

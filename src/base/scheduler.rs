@@ -279,7 +279,7 @@ impl Scheduler {
     }
 
     pub fn is_target_paused(&self, key: &str) -> bool {
-        self.timers.get(key).map_or(false, |t| t.paused)
+        self.timers.get(key).is_some_and(|t| t.paused)
     }
 
     pub fn schedule_update(

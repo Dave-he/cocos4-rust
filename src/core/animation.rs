@@ -8,7 +8,7 @@ use crate::core::scene_graph::NodePtr;
 
 pub trait Texture {}
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct RealTimeJointTexture {
     pub textures: Vec<std::rc::Weak<dyn Texture>>,
     pub buffer: Vec<u8>,
@@ -204,21 +204,16 @@ impl AnimationClip {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum WrapMode {
     Default = 0,
     Normal = 1,
+    #[default]
     Loop = 2,
     PingPong = 3,
     LoopPingPong = 4,
     Clamp = 5,
     LoopClamp = 6,
-}
-
-impl Default for WrapMode {
-    fn default() -> Self {
-        WrapMode::Loop
-    }
 }
 
 pub struct AnimationState {
@@ -258,7 +253,7 @@ impl AnimationState {
             }
             WrapMode::PingPong => {
                 if self.time > self.clip.duration * 2.0 {
-                    self.time = self.time % (self.clip.duration * 2.0);
+                    self.time %= self.clip.duration * 2.0;
                     self.play_count += 1;
                 }
             }
@@ -544,7 +539,7 @@ impl AnimationManager {
 
     pub fn is_playing(&self, name: &str) -> bool {
         self.current_state.as_deref() == Some(name)
-            && self.states.get(name).map_or(false, |s| !s.paused)
+            && self.states.get(name).is_some_and(|s| !s.paused)
     }
 
     pub fn get_time(&self) -> f32 {

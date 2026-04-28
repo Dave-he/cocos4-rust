@@ -1,11 +1,14 @@
 use std::collections::HashMap;
-use std::any::{Any, TypeId};
+use std::any::TypeId;
 use crate::core::scene_graph::{Component, NodePtr};
 
 pub type ComponentFactory = Box<dyn Fn() -> Box<dyn Component> + Send + Sync>;
 
+#[allow(dead_code)]
 struct ComponentMeta {
+    #[allow(dead_code)]
     name: String,
+    #[allow(dead_code)]
     type_id: TypeId,
     factory: ComponentFactory,
     execution_order: i32,
@@ -104,16 +107,12 @@ impl Default for ComponentRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::any::TypeId;
-    use std::sync::{Arc, Mutex};
-    use crate::core::scene_graph::BaseNode;
+    use std::any::{Any, TypeId};
 
+    #[derive(Default)]
     struct TestComponentA {
+        #[allow(dead_code)]
         pub value: i32,
-    }
-
-    impl Default for TestComponentA {
-        fn default() -> Self { TestComponentA { value: 0 } }
     }
 
     impl Component for TestComponentA {
@@ -122,12 +121,10 @@ mod tests {
         fn as_any_mut(&mut self) -> &mut dyn Any { self }
     }
 
+    #[derive(Default)]
     struct TestComponentB {
+        #[allow(dead_code)]
         pub label: String,
-    }
-
-    impl Default for TestComponentB {
-        fn default() -> Self { TestComponentB { label: String::new() } }
     }
 
     impl Component for TestComponentB {

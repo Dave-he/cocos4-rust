@@ -43,7 +43,7 @@ impl EventBus {
         
         self.listeners
             .entry(type_id)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(wrapped_callback);
     }
 

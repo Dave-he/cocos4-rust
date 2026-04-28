@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use crate::tween::tween_action::TweenAction;
 use crate::tween::easing::EasingMethod;
 
@@ -15,10 +14,12 @@ enum TweenStep {
     Action(TweenAction),
     Delay(f32, f32),
     Call(Box<dyn Fn() + Send + Sync>),
+    #[allow(dead_code)]
     Sequence(Vec<TweenStep>),
+    #[allow(dead_code)]
     Parallel(Vec<TweenStep>),
     Repeat(Box<TweenStep>, u32, u32),
-    RepeatForever(Box<TweenStep>, f32),
+    RepeatForever(Box<TweenStep>, ()),
 }
 
 impl std::fmt::Debug for TweenStep {
@@ -193,7 +194,7 @@ impl Tween {
 
     pub fn repeat_forever(mut self) -> Self {
         if let Some(last) = self.steps.pop() {
-            self.steps.push(TweenStep::RepeatForever(Box::new(last), 0.0));
+            self.steps.push(TweenStep::RepeatForever(Box::new(last), ()));
         }
         self
     }

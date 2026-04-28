@@ -72,9 +72,9 @@ impl Log {
 #[macro_export]
 macro_rules! cc_log {
     ($($arg:expr),+) => {
-        if crate::base::log::Log::get_log_level() <= crate::base::log::LogLevel::LevelDebug {
+        if $crate::base::log::Log::get_log_level() <= $crate::base::log::LogLevel::LevelDebug {
             let msg = format!($($arg),+);
-            crate::base::log::Log::log_message(crate::base::log::LogType::Kernel, crate::base::log::LogLevel::LevelDebug, &msg);
+            $crate::base::log::Log::log_message($crate::base::log::LogType::Kernel, $crate::base::log::LogLevel::LevelDebug, &msg);
         }
     };
 }
@@ -82,9 +82,9 @@ macro_rules! cc_log {
 #[macro_export]
 macro_rules! cc_log_debug {
     ($($arg:expr),+) => {
-        if crate::base::log::Log::get_log_level() <= crate::base::log::LogLevel::LevelDebug {
+        if $crate::base::log::Log::get_log_level() <= $crate::base::log::LogLevel::LevelDebug {
             let msg = format!($($arg),+);
-            crate::base::log::Log::log_message(crate::base::log::LogType::Kernel, crate::base::log::LogLevel::LevelDebug, &msg);
+            $crate::base::log::Log::log_message($crate::base::log::LogType::Kernel, $crate::base::log::LogLevel::LevelDebug, &msg);
         }
     };
 }
@@ -92,9 +92,9 @@ macro_rules! cc_log_debug {
 #[macro_export]
 macro_rules! cc_log_info {
     ($($arg:expr),+) => {
-        if crate::base::log::Log::get_log_level() <= crate::base::log::LogLevel::Info {
+        if $crate::base::log::Log::get_log_level() <= $crate::base::log::LogLevel::Info {
             let msg = format!($($arg),+);
-            crate::base::log::Log::log_message(crate::base::log::LogType::Kernel, crate::base::log::LogLevel::Info, &msg);
+            $crate::base::log::Log::log_message($crate::base::log::LogType::Kernel, $crate::base::log::LogLevel::Info, &msg);
         }
     };
 }
@@ -102,9 +102,9 @@ macro_rules! cc_log_info {
 #[macro_export]
 macro_rules! cc_log_warning {
     ($($arg:expr),+) => {
-        if crate::base::log::Log::get_log_level() <= crate::base::log::LogLevel::Warn {
+        if $crate::base::log::Log::get_log_level() <= $crate::base::log::LogLevel::Warn {
             let msg = format!($($arg),+);
-            crate::base::log::Log::log_message(crate::base::log::LogType::Kernel, crate::base::log::LogLevel::Warn, &msg);
+            $crate::base::log::Log::log_message($crate::base::log::LogType::Kernel, $crate::base::log::LogLevel::Warn, &msg);
         }
     };
 }
@@ -112,9 +112,9 @@ macro_rules! cc_log_warning {
 #[macro_export]
 macro_rules! cc_log_error {
     ($($arg:expr),+) => {
-        if crate::base::log::Log::get_log_level() <= crate::base::log::LogLevel::Err {
+        if $crate::base::log::Log::get_log_level() <= $crate::base::log::LogLevel::Err {
             let msg = format!("[ERROR] file {} line {} ", file!(), line!(), format!($($arg),+));
-            crate::base::log::Log::log_message(crate::base::log::LogType::Kernel, crate::base::log::LogLevel::Err, &msg);
+            $crate::base::log::Log::log_message($crate::base::log::LogType::Kernel, $crate::base::log::LogLevel::Err, &msg);
         }
     };
 }
@@ -122,9 +122,9 @@ macro_rules! cc_log_error {
 #[macro_export]
 macro_rules! cc_log_fatal {
     ($($arg:expr),+) => {
-        if crate::base::log::Log::get_log_level() <= crate::base::log::LogLevel::Fatal {
+        if $crate::base::log::Log::get_log_level() <= $crate::base::log::LogLevel::Fatal {
             let msg = format!($($arg),+);
-            crate::base::log::Log::log_message(crate::base::log::LogType::Kernel, crate::base::log::LogLevel::Fatal, &msg);
+            $crate::base::log::Log::log_message($crate::base::log::LogType::Kernel, $crate::base::log::LogLevel::Fatal, &msg);
         }
     };
 }
@@ -132,9 +132,9 @@ macro_rules! cc_log_fatal {
 #[macro_export]
 macro_rules! cc_log_message {
     ($type:expr, $level:expr, $fmt:expr, $($arg:expr),+) => {
-        if crate::base::log::Log::get_log_level() <= $level {
+        if $crate::base::log::Log::get_log_level() <= $level {
             let msg = format!($fmt, $($arg),*);
-            crate::base::log::Log::log_message($type, $level, &msg);
+            $crate::base::log::Log::log_message($type, $level, &msg);
         }
     };
 }

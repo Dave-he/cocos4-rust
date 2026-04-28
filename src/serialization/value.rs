@@ -158,6 +158,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::approx_constant)]
     fn test_float() {
         let v = SerializedValue::from(3.14f64);
         assert!((v.as_f64().unwrap() - 3.14).abs() < 1e-9);

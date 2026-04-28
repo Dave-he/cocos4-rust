@@ -1,18 +1,13 @@
 use crate::math::{Color, Mat4, Vec3};
 use super::defines::{ShadowType, PCFType, CSMLevel};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ShadowSize {
     Low256 = 256,
+    #[default]
     Medium512 = 512,
     High1024 = 1024,
     Ultra2048 = 2048,
-}
-
-impl Default for ShadowSize {
-    fn default() -> Self {
-        ShadowSize::Medium512
-    }
 }
 
 #[derive(Debug)]

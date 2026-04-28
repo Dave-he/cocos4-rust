@@ -1,14 +1,9 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RenderPriority {
     Min = 0,
+    #[default]
     Default = 100,
     Max = 200,
-}
-
-impl Default for RenderPriority {
-    fn default() -> Self {
-        RenderPriority::Default
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -32,17 +27,12 @@ impl RenderItem {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SortingOrder {
+    #[default]
     FrontToBack,
     BackToFront,
     ByPriority,
-}
-
-impl Default for SortingOrder {
-    fn default() -> Self {
-        SortingOrder::FrontToBack
-    }
 }
 
 #[derive(Debug)]

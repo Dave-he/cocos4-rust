@@ -54,7 +54,7 @@ pub fn popcount(mask: u32) -> u32 {
 
 /// Aligns size to the given alignment
 pub fn align_to(size: usize, alignment: usize) -> usize {
-    ((size + alignment - 1) / alignment) * alignment
+    size.div_ceil(alignment) * alignment
 }
 
 pub const ALIGN_TO: fn(usize, usize) -> usize = align_to;

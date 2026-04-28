@@ -24,18 +24,13 @@ impl Handle {
 
 pub type PassInsertPoint = u32;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RenderTargetUsage {
+    #[default]
     Color,
     Depth,
     Stencil,
     DepthStencil,
-}
-
-impl Default for RenderTargetUsage {
-    fn default() -> Self {
-        RenderTargetUsage::Color
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -90,31 +85,21 @@ impl Default for RenderTargetAttachment {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ResourceType {
+    #[default]
     Unknown,
     Buffer,
     Texture,
 }
 
-impl Default for ResourceType {
-    fn default() -> Self {
-        ResourceType::Unknown
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BarrierType {
+    #[default]
     Full,
     Split,
     SplitBegin,
     SplitEnd,
-}
-
-impl Default for BarrierType {
-    fn default() -> Self {
-        BarrierType::Full
-    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -280,6 +265,12 @@ impl PassNode {
     }
 }
 
+impl RenderTargetAttachment {
+    pub fn clear_depth_value(&self) -> f32 {
+        self.desc.clear_depth
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -332,11 +323,5 @@ mod tests {
         let a = RenderTargetAttachment::default();
         assert!(!a.texture_handle.is_valid());
         assert_eq!(a.clear_depth_value(), 1.0);
-    }
-}
-
-impl RenderTargetAttachment {
-    pub fn clear_depth_value(&self) -> f32 {
-        self.desc.clear_depth
     }
 }

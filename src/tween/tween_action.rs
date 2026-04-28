@@ -9,6 +9,7 @@ pub struct PropValue {
     pub to: f32,
 }
 
+#[allow(clippy::type_complexity)]
 pub struct TweenAction {
     pub duration: f32,
     pub elapsed: f32,

@@ -36,17 +36,9 @@ impl Default for DescriptorSetLayoutBinding {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct DescriptorSetLayoutInfo {
     pub bindings: Vec<DescriptorSetLayoutBinding>,
-}
-
-impl Default for DescriptorSetLayoutInfo {
-    fn default() -> Self {
-        DescriptorSetLayoutInfo {
-            bindings: Vec::new(),
-        }
-    }
 }
 
 #[derive(Debug)]

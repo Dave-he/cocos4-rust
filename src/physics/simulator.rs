@@ -178,7 +178,7 @@ fn aabb_vs_aabb(a: &AABB, b: &AABB) -> Option<(Vec3, f32)> {
         (Vec3::new(0.0, 0.0, if dz < 0.0 { -1.0 } else { 1.0 }), overlap_z)
     };
 
-    let contact = Vec3::new(
+    let _contact = Vec3::new(
         a.center.x + normal.x * a.half_extents.x,
         a.center.y + normal.y * a.half_extents.y,
         a.center.z + normal.z * a.half_extents.z,
@@ -584,7 +584,7 @@ mod tests {
         let mut sim = PhysicsSimulator::new();
         sim.set_gravity(Vec3::ZERO);
         let a = sim.create_aabb_body(Vec3::ZERO, Vec3::new(1.0, 1.0, 1.0));
-        let b = sim.create_aabb_body(Vec3::new(1.5, 0.0, 0.0), Vec3::new(1.0, 1.0, 1.0));
+        let _b = sim.create_aabb_body(Vec3::new(1.5, 0.0, 0.0), Vec3::new(1.0, 1.0, 1.0));
         sim.get_body_mut(a).unwrap().layer = 1;
         sim.get_body_mut(a).unwrap().mask = 0;
         sim.step(0.0);

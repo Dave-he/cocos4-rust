@@ -1,16 +1,11 @@
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PipelineState {
+    #[default]
     Normal = 0,
     Skybox = 1,
     Postprocess = 2,
-}
-
-impl Default for PipelineState {
-    fn default() -> Self {
-        PipelineState::Normal
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -108,8 +103,7 @@ mod tests {
     #[test]
     fn test_pipeline_state_manager_register() {
         let mut mgr = PipelineStateManager::new();
-        let mut state = PipelineStateInfo::default();
-        state.hdr_enabled = true;
+        let state = PipelineStateInfo { hdr_enabled: true, ..Default::default() };
         mgr.register_state("hdr", state);
         assert!(mgr.get_state("hdr").unwrap().hdr_enabled);
         assert!(mgr.get_state("nonexistent").is_none());

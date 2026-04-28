@@ -15,8 +15,10 @@ pub enum PhysicsWorldType {
     PhysX = 2,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(clippy::enum_clike_unportable_variant)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PhysicsDrawFlags {
+    #[default]
     None = 0,
     Wireframe = 1 << 0,
     Aabb = 1 << 1,
@@ -25,12 +27,6 @@ pub enum PhysicsDrawFlags {
     Joint = 1 << 4,
     Shape = 1 << 5,
     All = 0xffffffff,
-}
-
-impl Default for PhysicsDrawFlags {
-    fn default() -> Self {
-        PhysicsDrawFlags::None
-    }
 }
 
 #[derive(Debug, Clone)]

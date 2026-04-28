@@ -97,6 +97,7 @@ impl<E: Clone + PartialEq + 'static> Default for EventTarget<E> {
 }
 
 pub struct TypedEventBus {
+    #[allow(dead_code)]
     targets: HashMap<String, Box<dyn std::any::Any + Send + Sync>>,
 }
 
@@ -120,6 +121,7 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     #[derive(Clone, PartialEq, Debug)]
+    #[allow(dead_code)]
     enum TestEvent {
         Click,
         Hover,

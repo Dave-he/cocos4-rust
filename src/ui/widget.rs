@@ -71,11 +71,7 @@ impl Widget {
         let mut x = 0.0f32;
         let mut y = 0.0f32;
 
-        if self.align_flags.contains(WidgetAlignFlag::LEFT)
-            && self.align_flags.contains(WidgetAlignFlag::RIGHT)
-        {
-            x = self.left;
-        } else if self.align_flags.contains(WidgetAlignFlag::LEFT) {
+        if self.align_flags.contains(WidgetAlignFlag::LEFT) {
             x = self.left;
         } else if self.align_flags.contains(WidgetAlignFlag::RIGHT) {
             x = parent_size.x - node_size.x - self.right;
@@ -83,11 +79,7 @@ impl Widget {
             x = (parent_size.x - node_size.x) / 2.0 + self.horizontal_center;
         }
 
-        if self.align_flags.contains(WidgetAlignFlag::TOP)
-            && self.align_flags.contains(WidgetAlignFlag::BOTTOM)
-        {
-            y = self.top;
-        } else if self.align_flags.contains(WidgetAlignFlag::TOP) {
+        if self.align_flags.contains(WidgetAlignFlag::TOP) {
             y = self.top;
         } else if self.align_flags.contains(WidgetAlignFlag::BOTTOM) {
             y = parent_size.y - node_size.y - self.bottom;

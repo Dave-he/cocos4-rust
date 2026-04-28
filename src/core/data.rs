@@ -191,7 +191,7 @@ impl Default for CCObject {
 }
 
 std::thread_local! {
-    static DEFERRED_DESTROY_QUEUE: std::cell::RefCell<Vec<u64>> = std::cell::RefCell::new(Vec::new());
+    static DEFERRED_DESTROY_QUEUE: std::cell::RefCell<Vec<u64>> = const { std::cell::RefCell::new(Vec::new()) };
 }
 
 pub fn deferred_destroy_tick() {

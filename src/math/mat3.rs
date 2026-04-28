@@ -17,6 +17,7 @@ impl Mat3 {
         m: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
     };
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         m00: f32,
         m01: f32,
@@ -29,9 +30,7 @@ impl Mat3 {
         m08: f32,
     ) -> Self {
         Mat3 {
-            m: [
-                m00, m01, m02, m03, m04, m05, m06, m07, m08,
-            ],
+            m: [m00, m01, m02, m03, m04, m05, m06, m07, m08],
         }
     }
 
@@ -83,6 +82,7 @@ impl Mat3 {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn set(
         &mut self,
         m00: f32,
@@ -275,9 +275,9 @@ impl Mat3 {
     }
 
     pub fn translate(&mut self, x: f32, y: f32) {
-        self.m[6] = self.m[0] * x + self.m[3] * y + self.m[6];
-        self.m[7] = self.m[1] * x + self.m[4] * y + self.m[7];
-        self.m[8] = self.m[2] * x + self.m[5] * y + self.m[8];
+        self.m[6] += self.m[0] * x + self.m[3] * y;
+        self.m[7] += self.m[1] * x + self.m[4] * y;
+        self.m[8] += self.m[2] * x + self.m[5] * y;
     }
 
     pub fn from_translation(x: f32, y: f32) -> Mat3 {

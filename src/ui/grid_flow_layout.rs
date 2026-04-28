@@ -68,13 +68,13 @@ impl GridLayout {
             let col = ((usable_w + self.spacing.x) / (self.cell_size.x + self.spacing.x)).floor() as usize;
             col.max(1)
         };
-        let rows = (count + cols - 1) / cols;
+        let _rows = count.div_ceil(cols);
         let mut items = Vec::with_capacity(count);
         for i in 0..count {
             let (col, row) = match self.start_axis {
                 GridFlowAxis::Horizontal => (i % cols, i / cols),
                 GridFlowAxis::Vertical => {
-                    let rows_count = (count + cols - 1) / cols;
+                    let rows_count = count.div_ceil(cols);
                     (i / rows_count, i % rows_count)
                 }
             };

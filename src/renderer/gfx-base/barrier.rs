@@ -21,19 +21,10 @@ pub enum AccessFlagBit {
     HostWrite = 1 << 12,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct GeneralBarrierInfo {
     pub prev_accesses: u64,
     pub next_accesses: u64,
-}
-
-impl Default for GeneralBarrierInfo {
-    fn default() -> Self {
-        GeneralBarrierInfo {
-            prev_accesses: 0,
-            next_accesses: 0,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -97,7 +88,7 @@ impl Default for TextureBarrierInfo {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct BufferBarrierInfo {
     pub prev_accesses: u64,
     pub next_accesses: u64,
@@ -107,19 +98,4 @@ pub struct BufferBarrierInfo {
     pub src_queue_type: u32,
     pub dst_queue_type: u32,
     pub buffer_id: u32,
-}
-
-impl Default for BufferBarrierInfo {
-    fn default() -> Self {
-        BufferBarrierInfo {
-            prev_accesses: 0,
-            next_accesses: 0,
-            offset: 0,
-            size: 0,
-            discard_contents: false,
-            src_queue_type: 0,
-            dst_queue_type: 0,
-            buffer_id: 0,
-        }
-    }
 }

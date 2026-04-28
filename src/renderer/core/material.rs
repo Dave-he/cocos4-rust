@@ -191,8 +191,7 @@ mod tests {
     use crate::renderer::core::pass::{IPassInfo, RenderQueueType};
 
     fn make_pass(name: &str) -> Pass {
-        let mut info = IPassInfo::default();
-        info.name = name.to_string();
+        let info = IPassInfo { name: name.to_string(), ..Default::default() };
         Pass::with_info(info)
     }
 
@@ -294,6 +293,6 @@ mod tests {
         assert!(pool.get("mat_a").is_some());
         pool.remove("mat_a");
         assert_eq!(pool.len(), 1);
-        assert!(pool.is_empty() == false);
+        assert!(!pool.is_empty());
     }
 }

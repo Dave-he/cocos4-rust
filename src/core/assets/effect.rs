@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ShaderStageFlagBit {
+    #[default]
     None = 0,
     Vertex = 1,
     Fragment = 2,
@@ -9,14 +10,9 @@ pub enum ShaderStageFlagBit {
     All = 7,
 }
 
-impl Default for ShaderStageFlagBit {
-    fn default() -> Self {
-        ShaderStageFlagBit::None
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum UniformType {
+    #[default]
     Float,
     Vec2,
     Vec3,
@@ -29,12 +25,6 @@ pub enum UniformType {
     Mat4,
     Sampler2D,
     SamplerCube,
-}
-
-impl Default for UniformType {
-    fn default() -> Self {
-        UniformType::Float
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -118,7 +108,7 @@ impl ShaderStageInfo {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ShaderInfo {
     pub name: String,
     pub stages: Vec<ShaderStageInfo>,
@@ -151,15 +141,10 @@ impl ShaderInfo {
     }
 }
 
-impl Default for ShaderInfo {
-    fn default() -> Self {
-        Self::new("")
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BlendFactor {
     Zero = 0,
+    #[default]
     One = 1,
     SrcAlpha = 6,
     OneMinusSrcAlpha = 7,
@@ -167,15 +152,10 @@ pub enum BlendFactor {
     OneMinusDstAlpha = 9,
 }
 
-impl Default for BlendFactor {
-    fn default() -> Self {
-        BlendFactor::One
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ComparisonFunc {
     Never = 0,
+    #[default]
     Less = 1,
     Equal = 2,
     LessEqual = 3,
@@ -183,12 +163,6 @@ pub enum ComparisonFunc {
     NotEqual = 5,
     GreaterEqual = 6,
     Always = 7,
-}
-
-impl Default for ComparisonFunc {
-    fn default() -> Self {
-        ComparisonFunc::Less
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -229,18 +203,13 @@ impl Default for DepthStencilState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CullMode {
     None = 0,
     Front = 1,
+    #[default]
     Back = 2,
     FrontAndBack = 3,
-}
-
-impl Default for CullMode {
-    fn default() -> Self {
-        CullMode::Back
-    }
 }
 
 #[derive(Debug, Clone)]

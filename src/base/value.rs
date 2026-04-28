@@ -16,8 +16,9 @@ pub fn value_map_int_key_null() -> ValueMapIntKey {
     BTreeMap::new()
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum Value {
+    #[default]
     None,
     Byte(u8),
     Integer(i32),
@@ -163,12 +164,6 @@ impl Value {
     }
 }
 
-impl Default for Value {
-    fn default() -> Self {
-        Value::None
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValueType {
     None,
@@ -218,6 +213,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::approx_constant)]
     fn test_value_float() {
         let v = Value::Float(3.14);
         assert_eq!(v.get_type(), ValueType::Float);
@@ -225,6 +221,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::approx_constant)]
     fn test_value_double() {
         let v = Value::Double(2.718);
         assert_eq!(v.get_type(), ValueType::Double);

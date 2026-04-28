@@ -38,25 +38,13 @@ pub struct UniformSamplerTexture {
     pub count: u32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ShaderInfo {
     pub name: String,
     pub stages: Vec<ShaderStage>,
     pub attributes: Vec<Attribute>,
     pub blocks: Vec<UniformBlock>,
     pub samplers: Vec<UniformSamplerTexture>,
-}
-
-impl Default for ShaderInfo {
-    fn default() -> Self {
-        ShaderInfo {
-            name: String::new(),
-            stages: Vec::new(),
-            attributes: Vec::new(),
-            blocks: Vec::new(),
-            samplers: Vec::new(),
-        }
-    }
 }
 
 #[derive(Debug)]

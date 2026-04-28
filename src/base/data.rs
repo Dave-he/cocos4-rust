@@ -41,12 +41,10 @@ impl Data {
     pub fn resize(&mut self, size: u32) {
         if size == 0 {
             self.bytes = None;
+        } else if let Some(ref mut bytes) = self.bytes {
+            bytes.resize(size as usize, 0);
         } else {
-            if let Some(ref mut bytes) = self.bytes {
-                bytes.resize(size as usize, 0);
-            } else {
-                self.bytes = Some(vec![0; size as usize]);
-            }
+            self.bytes = Some(vec![0; size as usize]);
         }
     }
 

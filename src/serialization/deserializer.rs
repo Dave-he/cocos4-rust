@@ -237,6 +237,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::approx_constant)]
     fn test_roundtrip() {
         let mut s = crate::serialization::serializer::Serializer::new();
         s.write_str("type", "player");

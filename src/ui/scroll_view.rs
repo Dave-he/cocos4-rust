@@ -37,6 +37,7 @@ pub struct ScrollView {
     content_size: Vec2,
     view_size: Vec2,
     velocity: Vec2,
+    #[allow(dead_code)]
     is_scrolling: bool,
     listeners: Vec<(ScrollViewEventType, ScrollEventCallback)>,
 }

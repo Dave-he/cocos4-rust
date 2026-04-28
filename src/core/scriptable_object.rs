@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::any::{Any, TypeId};
+use std::any::Any;
 use crate::serialization::value::SerializedValue;
 
 pub trait ScriptableObject: Any + Send + Sync {

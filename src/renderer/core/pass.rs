@@ -12,23 +12,19 @@ pub enum PassType {
     Graphics = 1,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RenderQueueType {
+    #[default]
     Opaque = 0,
     Transparent = 1,
     UI = 2,
     Overlay = 3,
 }
 
-impl Default for RenderQueueType {
-    fn default() -> Self {
-        RenderQueueType::Opaque
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BlendFactor {
     Zero = 0,
+    #[default]
     One = 1,
     SrcAlpha = 2,
     OneMinusSrcAlpha = 3,
@@ -36,15 +32,10 @@ pub enum BlendFactor {
     OneMinusDstAlpha = 5,
 }
 
-impl Default for BlendFactor {
-    fn default() -> Self {
-        BlendFactor::One
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CompareFunc {
     Never = 0,
+    #[default]
     Less = 1,
     Equal = 2,
     LessEqual = 3,
@@ -52,12 +43,6 @@ pub enum CompareFunc {
     NotEqual = 5,
     GreaterEqual = 6,
     Always = 7,
-}
-
-impl Default for CompareFunc {
-    fn default() -> Self {
-        CompareFunc::Less
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -107,17 +92,12 @@ pub struct RasterizerStateInfo {
     pub depth_bias: f32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CullMode {
     None = 0,
     Front = 1,
+    #[default]
     Back = 2,
-}
-
-impl Default for CullMode {
-    fn default() -> Self {
-        CullMode::Back
-    }
 }
 
 impl Default for RasterizerStateInfo {
@@ -311,10 +291,12 @@ mod tests {
 
     #[test]
     fn test_pass_with_info() {
-        let mut info = IPassInfo::default();
-        info.name = "transparent".to_string();
-        info.queue = RenderQueueType::Transparent;
-        info.priority = 100;
+        let info = IPassInfo {
+            name: "transparent".to_string(),
+            queue: RenderQueueType::Transparent,
+            priority: 100,
+            ..Default::default()
+        };
         let p = Pass::with_info(info);
         assert_eq!(p.get_queue(), RenderQueueType::Transparent);
         assert_eq!(p.get_priority(), 100);

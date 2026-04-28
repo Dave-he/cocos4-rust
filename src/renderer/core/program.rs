@@ -41,25 +41,13 @@ impl Default for ITemplateInfo {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ProgramInfo {
     pub name: String,
     pub effect_name: String,
     pub defines: Vec<MacroRecord>,
     pub constant_macros: String,
     pub uber: bool,
-}
-
-impl Default for ProgramInfo {
-    fn default() -> Self {
-        ProgramInfo {
-            name: String::new(),
-            effect_name: String::new(),
-            defines: Vec::new(),
-            constant_macros: String::new(),
-            uber: false,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]

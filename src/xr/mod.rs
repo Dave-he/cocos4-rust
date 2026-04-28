@@ -28,18 +28,12 @@ pub enum XRSessionState {
     Stopped,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct XRViewport {
     pub x: i32,
     pub y: i32,
     pub width: u32,
     pub height: u32,
-}
-
-impl Default for XRViewport {
-    fn default() -> Self {
-        XRViewport { x: 0, y: 0, width: 0, height: 0 }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -267,6 +261,7 @@ impl Default for XRSession {
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub struct XRManager {
     sessions: Vec<XRSession>,
     active_index: Option<usize>,
@@ -316,7 +311,7 @@ impl XRManager {
     }
 
     pub fn is_xr_active(&self) -> bool {
-        self.get_active_session().map_or(false, |s| s.is_running())
+        self.get_active_session().is_some_and(|s| s.is_running())
     }
 
     pub fn on_controller_event<F>(&mut self, callback: F)
@@ -425,6 +420,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::approx_constant)]
     fn test_xr_config_value() {
         let v = XRConfigValue::Int(10);
         assert!(v.is_int());

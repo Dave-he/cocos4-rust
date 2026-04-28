@@ -98,7 +98,7 @@ impl CharacterController {
             Vec3::ZERO
         };
 
-        self.position = self.position + actual_move;
+        self.position += actual_move;
 
         if actual_move.y < 0.0 && self.position.y <= 0.0 {
             self.position.y = 0.0;

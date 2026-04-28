@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::any::{Any, TypeId};
 
 pub trait Asset: Any + Send + Sync {
@@ -16,12 +16,16 @@ pub enum LoadState {
     Failed,
 }
 
+#[allow(dead_code)]
 struct AssetEntry {
+    #[allow(dead_code)]
     uuid: String,
+    #[allow(dead_code)]
     name: String,
     load_state: LoadState,
     ref_count: u32,
     asset: Option<Box<dyn Asset>>,
+    #[allow(dead_code)]
     type_id: TypeId,
 }
 

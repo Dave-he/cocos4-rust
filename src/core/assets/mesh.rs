@@ -1,7 +1,7 @@
 use super::asset::AssetBase;
 use crate::math::Vec3;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AttributeType {
     Byte = 0,
     UByte = 1,
@@ -9,14 +9,9 @@ pub enum AttributeType {
     UShort = 3,
     Int = 4,
     UInt = 5,
+    #[default]
     Float = 6,
     Float16 = 7,
-}
-
-impl Default for AttributeType {
-    fn default() -> Self {
-        AttributeType::Float
-    }
 }
 
 #[derive(Debug, Clone)]

@@ -11,6 +11,7 @@ pub struct CommandBuffer {
     history: VecDeque<Box<dyn Command>>,
     redo_stack: Vec<Box<dyn Command>>,
     max_history: usize,
+    #[allow(dead_code)]
     executing: bool,
     command_count: u64,
 }

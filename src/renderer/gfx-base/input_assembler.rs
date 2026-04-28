@@ -54,23 +54,12 @@ impl Default for VertexAttribute {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct InputAssemblerInfo {
     pub attributes: Vec<VertexAttribute>,
     pub vertex_buffers: Vec<u32>,
     pub index_buffer: Option<u32>,
     pub indirect_buffer: Option<u32>,
-}
-
-impl Default for InputAssemblerInfo {
-    fn default() -> Self {
-        InputAssemblerInfo {
-            attributes: Vec::new(),
-            vertex_buffers: Vec::new(),
-            index_buffer: None,
-            indirect_buffer: None,
-        }
-    }
 }
 
 #[derive(Debug)]

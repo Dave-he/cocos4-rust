@@ -105,18 +105,13 @@ pub enum PCFType {
     Soft3 = 4,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CSMLevel {
     Level1 = 1,
+    #[default]
     Level2 = 2,
     Level3 = 3,
     Level4 = 4,
-}
-
-impl Default for CSMLevel {
-    fn default() -> Self {
-        CSMLevel::Level2
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -221,28 +216,18 @@ impl Default for SpotLightInfo {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CameraProjection {
+    #[default]
     Perspective = 0,
     Ortho = 1,
 }
 
-impl Default for CameraProjection {
-    fn default() -> Self {
-        CameraProjection::Perspective
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CameraFOV {
+    #[default]
     Vertical = 0,
     Horizontal = 1,
-}
-
-impl Default for CameraFOV {
-    fn default() -> Self {
-        CameraFOV::Vertical
-    }
 }
 
 #[derive(Debug, Clone)]

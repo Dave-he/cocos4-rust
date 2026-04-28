@@ -3,30 +3,14 @@ Rust port of Cocos Creator GFX State
 Original C++ version Copyright (c) 2019-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct InputState {
     pub attributes: Vec<super::VertexAttribute>,
 }
 
-impl Default for InputState {
-    fn default() -> Self {
-        InputState {
-            attributes: Vec::new(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct PipelineLayoutInfo {
     pub set_layouts: Vec<u32>,
-}
-
-impl Default for PipelineLayoutInfo {
-    fn default() -> Self {
-        PipelineLayoutInfo {
-            set_layouts: Vec::new(),
-        }
-    }
 }
 
 #[derive(Debug)]

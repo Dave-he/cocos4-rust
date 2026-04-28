@@ -1,3 +1,4 @@
+#[allow(clippy::module_inception)]
 pub mod particle_2d;
 pub mod particle_system_2d;
 

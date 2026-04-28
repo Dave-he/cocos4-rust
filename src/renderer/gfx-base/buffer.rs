@@ -26,21 +26,11 @@ impl Default for BufferInfo {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct BufferViewInfo {
     pub buffer_id: u32,
     pub offset: u32,
     pub range: u32,
-}
-
-impl Default for BufferViewInfo {
-    fn default() -> Self {
-        BufferViewInfo {
-            buffer_id: 0,
-            offset: 0,
-            range: 0,
-        }
-    }
 }
 
 #[derive(Debug)]

@@ -139,7 +139,7 @@ impl Default for PlaneShape {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct MeshShape {
     pub vertices: Vec<Vec3>,
     pub indices: Vec<u32>,
@@ -149,16 +149,6 @@ pub struct MeshShape {
 impl MeshShape {
     pub fn new(vertices: Vec<Vec3>, indices: Vec<u32>, convex: bool) -> Self {
         MeshShape { vertices, indices, convex }
-    }
-}
-
-impl Default for MeshShape {
-    fn default() -> Self {
-        MeshShape {
-            vertices: Vec::new(),
-            indices: Vec::new(),
-            convex: false,
-        }
     }
 }
 

@@ -170,7 +170,7 @@ impl SkeletalAnimationState {
             }
             WrapMode::PingPong => {
                 let period = self.clip.duration * 2.0;
-                self.current_time = self.current_time % period;
+                self.current_time %= period;
                 if self.current_time > self.clip.duration {
                     self.current_time = period - self.current_time;
                 }

@@ -100,6 +100,7 @@ impl Default for MessageQueue {
 // ThreadPool
 // ---------------------------------------------------------------------------
 
+#[allow(clippy::type_complexity)]
 pub struct ThreadPool {
     workers: Vec<thread::JoinHandle<()>>,
     queue: Arc<(Mutex<(VecDeque<Box<dyn FnOnce() + Send>>, bool)>, Condvar)>,
@@ -107,6 +108,7 @@ pub struct ThreadPool {
 }
 
 impl ThreadPool {
+    #[allow(clippy::type_complexity)]
     pub fn new(worker_count: u32) -> Self {
         let queue: Arc<(Mutex<(VecDeque<Box<dyn FnOnce() + Send>>, bool)>, Condvar)> =
             Arc::new((Mutex::new((VecDeque::new(), false)), Condvar::new()));

@@ -373,16 +373,9 @@ impl XRControllerInfo for XRPose {
 }
 
 /// XR controller event
+#[derive(Default)]
 pub struct XRControllerEvent {
     pub xr_controller_infos: Vec<Box<dyn XRControllerInfo + Send + Sync>>,
-}
-
-impl Default for XRControllerEvent {
-    fn default() -> Self {
-        Self {
-            xr_controller_infos: Vec::new(),
-        }
-    }
 }
 
 impl std::fmt::Debug for XRControllerEvent {

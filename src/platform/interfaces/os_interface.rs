@@ -12,6 +12,6 @@ mod tests {
 
     #[test]
     fn test_os_interface_default() {
-        let _iface = DefaultOSInterface::default();
+        let _iface = DefaultOSInterface;
     }
 }

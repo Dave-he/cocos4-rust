@@ -59,7 +59,7 @@ impl Default for TweenSystem {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tween::tween::{tween, TweenState};
+    use crate::tween::tween::tween;
     use crate::tween::easing::EasingMethod;
     use std::sync::{Arc, Mutex};
 

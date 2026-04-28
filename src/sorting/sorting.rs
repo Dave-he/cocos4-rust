@@ -39,7 +39,7 @@ impl Default for Sorting {
 
 impl PartialOrd for Sorting {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.compare(other))
+        Some(std::cmp::Ord::cmp(self, other))
     }
 }
 
@@ -76,7 +76,7 @@ mod tests {
 
     #[test]
     fn test_sorting_sort_vec() {
-        let mut items = vec![
+        let mut items = [
             Sorting::new().with_order(3),
             Sorting::new().with_order(1),
             Sorting::new().with_order(2),

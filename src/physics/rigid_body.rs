@@ -135,7 +135,7 @@ impl RigidBody {
         if self.body_type != RigidBodyType::Dynamic {
             return;
         }
-        self.pending_force = self.pending_force + force;
+        self.pending_force += force;
         self.wake_up();
     }
 
@@ -143,9 +143,9 @@ impl RigidBody {
         if self.body_type != RigidBodyType::Dynamic {
             return;
         }
-        self.pending_force = self.pending_force + force;
+        self.pending_force += force;
         let torque = Vec3::cross_vecs(&point, &force);
-        self.pending_torque = self.pending_torque + torque;
+        self.pending_torque += torque;
         self.wake_up();
     }
 
@@ -153,7 +153,7 @@ impl RigidBody {
         if self.body_type != RigidBodyType::Dynamic {
             return;
         }
-        self.pending_impulse = self.pending_impulse + impulse;
+        self.pending_impulse += impulse;
         self.wake_up();
     }
 
@@ -161,7 +161,7 @@ impl RigidBody {
         if self.body_type != RigidBodyType::Dynamic {
             return;
         }
-        self.pending_torque = self.pending_torque + torque;
+        self.pending_torque += torque;
         self.wake_up();
     }
 
@@ -179,12 +179,12 @@ impl RigidBody {
         let inv_mass = 1.0 / self.mass;
 
         if self.use_gravity {
-            self.velocity = self.velocity + gravity * dt;
+            self.velocity += gravity * dt;
         }
 
         let force_accel = self.pending_force * inv_mass;
-        self.velocity = self.velocity + force_accel * dt;
-        self.velocity = self.velocity + self.pending_impulse * inv_mass;
+        self.velocity += force_accel * dt;
+        self.velocity += self.pending_impulse * inv_mass;
 
         let lf = self.linear_factor;
         self.velocity.x *= lf.x;
@@ -192,17 +192,17 @@ impl RigidBody {
         self.velocity.z *= lf.z;
 
         let linear_damp = (1.0 - self.linear_damping * dt).max(0.0);
-        self.velocity = self.velocity * linear_damp;
+        self.velocity *= linear_damp;
 
         let torque_accel = self.pending_torque * inv_mass;
         let af = self.angular_factor;
-        self.angular_velocity = self.angular_velocity + torque_accel * dt;
+        self.angular_velocity += torque_accel * dt;
         self.angular_velocity.x *= af.x;
         self.angular_velocity.y *= af.y;
         self.angular_velocity.z *= af.z;
 
         let angular_damp = (1.0 - self.angular_damping * dt).max(0.0);
-        self.angular_velocity = self.angular_velocity * angular_damp;
+        self.angular_velocity *= angular_damp;
 
         self.pending_force = Vec3::ZERO;
         self.pending_impulse = Vec3::ZERO;

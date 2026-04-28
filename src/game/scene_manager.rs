@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use crate::core::scene_graph::Scene;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

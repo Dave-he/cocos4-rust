@@ -235,9 +235,7 @@ mod tests {
     fn test_noise_module_enabled() {
         let mut nm = NoiseModule::new();
         nm.enabled = true;
-        let v = nm.evaluate(pos(1.0, 2.0, 3.0), 0.5);
-        let len2 = v.x * v.x + v.y * v.y + v.z * v.z;
-        assert!(len2 > 0.0 || true);
+        let _v = nm.evaluate(pos(1.0, 2.0, 3.0), 0.5);
     }
 
     #[test]

@@ -1,4 +1,5 @@
 pub mod director;
+#[allow(clippy::module_inception)]
 pub mod game;
 pub mod scene_manager;
 

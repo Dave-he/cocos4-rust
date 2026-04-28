@@ -23,6 +23,7 @@ pub struct Input {
     mouse_scroll: Vec2,
 
     touches: HashMap<u32, Touch>,
+    #[allow(dead_code)]
     touch_event_queue: VecDeque<EventTouch>,
 }
 

@@ -160,11 +160,9 @@ impl ParticleSystem {
         if self.elapsed >= self.duration {
             if self.looping {
                 self.elapsed = 0.0;
-            } else {
-                if self.get_particle_count() == 0 {
+            } else if self.get_particle_count() == 0 {
                     self.state = ParticleSystemState::Stopped;
                 }
-            }
         }
     }
 

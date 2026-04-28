@@ -330,6 +330,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::approx_constant)]
     fn test_json_value_parse() {
         assert_eq!(JsonValue::parse("null").unwrap(), JsonValue::Null);
         assert_eq!(JsonValue::parse("true").unwrap(), JsonValue::Bool(true));
@@ -343,8 +344,8 @@ mod tests {
     fn test_json_storage_bool() {
         let storage = JsonStorage::new();
         storage.set_bool("flag", true);
-        assert_eq!(storage.get_bool("flag", false), true);
-        assert_eq!(storage.get_bool("missing", false), false);
+        assert!(storage.get_bool("flag", false));
+        assert!(!storage.get_bool("missing", false));
     }
 
     #[test]

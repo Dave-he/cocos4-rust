@@ -357,9 +357,7 @@ mod tests {
 
     #[test]
     fn test_device_reset_stats() {
-        let mut device = GfxDevice::default();
-        device.num_draw_calls = 100;
-        device.num_tris = 500;
+        let mut device = GfxDevice { num_draw_calls: 100, num_tris: 500, ..Default::default() };
         device.reset_stats();
         assert_eq!(device.get_num_draw_calls(), 0);
         assert_eq!(device.get_num_tris(), 0);

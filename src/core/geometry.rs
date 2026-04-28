@@ -605,8 +605,7 @@ impl Frustum {
         planes[5].normal = Vec3::new(m.m[3] - m.m[2], m.m[7] - m.m[6], m.m[11] - m.m[10]);
         planes[5].distance = -(m.m[15] - m.m[14]);
 
-        for i in 0..6 {
-            let pl = &mut planes[i];
+        for pl in planes.iter_mut().take(6) {
             let inv_dist = 1.0 / pl.normal.length();
             pl.normal.x *= inv_dist;
             pl.normal.y *= inv_dist;
@@ -625,8 +624,8 @@ impl Frustum {
             Vec3::new(1.0, -1.0, -1.0),
         ];
 
-        for i in 0..8 {
-            self.vertices[i] = corners[i].transform_mat4(inv);
+        for (i, corner) in corners.iter().enumerate() {
+            self.vertices[i] = corner.transform_mat4(inv);
         }
     }
 
@@ -886,8 +885,8 @@ fn get_interval(vertices: &[Vec3; 8], axis: &Vec3) -> (f32, f32) {
     let mut min = axis.dot(&vertices[0]);
     let mut max = min;
 
-    for i in 1..8 {
-        let projection = axis.dot(&vertices[i]);
+    for vertex in vertices.iter().take(8).skip(1) {
+        let projection = axis.dot(vertex);
         min = min.min(projection);
         max = max.max(projection);
     }
@@ -1355,6 +1354,7 @@ pub struct Triangle {
 }
 
 impl Triangle {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         ax: f32, ay: f32, az: f32,
         bx: f32, by: f32, bz: f32,
@@ -1371,6 +1371,7 @@ impl Triangle {
         Triangle { a, b, c }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn set(
         &mut self,
         ax: f32, ay: f32, az: f32,
@@ -1495,6 +1496,7 @@ impl Spline {
         (0..num).map(|i| self.get_point(i as f32 / (num - 1) as f32, index)).collect()
     }
 
+    #[allow(dead_code)]
     fn get_segments(&self) -> u32 {
         match self.mode {
             SplineMode::Linear => self.knots.len().saturating_sub(1) as u32,
@@ -1510,7 +1512,7 @@ impl Spline {
         let (v0, v1) = if seg_index == SPLINE_WHOLE_INDEX {
             let s = t * segments;
             let i = (s as usize).min(n - 2);
-            let local_t = s - i as f32;
+            let _local_t = s - i as f32;
             (self.knots[i], self.knots[i + 1])
         } else {
             let i = (seg_index as usize).min(n - 2);
@@ -1661,7 +1663,7 @@ impl AnimationCurve {
                 WrapMode::Loop => start + ((time - start) % duration + duration) % duration,
                 WrapMode::PingPong => {
                     let cycle = ((time - start) / duration).abs();
-                    if (cycle as u32) % 2 == 0 {
+                    if (cycle as u32).is_multiple_of(2) {
                         start + (time - start).abs() % duration
                     } else {
                         end - (time - start).abs() % duration
