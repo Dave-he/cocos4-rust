@@ -115,6 +115,28 @@ impl GfxRenderPass {
     pub fn has_depth_stencil(&self) -> bool {
         self.info.depth_stencil_attachment.is_depth_stencil
     }
+
+    pub fn get_subpass_count(&self) -> usize {
+        self.info.subpasses.len()
+    }
+
+    pub fn destroy(&mut self) {
+        self.info.color_attachments.clear();
+        self.info.subpasses.clear();
+    }
+
+    pub fn get_hash(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut h = DefaultHasher::new();
+        self.id.hash(&mut h);
+        for ca in &self.info.color_attachments {
+            (ca.format as u32).hash(&mut h);
+            (ca.sample_count as u32).hash(&mut h);
+        }
+        (self.info.depth_stencil_attachment.format as u32).hash(&mut h);
+        h.finish()
+    }
 }
 
 #[cfg(test)]

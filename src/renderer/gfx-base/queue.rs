@@ -48,12 +48,30 @@ impl GfxQueue {
         self.num_tris += tris;
     }
 
+    pub fn submit(&mut self, cmd_buffer_ids: &[u32], _signal_semaphore: u32, _wait_semaphore: u32) {
+        for _id in cmd_buffer_ids {
+            self.num_draw_calls += 0;
+        }
+    }
+
     pub fn wait_idle(&self) {}
 
     pub fn reset_stats(&mut self) {
         self.num_draw_calls = 0;
         self.num_instances = 0;
         self.num_tris = 0;
+    }
+
+    pub fn get_num_draw_calls(&self) -> u32 {
+        self.num_draw_calls
+    }
+
+    pub fn get_num_instances(&self) -> u32 {
+        self.num_instances
+    }
+
+    pub fn get_num_tris(&self) -> u32 {
+        self.num_tris
     }
 }
 

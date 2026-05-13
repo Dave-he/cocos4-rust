@@ -1,6 +1,7 @@
 pub mod data;
 pub mod log;
 pub mod object_pool;
+pub mod random;
 pub mod refcount;
 pub mod scheduler;
 pub mod threading;

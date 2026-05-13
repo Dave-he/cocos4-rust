@@ -1,0 +1,100 @@
+/****************************************************************************
+Rust port of Cocos Creator ForwardStage
+Original C++ version Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+****************************************************************************/
+// SPDX-License-Identifier: MIT
+
+use super::super::render_stage::{RenderStage, RenderStageInfo};
+
+#[derive(Debug, Clone, Default)]
+pub struct RenderArea {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[derive(Debug)]
+pub struct ForwardStage {
+    pub base: RenderStage,
+    pub render_area: RenderArea,
+    phase_id: u32,
+}
+
+impl ForwardStage {
+    pub fn new() -> Self {
+        ForwardStage {
+            base: RenderStage::new("ForwardStage", 0),
+            render_area: RenderArea::default(),
+            phase_id: 0,
+        }
+    }
+
+    pub fn get_initialize_info() -> RenderStageInfo {
+        RenderStageInfo {
+            name: "ForwardStage".to_string(),
+            priority: 0,
+            tag: 0,
+        }
+    }
+
+    pub fn initialize(&mut self, info: RenderStageInfo) -> bool {
+        self.base = RenderStage::with_info(info);
+        true
+    }
+
+    pub fn activate(&mut self) {
+        self.base.activate();
+        self.phase_id = 0;
+    }
+
+    pub fn destroy(&mut self) {
+        self.base.destroy();
+    }
+
+    pub fn render(&mut self, _camera_id: u64) {
+        self.base.clear_queues();
+    }
+}
+
+impl Default for ForwardStage {
+    fn default() -> Self {
+        ForwardStage::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use super::super::super::render_stage::RenderStageInfo;
+
+    #[test]
+    fn test_forward_stage_new() {
+        let stage = ForwardStage::new();
+        assert_eq!(stage.base.name, "ForwardStage");
+        assert_eq!(stage.render_area.width, 0);
+    }
+
+    #[test]
+    fn test_forward_stage_initialize() {
+        let mut stage = ForwardStage::new();
+        let info = ForwardStage::get_initialize_info();
+        assert!(stage.initialize(info));
+        assert_eq!(stage.base.name, "ForwardStage");
+    }
+
+    #[test]
+    fn test_forward_stage_get_initialize_info() {
+        let info = ForwardStage::get_initialize_info();
+        assert_eq!(info.name, "ForwardStage");
+    }
+
+    #[test]
+    fn test_render_area_default() {
+        let area = RenderArea::default();
+        assert_eq!(area.x, 0);
+        assert_eq!(area.y, 0);
+        assert_eq!(area.width, 0);
+        assert_eq!(area.height, 0);
+    }
+}

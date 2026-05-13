@@ -48,6 +48,22 @@ impl GfxSampler {
     pub fn new(id: u32, info: SamplerInfo) -> Self {
         GfxSampler { id, info }
     }
+
+    pub fn destroy(&mut self) {}
+
+    pub fn get_hash(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut h = DefaultHasher::new();
+        self.id.hash(&mut h);
+        (self.info.min_filter as u32).hash(&mut h);
+        (self.info.mag_filter as u32).hash(&mut h);
+        (self.info.mip_filter as u32).hash(&mut h);
+        (self.info.address_u as u32).hash(&mut h);
+        (self.info.address_v as u32).hash(&mut h);
+        (self.info.address_w as u32).hash(&mut h);
+        h.finish()
+    }
 }
 
 #[cfg(test)]

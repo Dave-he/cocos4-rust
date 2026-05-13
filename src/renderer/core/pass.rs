@@ -165,7 +165,9 @@ impl CallbackPass {
 pub struct Pass {
     pub info: IPassInfo,
     pub properties: HashMap<String, PassProperty>,
+    pub defines: HashMap<String, String>,
     pub hash: u64,
+    pub dirty: bool,
     ref_count: RefCountedImpl,
 }
 
@@ -189,7 +191,9 @@ impl Pass {
                 ..IPassInfo::default()
             },
             properties: HashMap::new(),
+            defines: HashMap::new(),
             hash: 0,
+            dirty: false,
             ref_count: RefCountedImpl::new(),
         }
     }
@@ -199,7 +203,9 @@ impl Pass {
         Pass {
             info,
             properties: HashMap::new(),
+            defines: HashMap::new(),
             hash,
+            dirty: false,
             ref_count: RefCountedImpl::new(),
         }
     }
@@ -261,6 +267,70 @@ impl Pass {
     pub fn is_transparent(&self) -> bool {
         self.info.queue == RenderQueueType::Transparent
             || self.info.blend_state.enabled
+    }
+
+    pub fn get_type(&self) -> PassType {
+        self.info.pass_type
+    }
+
+    pub fn get_shader(&self) -> &str {
+        &self.info.shader
+    }
+
+    pub fn set_shader(&mut self, shader: &str) {
+        self.info.shader = shader.to_string();
+        self.rehash();
+    }
+
+    pub fn set_define(&mut self, name: &str, value: &str) {
+        self.defines.insert(name.to_string(), value.to_string());
+        self.rehash();
+    }
+
+    pub fn get_define(&self, name: &str) -> Option<&str> {
+        self.defines.get(name).map(|s| s.as_str())
+    }
+
+    pub fn remove_define(&mut self, name: &str) {
+        self.defines.remove(name);
+        self.rehash();
+    }
+
+    pub fn get_blend_state(&self) -> &BlendStateInfo {
+        &self.info.blend_state
+    }
+
+    pub fn get_depth_stencil_state(&self) -> &DepthStencilStateInfo {
+        &self.info.depth_stencil_state
+    }
+
+    pub fn get_rasterizer_state(&self) -> &RasterizerStateInfo {
+        &self.info.rasterizer_state
+    }
+
+    pub fn set_blend_state(&mut self, state: BlendStateInfo) {
+        self.info.blend_state = state;
+        self.rehash();
+    }
+
+    pub fn set_depth_stencil_state(&mut self, state: DepthStencilStateInfo) {
+        self.info.depth_stencil_state = state;
+        self.rehash();
+    }
+
+    pub fn set_rasterizer_state(&mut self, state: RasterizerStateInfo) {
+        self.info.rasterizer_state = state;
+        self.rehash();
+    }
+
+    pub fn destroy(&mut self) {
+        self.properties.clear();
+        self.defines.clear();
+    }
+
+    fn rehash(&mut self) {
+        self.hash = Self::compute_hash(&self.info);
+        self.dirty = true;
     }
 }
 

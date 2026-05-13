@@ -72,6 +72,25 @@ impl GfxSwapchain {
         self.info.height = height;
         self.surface_transform = transform;
     }
+
+    pub fn destroy(&mut self) {
+        self.color_texture_id = 0;
+        self.depth_stencil_texture_id = 0;
+    }
+
+    pub fn acquire(&mut self) -> u32 {
+        self.color_texture_id
+    }
+
+    pub fn present(&mut self) {}
+
+    pub fn get_vsync_mode(&self) -> VsyncMode {
+        self.info.vsync_mode
+    }
+
+    pub fn get_surface_transform(&self) -> SurfaceTransform {
+        self.surface_transform
+    }
 }
 
 #[cfg(test)]

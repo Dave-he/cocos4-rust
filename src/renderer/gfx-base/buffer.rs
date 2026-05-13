@@ -96,6 +96,21 @@ impl GfxBuffer {
     pub fn is_view(&self) -> bool {
         self.data.is_empty() && self.info.size > 0
     }
+
+    pub fn flush(&mut self) {}
+
+    pub fn destroy(&mut self) {
+        self.data.clear();
+        self.info.size = 0;
+    }
+
+    pub fn get_usage(&self) -> BufferUsage {
+        self.info.usage
+    }
+
+    pub fn get_mem_usage(&self) -> MemoryUsage {
+        self.info.mem_usage
+    }
 }
 
 #[cfg(test)]

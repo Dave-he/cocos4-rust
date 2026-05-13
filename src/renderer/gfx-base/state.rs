@@ -27,6 +27,14 @@ impl GfxPipelineLayout {
     pub fn get_set_layout_count(&self) -> usize {
         self.info.set_layouts.len()
     }
+
+    pub fn get_set_layout(&self, index: usize) -> Option<u32> {
+        self.info.set_layouts.get(index).copied()
+    }
+
+    pub fn destroy(&mut self) {
+        self.info.set_layouts.clear();
+    }
 }
 
 #[cfg(test)]

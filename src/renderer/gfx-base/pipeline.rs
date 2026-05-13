@@ -182,6 +182,26 @@ impl GfxPipelineState {
     pub fn is_blend_enabled(&self) -> bool {
         self.info.blend_state.targets.iter().any(|t| t.blend)
     }
+
+    pub fn get_shader_id(&self) -> u32 {
+        self.info.shader_id
+    }
+
+    pub fn get_render_pass_id(&self) -> u32 {
+        self.info.render_pass_id
+    }
+
+    pub fn destroy(&mut self) {}
+
+    pub fn get_hash(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut h = DefaultHasher::new();
+        self.id.hash(&mut h);
+        self.info.shader_id.hash(&mut h);
+        self.info.render_pass_id.hash(&mut h);
+        h.finish()
+    }
 }
 
 #[cfg(test)]

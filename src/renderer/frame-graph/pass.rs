@@ -260,6 +260,10 @@ impl PassNode {
         self.ref_count
     }
 
+    pub fn set_ref_count(&mut self, count: u32) {
+        self.ref_count = count;
+    }
+
     pub fn increment_ref(&mut self) {
         self.ref_count += 1;
     }

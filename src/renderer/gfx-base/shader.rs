@@ -21,6 +21,19 @@ pub struct Attribute {
     pub location: u32,
 }
 
+impl Default for Attribute {
+    fn default() -> Self {
+        Attribute {
+            name: String::new(),
+            format: super::Format::Unknown,
+            is_normalized: false,
+            stream: 0,
+            is_instanced: false,
+            location: 0,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct UniformBlock {
     pub set: u32,
@@ -38,6 +51,31 @@ pub struct UniformSamplerTexture {
     pub count: u32,
 }
 
+#[derive(Debug, Clone)]
+pub struct UniformStorageBuffer {
+    pub set: u32,
+    pub binding: u32,
+    pub name: String,
+    pub count: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct UniformStorageImage {
+    pub set: u32,
+    pub binding: u32,
+    pub name: String,
+    pub tex_type: super::TextureType,
+    pub count: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct UniformInputAttachment {
+    pub set: u32,
+    pub binding: u32,
+    pub name: String,
+    pub count: u32,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct ShaderInfo {
     pub name: String,
@@ -45,6 +83,9 @@ pub struct ShaderInfo {
     pub attributes: Vec<Attribute>,
     pub blocks: Vec<UniformBlock>,
     pub samplers: Vec<UniformSamplerTexture>,
+    pub storage_buffers: Vec<UniformStorageBuffer>,
+    pub storage_images: Vec<UniformStorageImage>,
+    pub subpass_inputs: Vec<UniformInputAttachment>,
 }
 
 #[derive(Debug)]
@@ -68,6 +109,32 @@ impl GfxShader {
 
     pub fn get_block_count(&self) -> usize {
         self.info.blocks.len()
+    }
+
+    pub fn get_sampler_count(&self) -> usize {
+        self.info.samplers.len()
+    }
+
+    pub fn get_storage_buffer_count(&self) -> usize {
+        self.info.storage_buffers.len()
+    }
+
+    pub fn get_storage_image_count(&self) -> usize {
+        self.info.storage_images.len()
+    }
+
+    pub fn get_subpass_input_count(&self) -> usize {
+        self.info.subpass_inputs.len()
+    }
+
+    pub fn destroy(&mut self) {
+        self.info.stages.clear();
+        self.info.attributes.clear();
+        self.info.blocks.clear();
+        self.info.samplers.clear();
+        self.info.storage_buffers.clear();
+        self.info.storage_images.clear();
+        self.info.subpass_inputs.clear();
     }
 }
 

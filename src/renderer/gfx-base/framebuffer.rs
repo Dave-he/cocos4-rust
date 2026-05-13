@@ -32,6 +32,32 @@ impl GfxFramebuffer {
     pub fn get_height(&self) -> u32 {
         self.height
     }
+
+    pub fn get_render_pass_id(&self) -> u32 {
+        self.info.render_pass_id
+    }
+
+    pub fn get_color_texture_count(&self) -> usize {
+        self.info.color_textures.len()
+    }
+
+    pub fn destroy(&mut self) {
+        self.info.color_textures.clear();
+        self.info.depth_stencil_texture = None;
+    }
+
+    pub fn get_hash(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut h = DefaultHasher::new();
+        self.id.hash(&mut h);
+        self.info.render_pass_id.hash(&mut h);
+        for &t in &self.info.color_textures {
+            t.hash(&mut h);
+        }
+        self.info.depth_stencil_texture.hash(&mut h);
+        h.finish()
+    }
 }
 
 #[cfg(test)]

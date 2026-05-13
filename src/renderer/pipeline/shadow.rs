@@ -1,4 +1,9 @@
-use crate::math::{Color, Mat4, Vec3};
+/****************************************************************************
+Rust port of Cocos Creator Shadow System
+Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
+****************************************************************************/
+
+use crate::math::{Color, Mat4, Vec3, Vec4};
 use super::defines::{ShadowType, PCFType, CSMLevel};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -32,6 +37,8 @@ pub struct ShadowsInfo {
     pub csm_layer_lambda: f32,
     pub auto_adapt: bool,
     pub shadow_map_dirty: bool,
+    pub mat_light: Mat4,
+    pub light_dir: Vec3,
 }
 
 impl Default for ShadowsInfo {
@@ -57,6 +64,8 @@ impl Default for ShadowsInfo {
             csm_layer_lambda: 0.75,
             auto_adapt: true,
             shadow_map_dirty: false,
+            mat_light: Mat4::IDENTITY,
+            light_dir: Vec3::new(0.0, -1.0, 0.0),
         }
     }
 }
@@ -68,11 +77,20 @@ impl ShadowsInfo {
 
     pub fn set_enabled(&mut self, enabled: bool) {
         self.enabled = enabled;
+        self.shadow_map_dirty = true;
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
     }
 
     pub fn set_shadow_type(&mut self, shadow_type: ShadowType) {
         self.shadow_type = shadow_type;
         self.shadow_map_dirty = true;
+    }
+
+    pub fn get_shadow_type(&self) -> ShadowType {
+        self.shadow_type
     }
 
     pub fn set_size(&mut self, size: ShadowSize) {
@@ -84,17 +102,162 @@ impl ShadowsInfo {
         self.size as u32
     }
 
+    pub fn get_size(&self) -> ShadowSize {
+        self.size
+    }
+
     pub fn set_pcf_type(&mut self, pcf: PCFType) {
         self.pcf_type = pcf;
         self.shadow_map_dirty = true;
+    }
+
+    pub fn get_pcf_type(&self) -> PCFType {
+        self.pcf_type
     }
 
     pub fn set_bias(&mut self, bias: f32) {
         self.bias = bias;
     }
 
+    pub fn get_bias(&self) -> f32 {
+        self.bias
+    }
+
     pub fn set_normal_bias(&mut self, bias: f32) {
         self.normal_bias = bias;
+    }
+
+    pub fn get_normal_bias(&self) -> f32 {
+        self.normal_bias
+    }
+
+    pub fn set_distance(&mut self, distance: f32) {
+        self.distance = distance;
+    }
+
+    pub fn get_distance(&self) -> f32 {
+        self.distance
+    }
+
+    pub fn set_normal(&mut self, normal: Vec3) {
+        self.normal = normal;
+    }
+
+    pub fn get_normal(&self) -> Vec3 {
+        self.normal
+    }
+
+    pub fn set_shadow_color(&mut self, color: Color) {
+        self.shadow_color = color;
+    }
+
+    pub fn get_shadow_color(&self) -> Color {
+        self.shadow_color
+    }
+
+    pub fn set_saturation(&mut self, saturation: f32) {
+        self.saturation = saturation;
+    }
+
+    pub fn get_saturation(&self) -> f32 {
+        self.saturation
+    }
+
+    pub fn set_opacity(&mut self, opacity: f32) {
+        self.opacity = opacity;
+    }
+
+    pub fn get_opacity(&self) -> f32 {
+        self.opacity
+    }
+
+    pub fn set_near(&mut self, near: f32) {
+        self.near = near;
+    }
+
+    pub fn get_near(&self) -> f32 {
+        self.near
+    }
+
+    pub fn set_far(&mut self, far: f32) {
+        self.far = far;
+    }
+
+    pub fn get_far(&self) -> f32 {
+        self.far
+    }
+
+    pub fn set_aspect(&mut self, aspect: f32) {
+        self.aspect = aspect;
+    }
+
+    pub fn get_aspect(&self) -> f32 {
+        self.aspect
+    }
+
+    pub fn set_ortho_size(&mut self, size: f32) {
+        self.ortho_size = size;
+    }
+
+    pub fn get_ortho_size(&self) -> f32 {
+        self.ortho_size
+    }
+
+    pub fn set_max_received(&mut self, max: u32) {
+        self.max_received = max;
+    }
+
+    pub fn get_max_received(&self) -> u32 {
+        self.max_received
+    }
+
+    pub fn set_csm_level(&mut self, level: CSMLevel) {
+        self.csm_level = level;
+        self.shadow_map_dirty = true;
+    }
+
+    pub fn get_csm_level(&self) -> CSMLevel {
+        self.csm_level
+    }
+
+    pub fn set_csm_layer_lambda(&mut self, lambda: f32) {
+        self.csm_layer_lambda = lambda;
+    }
+
+    pub fn get_csm_layer_lambda(&self) -> f32 {
+        self.csm_layer_lambda
+    }
+
+    pub fn set_auto_adapt(&mut self, auto: bool) {
+        self.auto_adapt = auto;
+    }
+
+    pub fn is_auto_adapt(&self) -> bool {
+        self.auto_adapt
+    }
+
+    pub fn is_shadow_map_dirty(&self) -> bool {
+        self.shadow_map_dirty
+    }
+
+    pub fn reset_shadow_map_dirty(&mut self) {
+        self.shadow_map_dirty = false;
+    }
+
+    pub fn set_mat_light(&mut self, mat: Mat4) {
+        self.mat_light = mat;
+    }
+
+    pub fn get_mat_light(&self) -> &Mat4 {
+        &self.mat_light
+    }
+
+    pub fn set_light_dir(&mut self, dir: Vec3) {
+        self.light_dir = dir;
+    }
+
+    pub fn get_light_dir(&self) -> Vec3 {
+        self.light_dir
     }
 }
 
@@ -117,6 +280,20 @@ impl Default for PlanarShadowInfo {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct ShadowUBOInfo {
+    pub mat_light_view: Mat4,
+    pub mat_light_view_proj: Mat4,
+    pub shadow_inv_proj_depth_info: Vec4,
+    pub shadow_proj_depth_info: Vec4,
+    pub shadow_proj_info: Vec4,
+    pub shadow_nfls_info: Vec4,
+    pub shadow_whpb_info: Vec4,
+    pub shadow_lpnn_info: Vec4,
+    pub shadow_color: Vec4,
+    pub planar_nd_info: Vec4,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,7 +311,7 @@ mod tests {
         let mut info = ShadowsInfo::new();
         info.set_size(ShadowSize::High1024);
         assert_eq!(info.get_size_u32(), 1024);
-        assert!(info.shadow_map_dirty);
+        assert!(info.is_shadow_map_dirty());
     }
 
     #[test]
@@ -142,6 +319,35 @@ mod tests {
         let mut info = ShadowsInfo::new();
         info.enabled = true;
         info.set_enabled(false);
-        assert!(!info.enabled);
+        assert!(!info.is_enabled());
+    }
+
+    #[test]
+    fn test_shadows_info_csm() {
+        let mut info = ShadowsInfo::new();
+        info.set_csm_level(CSMLevel::Level4);
+        assert_eq!(info.get_csm_level(), CSMLevel::Level4);
+    }
+
+    #[test]
+    fn test_shadows_info_distance() {
+        let mut info = ShadowsInfo::new();
+        info.set_distance(100.0);
+        assert_eq!(info.get_distance(), 100.0);
+    }
+
+    #[test]
+    fn test_shadows_info_reset_dirty() {
+        let mut info = ShadowsInfo::new();
+        info.set_shadow_type(ShadowType::Planar);
+        assert!(info.is_shadow_map_dirty());
+        info.reset_shadow_map_dirty();
+        assert!(!info.is_shadow_map_dirty());
+    }
+
+    #[test]
+    fn test_planar_shadow_default() {
+        let planar = PlanarShadowInfo::default();
+        assert_eq!(planar.normal, Vec3::new(0.0, 1.0, 0.0));
     }
 }

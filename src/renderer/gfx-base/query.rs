@@ -53,6 +53,10 @@ impl GfxQueryPool {
             *r = 0;
         }
     }
+
+    pub fn destroy(&mut self) {
+        self.results.clear();
+    }
 }
 
 #[cfg(test)]

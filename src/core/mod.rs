@@ -14,6 +14,7 @@ pub mod scene_graph;
 pub mod scriptable_object;
 pub mod spatial_grid;
 pub mod state_machine;
+pub mod utils;
 
 pub use assets::*;
 pub use command_buffer::{CommandBuffer, Command, LambdaCommand};

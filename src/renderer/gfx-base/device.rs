@@ -111,6 +111,26 @@ impl GfxDevice {
         }
     }
 
+    pub fn set_format_features(&mut self, format: Format, features: FormatFeature) {
+        let idx = format as usize;
+        if idx < self.format_features.len() {
+            self.format_features[idx] = features;
+        }
+    }
+
+    pub fn get_format_features_len(&self) -> usize {
+        self.format_features.len()
+    }
+
+    pub fn set_all_format_features(&mut self, default: FormatFeature, skip_unknown: bool) {
+        for i in 0..self.format_features.len() {
+            if skip_unknown && i == Format::Unknown as usize {
+                continue;
+            }
+            self.format_features[i] = default;
+        }
+    }
+
     pub fn get_api(&self) -> API {
         self.api
     }
@@ -245,6 +265,44 @@ impl GfxDevice {
             self.num_tris += cmd.num_tris;
         }
     }
+
+    pub fn copy_buffer_to_buffer(
+        &mut self,
+        _src_buffer_id: u32,
+        _dst_buffer_id: u32,
+        _regions: &[super::BufferTextureCopy],
+    ) {}
+
+    pub fn copy_buffer_to_texture(
+        &mut self,
+        _src_buffer_id: u32,
+        _dst_texture_id: u32,
+        _regions: &[super::BufferTextureCopy],
+    ) {}
+
+    pub fn copy_texture_to_buffer(
+        &mut self,
+        _src_texture_id: u32,
+        _dst_buffer_id: u32,
+        _regions: &[super::BufferTextureCopy],
+    ) {}
+
+    pub fn copy_texture_to_texture(
+        &mut self,
+        _src_texture_id: u32,
+        _dst_texture_id: u32,
+        _regions: &[super::TextureCopy],
+    ) {}
+
+    pub fn destroy(&mut self) {
+        self.num_draw_calls = 0;
+        self.num_instances = 0;
+        self.num_tris = 0;
+    }
+
+    pub fn acquire(&mut self, _swapchain: &mut GfxSwapchain) {}
+
+    pub fn present(&mut self, _swapchain: &mut GfxSwapchain) {}
 }
 
 impl Default for GfxDevice {

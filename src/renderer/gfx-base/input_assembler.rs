@@ -91,6 +91,21 @@ impl GfxInputAssembler {
     pub fn has_index_buffer(&self) -> bool {
         self.info.index_buffer.is_some()
     }
+
+    pub fn destroy(&mut self) {
+        self.info.attributes.clear();
+        self.info.vertex_buffers.clear();
+        self.info.index_buffer = None;
+        self.info.indirect_buffer = None;
+    }
+
+    pub fn get_first_vertex(&self) -> u32 {
+        0
+    }
+
+    pub fn get_first_index(&self) -> u32 {
+        self.first_index
+    }
 }
 
 #[cfg(test)]

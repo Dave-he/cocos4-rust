@@ -222,6 +222,42 @@ impl GfxCommandBuffer {
         assert_eq!(self.state, CommandBufferState::Recording);
     }
 
+    pub fn copy_buffer_to_buffer(
+        &mut self,
+        _src_buffer: u32,
+        _dst_buffer: u32,
+        _regions: &[super::BufferTextureCopy],
+    ) {
+        assert_eq!(self.state, CommandBufferState::Recording);
+    }
+
+    pub fn copy_buffer_to_texture(
+        &mut self,
+        _src_buffer: u32,
+        _dst_texture: u32,
+        _regions: &[BufferTextureCopy],
+    ) {
+        assert_eq!(self.state, CommandBufferState::Recording);
+    }
+
+    pub fn copy_texture_to_buffer(
+        &mut self,
+        _src_texture: u32,
+        _dst_buffer: u32,
+        _regions: &[BufferTextureCopy],
+    ) {
+        assert_eq!(self.state, CommandBufferState::Recording);
+    }
+
+    pub fn copy_texture_to_texture(
+        &mut self,
+        _src_texture: u32,
+        _dst_texture: u32,
+        _regions: &[TextureCopy],
+    ) {
+        assert_eq!(self.state, CommandBufferState::Recording);
+    }
+
     pub fn execute(&mut self, _cmd_buffers: &[u32]) {
         assert_eq!(self.state, CommandBufferState::Recording);
     }

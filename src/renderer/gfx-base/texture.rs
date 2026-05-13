@@ -82,19 +82,54 @@ impl GfxTexture {
 
     fn calc_size(info: &TextureInfo) -> usize {
         let bytes_per_pixel = match info.format {
-            Format::RGBA8 => 4,
-            Format::RGB8 => 3,
-            Format::R8 => 1,
-            Format::RGBA16F => 8,
-            Format::RGBA32F => 16,
-            Format::D16 => 2,
-            Format::D24S8 => 4,
-            Format::D32F => 4,
+            Format::RGBA8 | Format::BGRA8 | Format::D24S8 | Format::D32FS8 => 4,
+            Format::RGB8 | Format::SRGB8 => 3,
+            Format::R8 | Format::R8SN | Format::A8 | Format::L8 => 1,
+            Format::RG8 => 2,
+            Format::R16F | Format::D16 => 2,
+            Format::R32F => 4,
+            Format::RGBA16F | Format::RG16F => 8,
+            Format::RGBA32F | Format::RG32F => 16,
+            Format::RGB16F => 6,
+            Format::RGB32F => 12,
+            Format::R11G11B10F | Format::RGB9E5 => 4,
+            Format::DepthStencil => 4,
             _ => 4,
         };
         info.width as usize * info.height as usize * info.depth as usize
             * info.array_layers as usize
             * bytes_per_pixel
+    }
+
+    pub fn resize(&mut self, width: u32, height: u32) {
+        self.info.width = width;
+        self.info.height = height;
+        let new_size = Self::calc_size(&self.info);
+        self.data.resize(new_size, 0);
+    }
+
+    pub fn destroy(&mut self) {
+        self.data.clear();
+    }
+
+    pub fn get_size(&self) -> usize {
+        self.data.len()
+    }
+
+    pub fn get_type(&self) -> TextureType {
+        self.info.tex_type
+    }
+
+    pub fn get_usage(&self) -> TextureUsage {
+        self.info.usage
+    }
+
+    pub fn get_samples(&self) -> SampleCount {
+        self.info.samples
+    }
+
+    pub fn get_flags(&self) -> TextureFlags {
+        self.info.flags
     }
 
     pub fn get_width(&self) -> u32 {

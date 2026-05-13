@@ -117,6 +117,18 @@ impl ProgramLib {
     pub fn get_device_shader_version() -> &'static str {
         "glsl4"
     }
+
+    pub fn register_template(&mut self, info: ITemplateInfo) {
+        self.template_infos.insert(info.name.clone(), info);
+    }
+
+    pub fn get_program_names(&self) -> Vec<&String> {
+        self.programs.keys().collect()
+    }
+
+    pub fn get_program_mut(&mut self, name: &str) -> Option<&mut ProgramInfo> {
+        self.programs.get_mut(name)
+    }
 }
 
 impl Default for ProgramLib {
