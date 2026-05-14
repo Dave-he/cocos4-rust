@@ -72,16 +72,12 @@ impl Emitter {
         p.alive = true;
         p.position = position;
 
-        let speed = self.start_speed + self.rand_range(
-            -self.start_speed_variation,
-            self.start_speed_variation,
-        );
+        let speed = self.start_speed
+            + self.rand_range(-self.start_speed_variation, self.start_speed_variation);
 
         p.velocity = self.compute_direction() * speed;
-        p.start_life = self.start_life + self.rand_range(
-            -self.start_life_variation,
-            self.start_life_variation,
-        );
+        p.start_life = self.start_life
+            + self.rand_range(-self.start_life_variation, self.start_life_variation);
         p.start_life = p.start_life.max(0.01);
         p.life = p.start_life;
         p.random_seed = self.rng_state as u32;
@@ -94,11 +90,8 @@ impl Emitter {
             EmitShape::Sphere => {
                 let theta = self.rand_f32() * std::f32::consts::PI * 2.0;
                 let phi = (self.rand_f32() * 2.0 - 1.0).acos();
-                Vec3::new(
-                    phi.sin() * theta.cos(),
-                    phi.sin() * theta.sin(),
-                    phi.cos(),
-                ).get_normalized()
+                Vec3::new(phi.sin() * theta.cos(), phi.sin() * theta.sin(), phi.cos())
+                    .get_normalized()
             }
             EmitShape::Cone => {
                 let angle_rad = self.config.angle.to_radians();
@@ -152,7 +145,10 @@ mod tests {
         e.config.angle = 30.0;
         for _ in 0..10 {
             let p = e.emit_particle(Vec3::ZERO);
-            let len = (p.velocity.x * p.velocity.x + p.velocity.y * p.velocity.y + p.velocity.z * p.velocity.z).sqrt();
+            let len = (p.velocity.x * p.velocity.x
+                + p.velocity.y * p.velocity.y
+                + p.velocity.z * p.velocity.z)
+                .sqrt();
             assert!(len > 0.0);
         }
     }
@@ -163,7 +159,10 @@ mod tests {
         e.config.shape = EmitShape::Sphere;
         for _ in 0..10 {
             let p = e.emit_particle(Vec3::ZERO);
-            let len = (p.velocity.x * p.velocity.x + p.velocity.y * p.velocity.y + p.velocity.z * p.velocity.z).sqrt();
+            let len = (p.velocity.x * p.velocity.x
+                + p.velocity.y * p.velocity.y
+                + p.velocity.z * p.velocity.z)
+                .sqrt();
             assert!(len > 0.0);
         }
     }

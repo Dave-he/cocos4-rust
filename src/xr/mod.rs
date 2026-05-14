@@ -131,10 +131,22 @@ pub struct XRSession {
 impl XRSession {
     pub fn new(config: XRInterfaceConfig) -> Self {
         let mut configs = HashMap::new();
-        configs.insert(XRConfigKey::RuntimeVersion, XRConfigValue::Int(config.runtime_version as i32));
-        configs.insert(XRConfigKey::SwapchainWidth, XRConfigValue::Int(config.render_width as i32));
-        configs.insert(XRConfigKey::SwapchainHeight, XRConfigValue::Int(config.render_height as i32));
-        configs.insert(XRConfigKey::DisplayRefreshRate, XRConfigValue::Float(config.refresh_rate));
+        configs.insert(
+            XRConfigKey::RuntimeVersion,
+            XRConfigValue::Int(config.runtime_version as i32),
+        );
+        configs.insert(
+            XRConfigKey::SwapchainWidth,
+            XRConfigValue::Int(config.render_width as i32),
+        );
+        configs.insert(
+            XRConfigKey::SwapchainHeight,
+            XRConfigValue::Int(config.render_height as i32),
+        );
+        configs.insert(
+            XRConfigKey::DisplayRefreshRate,
+            XRConfigValue::Float(config.refresh_rate),
+        );
         configs.insert(XRConfigKey::DeviceVendor, XRConfigValue::Int(0));
 
         let mut supported = 0u32;
@@ -194,7 +206,8 @@ impl XRSession {
         let left_view = XRView {
             eye: XREye::Left,
             viewport: XRViewport {
-                x: 0, y: 0,
+                x: 0,
+                y: 0,
                 width: self.config.render_width / 2,
                 height: self.config.render_height,
             },
@@ -203,7 +216,8 @@ impl XRSession {
         let right_view = XRView {
             eye: XREye::Right,
             viewport: XRViewport {
-                x: (self.config.render_width / 2) as i32, y: 0,
+                x: (self.config.render_width / 2) as i32,
+                y: 0,
                 width: self.config.render_width / 2,
                 height: self.config.render_height,
             },

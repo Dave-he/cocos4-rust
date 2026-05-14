@@ -1,5 +1,5 @@
-use crate::math::Vec3;
 use super::define::{LightType, CAMERA_DEFAULT_MASK};
+use crate::math::Vec3;
 
 #[derive(Debug)]
 pub struct Light {
@@ -111,10 +111,6 @@ impl Light {
             b = (138.5177312231 * (k - 10.0).ln() - 305.0447927307) / 255.0;
         }
 
-        Vec3::new(
-            r.clamp(0.0, 1.0),
-            g.clamp(0.0, 1.0),
-            b.clamp(0.0, 1.0),
-        )
+        Vec3::new(r.clamp(0.0, 1.0), g.clamp(0.0, 1.0), b.clamp(0.0, 1.0))
     }
 }

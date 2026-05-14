@@ -1,6 +1,6 @@
 use super::camera::Camera;
 use super::directional_light::DirectionalLight;
-use super::lights::{SpotLight, PointLight, SphereLight, RangedDirectionalLight};
+use super::lights::{PointLight, RangedDirectionalLight, SphereLight, SpotLight};
 use super::model::Model;
 
 pub struct RenderSceneInfo {

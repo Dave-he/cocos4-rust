@@ -1,4 +1,4 @@
-use super::{FLOAT_CMP_PRECISION, Mat3, Mat4, Vec3, to_degree};
+use super::{to_degree, Mat3, Mat4, Vec3, FLOAT_CMP_PRECISION};
 use std::ops::{Add, Mul, Neg, Sub};
 
 const HALF_TO_RAD: f32 = 0.5 * std::f32::consts::PI / 180.0;
@@ -108,9 +108,7 @@ impl Quaternion {
 
     pub fn from_mat4(m: &Mat4) -> Self {
         let mat3 = Mat3::new(
-            m.m[0], m.m[1], m.m[2],
-            m.m[4], m.m[5], m.m[6],
-            m.m[8], m.m[9], m.m[10],
+            m.m[0], m.m[1], m.m[2], m.m[4], m.m[5], m.m[6], m.m[8], m.m[9], m.m[10],
         );
         Quaternion::from_mat3(&mat3)
     }
@@ -598,7 +596,11 @@ impl Neg for Quaternion {
 
 impl std::fmt::Display for Quaternion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Quat({:.2}, {:.2}, {:.2}, {:.2})", self.x, self.y, self.z, self.w)
+        write!(
+            f,
+            "Quat({:.2}, {:.2}, {:.2}, {:.2})",
+            self.x, self.y, self.z, self.w
+        )
     }
 }
 
@@ -612,20 +614,24 @@ mod tests {
 
     fn assert_quat_approx_eq(a: &Quaternion, b: &Quaternion, epsilon: f32) {
         assert!(
-            (a.x - b.x).abs() < epsilon &&
-            (a.y - b.y).abs() < epsilon &&
-            (a.z - b.z).abs() < epsilon &&
-            (a.w - b.w).abs() < epsilon,
-            "Quaternion not equal: {:?} != {:?}", a, b
+            (a.x - b.x).abs() < epsilon
+                && (a.y - b.y).abs() < epsilon
+                && (a.z - b.z).abs() < epsilon
+                && (a.w - b.w).abs() < epsilon,
+            "Quaternion not equal: {:?} != {:?}",
+            a,
+            b
         );
     }
 
     fn assert_vec3_approx_eq(a: &Vec3, b: &Vec3, epsilon: f32) {
         assert!(
-            (a.x - b.x).abs() < epsilon &&
-            (a.y - b.y).abs() < epsilon &&
-            (a.z - b.z).abs() < epsilon,
-            "Vec3 not equal: {:?} != {:?}", a, b
+            (a.x - b.x).abs() < epsilon
+                && (a.y - b.y).abs() < epsilon
+                && (a.z - b.z).abs() < epsilon,
+            "Vec3 not equal: {:?} != {:?}",
+            a,
+            b
         );
     }
 
@@ -718,7 +724,7 @@ mod tests {
         let angle = PI / 4.0;
         let q = Quaternion::from_axis_angle(&axis, angle);
         let (result_axis, result_angle) = q.get_axis_angle();
-        
+
         assert_vec3_approx_eq(&result_axis.get_normalized(), &axis, EPSILON);
         assert!((result_angle - angle).abs() < EPSILON);
     }
@@ -728,7 +734,7 @@ mod tests {
         let view = Vec3::new(0.0, 0.0, 1.0);
         let up = Vec3::UNIT_Y;
         let q = Quaternion::from_view_up(&view, Some(&up));
-        
+
         assert_quat_approx_eq(&q, &Quaternion::IDENTITY, EPSILON);
     }
 
@@ -738,7 +744,7 @@ mod tests {
         let y_axis = Vec3::UNIT_Y;
         let z_axis = Vec3::UNIT_Z;
         let q = Quaternion::from_axes(&x_axis, &y_axis, &z_axis);
-        
+
         assert_quat_approx_eq(&q, &Quaternion::IDENTITY, EPSILON);
     }
 
@@ -763,7 +769,7 @@ mod tests {
         let a = Quaternion::IDENTITY;
         let b = Quaternion::from_axis_angle(&Vec3::UNIT_X, PI / 2.0);
         let angle = Quaternion::angle(&a, &b);
-        
+
         assert!((angle - PI / 2.0).abs() < EPSILON);
     }
 
@@ -771,7 +777,7 @@ mod tests {
     fn test_rotate_towards() {
         let from = Quaternion::IDENTITY;
         let to = Quaternion::from_axis_angle(&Vec3::UNIT_X, PI / 2.0);
-        
+
         // Small step should not reach target
         let result = Quaternion::rotate_towards(&from, &to, 45.0);
         let angle = Quaternion::angle(&from, &result);
@@ -811,9 +817,11 @@ mod tests {
     #[test]
     fn test_quaternion_slerp() {
         let q1 = Quaternion::IDENTITY;
-        let q2 = Quaternion::from_axis_angle(&Vec3::new(0.0, 1.0, 0.0), std::f32::consts::FRAC_PI_2);
+        let q2 =
+            Quaternion::from_axis_angle(&Vec3::new(0.0, 1.0, 0.0), std::f32::consts::FRAC_PI_2);
         let mid = Quaternion::slerp(&q1, &q2, 0.5);
-        let expected = Quaternion::from_axis_angle(&Vec3::new(0.0, 1.0, 0.0), std::f32::consts::FRAC_PI_4);
+        let expected =
+            Quaternion::from_axis_angle(&Vec3::new(0.0, 1.0, 0.0), std::f32::consts::FRAC_PI_4);
         assert!(mid.approx_equals(&expected, Some(0.001)));
     }
 

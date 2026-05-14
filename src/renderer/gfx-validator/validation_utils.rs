@@ -60,7 +60,11 @@ impl ValidationLog {
     }
 
     pub fn disabled() -> Self {
-        ValidationLog { errors: Vec::new(), warnings: Vec::new(), enabled: false }
+        ValidationLog {
+            errors: Vec::new(),
+            warnings: Vec::new(),
+            enabled: false,
+        }
     }
 
     pub fn is_enabled(&self) -> bool {
@@ -104,7 +108,10 @@ impl ValidationLog {
         if inited {
             self.error(
                 ValidationErrorKind::Lifecycle,
-                &format!("{} (id={}) destroyed while still initialized", resource_type, id),
+                &format!(
+                    "{} (id={}) destroyed while still initialized",
+                    resource_type, id
+                ),
             );
             false
         } else {

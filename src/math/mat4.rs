@@ -38,7 +38,9 @@ impl Mat4 {
         m15: f32,
     ) -> Self {
         Mat4 {
-            m: [m00, m01, m02, m03, m04, m05, m06, m07, m08, m09, m10, m11, m12, m13, m14, m15],
+            m: [
+                m00, m01, m02, m03, m04, m05, m06, m07, m08, m09, m10, m11, m12, m13, m14, m15,
+            ],
         }
     }
 
@@ -214,19 +216,13 @@ impl Mat4 {
 
     pub fn from_translation(v: &Vec3) -> Mat4 {
         Mat4::new(
-            1.0, 0.0, 0.0, 0.0,
-            0.0, 1.0, 0.0, 0.0,
-            0.0, 0.0, 1.0, 0.0,
-            v.x, v.y, v.z, 1.0,
+            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, v.x, v.y, v.z, 1.0,
         )
     }
 
     pub fn from_scale(v: &Vec3) -> Mat4 {
         Mat4::new(
-            v.x, 0.0, 0.0, 0.0,
-            0.0, v.y, 0.0, 0.0,
-            0.0, 0.0, v.z, 0.0,
-            0.0, 0.0, 0.0, 1.0,
+            v.x, 0.0, 0.0, 0.0, 0.0, v.y, 0.0, 0.0, 0.0, 0.0, v.z, 0.0, 0.0, 0.0, 0.0, 1.0,
         )
     }
 
@@ -255,10 +251,22 @@ impl Mat4 {
         let wz = w * z2;
 
         Mat4::new(
-            1.0 - yy - zz, yx + wz, zx - wy, 0.0,
-            yx - wz, 1.0 - xx - zz, zy + wx, 0.0,
-            zx + wy, zy - wx, 1.0 - xx - yy, 0.0,
-            0.0, 0.0, 0.0, 1.0,
+            1.0 - yy - zz,
+            yx + wz,
+            zx - wy,
+            0.0,
+            yx - wz,
+            1.0 - xx - zz,
+            zy + wx,
+            0.0,
+            zx + wy,
+            zy - wx,
+            1.0 - xx - yy,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
         )
     }
 
@@ -383,9 +391,18 @@ impl Mat4 {
         let y2 = z0 * x1 - z1 * x0;
 
         Mat4::new(
-            x0, y0, z0, 0.0,
-            x1, y1, z1, 0.0,
-            x2, y2, z2, 0.0,
+            x0,
+            y0,
+            z0,
+            0.0,
+            x1,
+            y1,
+            z1,
+            0.0,
+            x2,
+            y2,
+            z2,
+            0.0,
             -(x0 * eye.x + x1 * eye.y + x2 * eye.z),
             -(y0 * eye.x + y1 * eye.y + y2 * eye.z),
             -(z0 * eye.x + z1 * eye.y + z2 * eye.z),
@@ -398,10 +415,22 @@ impl Mat4 {
         let nf = 1.0 / (near - far);
 
         Mat4::new(
-            f / aspect, 0.0, 0.0, 0.0,
-            0.0, f, 0.0, 0.0,
-            0.0, 0.0, (far + near) * nf, -1.0,
-            0.0, 0.0, 2.0 * far * near * nf, 0.0,
+            f / aspect,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            f,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            (far + near) * nf,
+            -1.0,
+            0.0,
+            0.0,
+            2.0 * far * near * nf,
+            0.0,
         )
     }
 
@@ -411,10 +440,22 @@ impl Mat4 {
         let nf = 1.0 / (near - far);
 
         Mat4::new(
-            -2.0 * lr, 0.0, 0.0, 0.0,
-            0.0, -2.0 * bt, 0.0, 0.0,
-            0.0, 0.0, 2.0 * nf, 0.0,
-            (left + right) * lr, (top + bottom) * bt, (far + near) * nf, 1.0,
+            -2.0 * lr,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            -2.0 * bt,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            2.0 * nf,
+            0.0,
+            (left + right) * lr,
+            (top + bottom) * bt,
+            (far + near) * nf,
+            1.0,
         )
     }
 
@@ -514,10 +555,22 @@ impl Mat4 {
         let sz = s.z;
 
         Mat4::new(
-            (1.0 - (yy + zz)) * sx, (xy + wz) * sx, (xz - wy) * sx, 0.0,
-            (xy - wz) * sy, (1.0 - (xx + zz)) * sy, (yz + wx) * sy, 0.0,
-            (xz + wy) * sz, (yz - wx) * sz, (1.0 - (xx + yy)) * sz, 0.0,
-            v.x, v.y, v.z, 1.0,
+            (1.0 - (yy + zz)) * sx,
+            (xy + wz) * sx,
+            (xz - wy) * sx,
+            0.0,
+            (xy - wz) * sy,
+            (1.0 - (xx + zz)) * sy,
+            (yz + wx) * sy,
+            0.0,
+            (xz + wy) * sz,
+            (yz - wx) * sz,
+            (1.0 - (xx + yy)) * sz,
+            0.0,
+            v.x,
+            v.y,
+            v.z,
+            1.0,
         )
     }
 
@@ -915,10 +968,7 @@ mod tests {
     #[test]
     fn test_transpose() {
         let mut m = Mat4::new(
-            1.0, 2.0, 3.0, 4.0,
-            5.0, 6.0, 7.0, 8.0,
-            9.0, 10.0, 11.0, 12.0,
-            13.0, 14.0, 15.0, 16.0,
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
         );
         m.transpose();
 

@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use crate::tween::tween_action::TweenAction;
 use crate::tween::easing::EasingMethod;
+use crate::tween::tween_action::TweenAction;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TweenState {
@@ -49,7 +49,9 @@ impl TweenStep {
                 true
             }
             TweenStep::Sequence(steps) => {
-                if steps.is_empty() { return true; }
+                if steps.is_empty() {
+                    return true;
+                }
                 let done = steps[0].update(dt);
                 if done {
                     steps.remove(0);
@@ -111,7 +113,9 @@ impl TweenStep {
             TweenStep::Call(_) => {}
             TweenStep::Sequence(_) => {}
             TweenStep::Parallel(steps) => {
-                for s in steps.iter_mut() { s.reset(); }
+                for s in steps.iter_mut() {
+                    s.reset();
+                }
             }
             TweenStep::Repeat(step, _, current) => {
                 *current = 0;
@@ -149,7 +153,12 @@ impl Tween {
         self.id
     }
 
-    pub fn to(mut self, duration: f32, props: HashMap<String, (f32, f32)>, easing: EasingMethod) -> Self {
+    pub fn to(
+        mut self,
+        duration: f32,
+        props: HashMap<String, (f32, f32)>,
+        easing: EasingMethod,
+    ) -> Self {
         let mut action = TweenAction::new(duration, easing);
         for (key, (from, to)) in props {
             action.add_prop(&key, from, to);
@@ -158,7 +167,14 @@ impl Tween {
         self
     }
 
-    pub fn to_single(mut self, duration: f32, key: &str, from: f32, to: f32, easing: EasingMethod) -> Self {
+    pub fn to_single(
+        mut self,
+        duration: f32,
+        key: &str,
+        from: f32,
+        to: f32,
+        easing: EasingMethod,
+    ) -> Self {
         let mut action = TweenAction::new(duration, easing);
         action.add_prop(key, from, to);
         self.steps.push(TweenStep::Action(action));
@@ -194,7 +210,8 @@ impl Tween {
 
     pub fn repeat_forever(mut self) -> Self {
         if let Some(last) = self.steps.pop() {
-            self.steps.push(TweenStep::RepeatForever(Box::new(last), ()));
+            self.steps
+                .push(TweenStep::RepeatForever(Box::new(last), ()));
         }
         self
     }
@@ -323,7 +340,9 @@ mod tests {
         let called = Arc::new(Mutex::new(false));
         let c = Arc::clone(&called);
         let mut t = tween()
-            .call(move || { *c.lock().unwrap() = true; })
+            .call(move || {
+                *c.lock().unwrap() = true;
+            })
             .start();
         t.update(0.0);
         assert!(*called.lock().unwrap());
@@ -335,7 +354,9 @@ mod tests {
         let d = Arc::clone(&done);
         let mut t = tween()
             .to_single(0.1, "x", 0.0, 1.0, EasingMethod::Linear)
-            .on_complete(move || { *d.lock().unwrap() = true; })
+            .on_complete(move || {
+                *d.lock().unwrap() = true;
+            })
             .start();
         t.update(1.0);
         assert!(*done.lock().unwrap());
@@ -370,7 +391,9 @@ mod tests {
         let s = Arc::clone(&started);
         let _t = tween()
             .to_single(1.0, "x", 0.0, 10.0, EasingMethod::Linear)
-            .on_start(move || { *s.lock().unwrap() = true; })
+            .on_start(move || {
+                *s.lock().unwrap() = true;
+            })
             .start();
         assert!(*started.lock().unwrap());
     }
@@ -389,9 +412,13 @@ mod tests {
         let s2 = Arc::clone(&steps_done);
         let mut t = tween()
             .to_single(0.5, "x", 0.0, 50.0, EasingMethod::Linear)
-            .call(move || { *s.lock().unwrap() += 1; })
+            .call(move || {
+                *s.lock().unwrap() += 1;
+            })
             .to_single(0.5, "x", 50.0, 100.0, EasingMethod::Linear)
-            .call(move || { *s2.lock().unwrap() += 1; })
+            .call(move || {
+                *s2.lock().unwrap() += 1;
+            })
             .start();
         t.update(2.0);
         assert_eq!(*steps_done.lock().unwrap(), 2);

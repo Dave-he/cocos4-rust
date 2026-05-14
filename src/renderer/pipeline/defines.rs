@@ -3,9 +3,9 @@ Rust port of Cocos Creator Pipeline Define System
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
+use crate::math::Color;
 use crate::math::Vec3;
 use crate::math::Vec4;
-use crate::math::Color;
 use crate::renderer::gfx_base::{Format, TextureType, TextureUsage};
 
 pub const SHADOW_CAMERA_MAX_FAR: f32 = 2000.0;
@@ -571,7 +571,8 @@ pub const UNIFORM_ENVIRONMENT_BINDING: u32 = PipelineGlobalBindings::SAMPLER_ENV
 pub const UNIFORM_DIFFUSEMAP_NAME: &str = "cc_diffuseMap";
 pub const UNIFORM_DIFFUSEMAP_BINDING: u32 = PipelineGlobalBindings::SAMPLER_DIFFUSEMAP as u32;
 pub const UNIFORM_SPOT_SHADOW_MAP_NAME: &str = "cc_spotShadowMap";
-pub const UNIFORM_SPOT_SHADOW_MAP_BINDING: u32 = PipelineGlobalBindings::SAMPLER_SPOT_SHADOW_MAP as u32;
+pub const UNIFORM_SPOT_SHADOW_MAP_BINDING: u32 =
+    PipelineGlobalBindings::SAMPLER_SPOT_SHADOW_MAP as u32;
 
 pub const UNIFORM_LIGHTMAP_TEXTURE_NAME: &str = "cc_lightingMap";
 pub const UNIFORM_LIGHTMAP_TEXTURE_BINDING: u32 = ModelLocalBindings::SAMPLER_LIGHTMAP as u32;

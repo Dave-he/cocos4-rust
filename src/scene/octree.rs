@@ -1,10 +1,18 @@
-use crate::math::Vec3;
 use crate::core::geometry::AABB;
+use crate::math::Vec3;
 
 const OCTREE_CHILDREN_NUM: usize = 8;
 const DEFAULT_OCTREE_DEPTH: u32 = 8;
-const DEFAULT_WORLD_MIN: Vec3 = Vec3 { x: -1024.0, y: -1024.0, z: -1024.0 };
-const DEFAULT_WORLD_MAX: Vec3 = Vec3 { x: 1024.0, y: 1024.0, z: 1024.0 };
+const DEFAULT_WORLD_MIN: Vec3 = Vec3 {
+    x: -1024.0,
+    y: -1024.0,
+    z: -1024.0,
+};
+const DEFAULT_WORLD_MAX: Vec3 = Vec3 {
+    x: 1024.0,
+    y: 1024.0,
+    z: 1024.0,
+};
 const _OCTREE_BOX_EXPAND_SIZE: f32 = 10.0;
 
 #[derive(Debug)]
@@ -37,21 +45,30 @@ impl BBox {
     }
 
     pub fn contain_point(&self, point: &Vec3) -> bool {
-        point.x >= self.min.x && point.x <= self.max.x
-            && point.y >= self.min.y && point.y <= self.max.y
-            && point.z >= self.min.z && point.z <= self.max.z
+        point.x >= self.min.x
+            && point.x <= self.max.x
+            && point.y >= self.min.y
+            && point.y <= self.max.y
+            && point.z >= self.min.z
+            && point.z <= self.max.z
     }
 
     pub fn contain_box(&self, box_: &BBox) -> bool {
-        self.min.x <= box_.min.x && self.max.x >= box_.max.x
-            && self.min.y <= box_.min.y && self.max.y >= box_.max.y
-            && self.min.z <= box_.min.z && self.max.z >= box_.max.z
+        self.min.x <= box_.min.x
+            && self.max.x >= box_.max.x
+            && self.min.y <= box_.min.y
+            && self.max.y >= box_.max.y
+            && self.min.z <= box_.min.z
+            && self.max.z >= box_.max.z
     }
 
     pub fn intersect(&self, box_: &BBox) -> bool {
-        self.min.x <= box_.max.x && self.max.x >= box_.min.x
-            && self.min.y <= box_.max.y && self.max.y >= box_.min.y
-            && self.min.z <= box_.max.z && self.max.z >= box_.min.z
+        self.min.x <= box_.max.x
+            && self.max.x >= box_.min.x
+            && self.min.y <= box_.max.y
+            && self.max.y >= box_.min.y
+            && self.min.z <= box_.max.z
+            && self.max.z >= box_.min.z
     }
 
     pub fn get_child_box(&self, index: usize) -> BBox {

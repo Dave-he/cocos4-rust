@@ -47,8 +47,7 @@ impl ForwardPipeline {
     }
 
     pub fn render(&mut self, cameras: &[u64]) {
-        for _camera_id in cameras {
-        }
+        for _camera_id in cameras {}
     }
 
     pub fn get_valid_lights(&self) -> &[u64] {
@@ -72,8 +71,8 @@ impl Default for ForwardPipeline {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::super::render_pipeline::RenderPipelineInfo;
+    use super::*;
 
     #[test]
     fn test_forward_pipeline_new() {

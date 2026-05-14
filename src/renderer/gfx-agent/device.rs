@@ -8,13 +8,13 @@ Original C++ version Copyright (c) 2019-2023 Xiamen Yaji Software Co., Ltd.
 
 use crate::base::threading::{MessageQueue, ThreadPool};
 use crate::renderer::gfx_base::{
-    API, BufferInfo, BufferViewInfo, CommandBufferInfo, DescriptorSetLayoutInfo,
-    DeviceInfo, FormatFeature, FramebufferInfo, GfxBuffer, GfxCommandBuffer,
-    GfxDescriptorSet, GfxDescriptorSetLayout, GfxDevice, GfxFramebuffer, GfxInputAssembler,
-    GfxPipelineLayout, GfxPipelineState, GfxQueryPool, GfxQueue, GfxRenderPass, GfxSampler,
-    GfxShader, GfxSwapchain, GfxTexture, InputAssemblerInfo, MemoryStatus,
-    PipelineLayoutInfo, PipelineStateInfo, QueryPoolInfo, QueueInfo, RenderPassInfo,
-    SamplerInfo, ShaderInfo, SwapchainInfo, TextureInfo, TextureViewInfo,
+    BufferInfo, BufferViewInfo, CommandBufferInfo, DescriptorSetLayoutInfo, DeviceInfo,
+    FormatFeature, FramebufferInfo, GfxBuffer, GfxCommandBuffer, GfxDescriptorSet,
+    GfxDescriptorSetLayout, GfxDevice, GfxFramebuffer, GfxInputAssembler, GfxPipelineLayout,
+    GfxPipelineState, GfxQueryPool, GfxQueue, GfxRenderPass, GfxSampler, GfxShader, GfxSwapchain,
+    GfxTexture, InputAssemblerInfo, MemoryStatus, PipelineLayoutInfo, PipelineStateInfo,
+    QueryPoolInfo, QueueInfo, RenderPassInfo, SamplerInfo, ShaderInfo, SwapchainInfo, TextureInfo,
+    TextureViewInfo, API,
 };
 
 use super::command_buffer::CommandBufferAgent;
@@ -190,11 +190,19 @@ impl DeviceAgent {
         self.device.create_render_pass(info)
     }
 
-    pub fn create_framebuffer(&mut self, info: FramebufferInfo, width: u32, height: u32) -> GfxFramebuffer {
+    pub fn create_framebuffer(
+        &mut self,
+        info: FramebufferInfo,
+        width: u32,
+        height: u32,
+    ) -> GfxFramebuffer {
         self.device.create_framebuffer(info, width, height)
     }
 
-    pub fn create_descriptor_set_layout(&mut self, info: DescriptorSetLayoutInfo) -> GfxDescriptorSetLayout {
+    pub fn create_descriptor_set_layout(
+        &mut self,
+        info: DescriptorSetLayoutInfo,
+    ) -> GfxDescriptorSetLayout {
         self.device.create_descriptor_set_layout(info)
     }
 
@@ -357,7 +365,11 @@ mod tests {
         agent.initialize();
         let mut cmd = agent.create_command_buffer(CommandBufferInfo::default());
         cmd.begin();
-        cmd.draw(&DrawInfo { index_count: 6, instance_count: 1, ..Default::default() });
+        cmd.draw(&DrawInfo {
+            index_count: 6,
+            instance_count: 1,
+            ..Default::default()
+        });
         cmd.end();
         assert_eq!(cmd.get_num_draw_calls(), 1);
     }
@@ -368,7 +380,11 @@ mod tests {
         agent.initialize();
         let mut cmd = agent.create_command_buffer_raw(CommandBufferInfo::default());
         cmd.begin();
-        cmd.draw(&DrawInfo { index_count: 3, instance_count: 1, ..Default::default() });
+        cmd.draw(&DrawInfo {
+            index_count: 3,
+            instance_count: 1,
+            ..Default::default()
+        });
         cmd.end();
         assert_eq!(cmd.num_draw_calls, 1);
     }
@@ -379,7 +395,11 @@ mod tests {
         agent.initialize();
         let mut cmd = agent.create_command_buffer(CommandBufferInfo::default());
         cmd.begin();
-        cmd.draw(&DrawInfo { index_count: 6, instance_count: 1, ..Default::default() });
+        cmd.draw(&DrawInfo {
+            index_count: 6,
+            instance_count: 1,
+            ..Default::default()
+        });
         cmd.end();
         agent.flush_commands(&mut [cmd]);
         assert_eq!(agent.get_device().num_draw_calls, 1);
@@ -393,10 +413,18 @@ mod tests {
         let mut cmd1 = agent.create_command_buffer(CommandBufferInfo::default());
         let mut cmd2 = agent.create_command_buffer(CommandBufferInfo::default());
         cmd1.begin();
-        cmd1.draw(&DrawInfo { index_count: 6, instance_count: 1, ..Default::default() });
+        cmd1.draw(&DrawInfo {
+            index_count: 6,
+            instance_count: 1,
+            ..Default::default()
+        });
         cmd1.end();
         cmd2.begin();
-        cmd2.draw(&DrawInfo { index_count: 12, instance_count: 2, ..Default::default() });
+        cmd2.draw(&DrawInfo {
+            index_count: 12,
+            instance_count: 2,
+            ..Default::default()
+        });
         cmd2.end();
         agent.flush_commands(&mut [cmd1, cmd2]);
         assert_eq!(agent.get_device().num_draw_calls, 2);
@@ -483,7 +511,11 @@ mod tests {
         agent.set_multithreaded(true);
         let mut cmd = agent.create_command_buffer(CommandBufferInfo::default());
         cmd.begin();
-        cmd.draw(&DrawInfo { index_count: 6, instance_count: 1, ..Default::default() });
+        cmd.draw(&DrawInfo {
+            index_count: 6,
+            instance_count: 1,
+            ..Default::default()
+        });
         cmd.end();
         cmd.flush_messages();
         assert_eq!(cmd.get_num_draw_calls(), 1);
@@ -494,9 +526,19 @@ mod tests {
     fn test_device_agent_create_all_resource_types() {
         let mut agent = DeviceAgent::default();
         agent.initialize();
-        let buf = agent.create_buffer(BufferInfo { size: 64, ..Default::default() });
-        let tex = agent.create_texture(TextureInfo { width: 64, height: 64, ..Default::default() });
-        let shader = agent.create_shader(ShaderInfo { name: "s".to_string(), ..Default::default() });
+        let buf = agent.create_buffer(BufferInfo {
+            size: 64,
+            ..Default::default()
+        });
+        let tex = agent.create_texture(TextureInfo {
+            width: 64,
+            height: 64,
+            ..Default::default()
+        });
+        let shader = agent.create_shader(ShaderInfo {
+            name: "s".to_string(),
+            ..Default::default()
+        });
         let rp = agent.create_render_pass(RenderPassInfo::default());
         let fb = agent.create_framebuffer(FramebufferInfo::default(), 64, 64);
         let ia = agent.create_input_assembler(InputAssemblerInfo::default());
@@ -526,7 +568,11 @@ mod tests {
         agent.initialize();
         let cmd = agent.get_command_buffer_mut().unwrap();
         cmd.begin();
-        cmd.draw(&DrawInfo { index_count: 3, instance_count: 1, ..Default::default() });
+        cmd.draw(&DrawInfo {
+            index_count: 3,
+            instance_count: 1,
+            ..Default::default()
+        });
         cmd.end();
         assert_eq!(cmd.get_num_draw_calls(), 1);
     }

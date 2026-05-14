@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::tween::easing::EasingMethod;
+use std::collections::HashMap;
 
 pub type ProgressFn = Box<dyn Fn(f32, f32, f32) -> f32 + Send + Sync>;
 
@@ -160,7 +160,9 @@ mod tests {
         let mut action = TweenAction::new(0.1, EasingMethod::Linear);
         let fired = Arc::new(Mutex::new(false));
         let f = Arc::clone(&fired);
-        action.on_complete(move || { *f.lock().unwrap() = true; });
+        action.on_complete(move || {
+            *f.lock().unwrap() = true;
+        });
         action.update(1.0);
         assert!(*fired.lock().unwrap());
     }

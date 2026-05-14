@@ -4,13 +4,13 @@ Null/no-op backend for testing and CI.
 ****************************************************************************/
 
 use crate::renderer::gfx_base::{
-    API, BufferInfo, BufferViewInfo, CommandBufferInfo, DescriptorSetLayoutInfo,
-    DeviceInfo, FormatFeature, FramebufferInfo, GfxBuffer,
-    GfxCommandBuffer, GfxDescriptorSet, GfxDescriptorSetLayout, GfxDevice, GfxFramebuffer,
-    GfxInputAssembler, GfxPipelineLayout, GfxPipelineState, GfxQueryPool, GfxQueue,
-    GfxRenderPass, GfxSampler, GfxShader, GfxSwapchain, GfxTexture, InputAssemblerInfo,
-    MemoryStatus, PipelineLayoutInfo, PipelineStateInfo, QueryPoolInfo, QueueInfo,
-    RenderPassInfo, SamplerInfo, ShaderInfo, SwapchainInfo, TextureInfo, TextureViewInfo,
+    BufferInfo, BufferViewInfo, CommandBufferInfo, DescriptorSetLayoutInfo, DeviceInfo,
+    FormatFeature, FramebufferInfo, GfxBuffer, GfxCommandBuffer, GfxDescriptorSet,
+    GfxDescriptorSetLayout, GfxDevice, GfxFramebuffer, GfxInputAssembler, GfxPipelineLayout,
+    GfxPipelineState, GfxQueryPool, GfxQueue, GfxRenderPass, GfxSampler, GfxShader, GfxSwapchain,
+    GfxTexture, InputAssemblerInfo, MemoryStatus, PipelineLayoutInfo, PipelineStateInfo,
+    QueryPoolInfo, QueueInfo, RenderPassInfo, SamplerInfo, ShaderInfo, SwapchainInfo, TextureInfo,
+    TextureViewInfo, API,
 };
 
 use super::EmptyCommandBuffer;
@@ -28,7 +28,11 @@ impl EmptyDevice {
         device.device_name = "Empty Device".to_string();
         device.renderer = "Null Renderer".to_string();
         device.vendor = "Cocos4-Rust".to_string();
-        Self { device, queue: None, cmd_buff: None }
+        Self {
+            device,
+            queue: None,
+            cmd_buff: None,
+        }
     }
 
     pub fn default() -> Self {
@@ -100,11 +104,19 @@ impl EmptyDevice {
         self.device.create_render_pass(info)
     }
 
-    pub fn create_framebuffer(&mut self, info: FramebufferInfo, width: u32, height: u32) -> GfxFramebuffer {
+    pub fn create_framebuffer(
+        &mut self,
+        info: FramebufferInfo,
+        width: u32,
+        height: u32,
+    ) -> GfxFramebuffer {
         self.device.create_framebuffer(info, width, height)
     }
 
-    pub fn create_descriptor_set_layout(&mut self, info: DescriptorSetLayoutInfo) -> GfxDescriptorSetLayout {
+    pub fn create_descriptor_set_layout(
+        &mut self,
+        info: DescriptorSetLayoutInfo,
+    ) -> GfxDescriptorSetLayout {
         self.device.create_descriptor_set_layout(info)
     }
 
@@ -232,7 +244,11 @@ mod tests {
         device.initialize();
         let mut cmd = device.create_command_buffer(CommandBufferInfo::default());
         cmd.begin();
-        cmd.draw(&DrawInfo { index_count: 6, instance_count: 1, ..Default::default() });
+        cmd.draw(&DrawInfo {
+            index_count: 6,
+            instance_count: 1,
+            ..Default::default()
+        });
         cmd.end();
         assert_eq!(cmd.get_num_draw_calls(), 1);
     }
@@ -309,7 +325,11 @@ mod tests {
         empty.initialize();
         let mut cmd = empty.create_command_buffer(CommandBufferInfo::default());
         cmd.begin();
-        cmd.draw(&DrawInfo { index_count: 6, instance_count: 1, ..Default::default() });
+        cmd.draw(&DrawInfo {
+            index_count: 6,
+            instance_count: 1,
+            ..Default::default()
+        });
         cmd.end();
         assert_eq!(cmd.get_num_draw_calls(), 1);
         assert_eq!(cmd.get_num_tris(), 2);
@@ -348,7 +368,11 @@ mod tests {
         empty.initialize();
         let cmd = empty.get_command_buffer_mut().unwrap();
         cmd.begin();
-        cmd.draw(&DrawInfo { index_count: 3, instance_count: 1, ..Default::default() });
+        cmd.draw(&DrawInfo {
+            index_count: 3,
+            instance_count: 1,
+            ..Default::default()
+        });
         cmd.end();
         assert_eq!(cmd.get_num_draw_calls(), 1);
     }

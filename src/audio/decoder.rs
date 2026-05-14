@@ -67,14 +67,12 @@ impl PcmAudioDecoder {
     }
 
     pub fn seek(&mut self, frame: u64) {
-        let bytes_per_frame =
-            (self.info.bits_per_sample / 8 * self.info.channel_count) as usize;
+        let bytes_per_frame = (self.info.bits_per_sample / 8 * self.info.channel_count) as usize;
         self.position = (frame as usize * bytes_per_frame).min(self.data.len());
     }
 
     pub fn get_current_frame(&self) -> u64 {
-        let bytes_per_frame =
-            (self.info.bits_per_sample / 8 * self.info.channel_count) as usize;
+        let bytes_per_frame = (self.info.bits_per_sample / 8 * self.info.channel_count) as usize;
         if bytes_per_frame == 0 {
             0
         } else {

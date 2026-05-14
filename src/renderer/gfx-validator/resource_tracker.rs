@@ -75,12 +75,18 @@ impl ResourceTracker {
         for rt in &ALL_RESOURCE_TYPES {
             resources.insert(*rt, Vec::new());
         }
-        ResourceTracker { resources, enabled: true }
+        ResourceTracker {
+            resources,
+            enabled: true,
+        }
     }
 
     pub fn disabled() -> Self {
         let tracker = Self::new();
-        ResourceTracker { resources: tracker.resources, enabled: false }
+        ResourceTracker {
+            resources: tracker.resources,
+            enabled: false,
+        }
     }
 
     pub fn is_enabled(&self) -> bool {
@@ -178,8 +184,12 @@ mod tests {
         tracker.push(ResourceType::Texture, 3);
         let leaked = tracker.get_leaked();
         assert_eq!(leaked.len(), 2);
-        assert!(leaked.iter().any(|(rt, count)| *rt == ResourceType::Buffer && *count == 2));
-        assert!(leaked.iter().any(|(rt, count)| *rt == ResourceType::Texture && *count == 1));
+        assert!(leaked
+            .iter()
+            .any(|(rt, count)| *rt == ResourceType::Buffer && *count == 2));
+        assert!(leaked
+            .iter()
+            .any(|(rt, count)| *rt == ResourceType::Texture && *count == 1));
     }
 
     #[test]

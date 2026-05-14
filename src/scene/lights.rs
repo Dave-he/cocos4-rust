@@ -1,6 +1,6 @@
-use crate::math::Vec3;
-use super::light::Light;
 use super::define::LightType;
+use super::light::Light;
+use crate::math::Vec3;
 
 #[derive(Debug)]
 pub struct SpotLight {

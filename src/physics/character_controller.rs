@@ -15,7 +15,9 @@ pub enum ControllerCollisionFlag {
 }
 
 impl ControllerCollisionFlag {
-    pub fn from_bits(bits: u32) -> u32 { bits }
+    pub fn from_bits(bits: u32) -> u32 {
+        bits
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -85,7 +87,12 @@ impl CharacterController {
         self.config.controller_type
     }
 
-    pub fn move_controller(&mut self, displacement: Vec3, min_dist: f32, _elapsed_time: f32) -> u32 {
+    pub fn move_controller(
+        &mut self,
+        displacement: Vec3,
+        min_dist: f32,
+        _elapsed_time: f32,
+    ) -> u32 {
         if !self.enabled {
             return ControllerCollisionFlag::None as u32;
         }
@@ -194,10 +201,18 @@ impl CharacterController {
 }
 
 impl RefCounted for CharacterController {
-    fn add_ref(&self) { self.ref_count.add_ref(); }
-    fn release(&self) { self.ref_count.release(); }
-    fn get_ref_count(&self) -> u32 { self.ref_count.get_ref_count() }
-    fn is_last_reference(&self) -> bool { self.ref_count.is_last_reference() }
+    fn add_ref(&self) {
+        self.ref_count.add_ref();
+    }
+    fn release(&self) {
+        self.ref_count.release();
+    }
+    fn get_ref_count(&self) -> u32 {
+        self.ref_count.get_ref_count()
+    }
+    fn is_last_reference(&self) -> bool {
+        self.ref_count.is_last_reference()
+    }
 }
 
 pub struct CharacterControllerManager {
@@ -216,7 +231,8 @@ impl CharacterControllerManager {
     pub fn create_controller(&mut self, config: CharacterControllerConfig) -> u32 {
         let id = self.next_id;
         self.next_id += 1;
-        self.controllers.insert(id, CharacterController::new(id, config));
+        self.controllers
+            .insert(id, CharacterController::new(id, config));
         id
     }
 
@@ -313,7 +329,9 @@ mod tests {
     fn test_controller_manager_update_gravity() {
         let mut mgr = CharacterControllerManager::new();
         let id = mgr.create_controller(CharacterControllerConfig::default());
-        mgr.get_controller_mut(id).unwrap().teleport(Vec3::new(0.0, 10.0, 0.0));
+        mgr.get_controller_mut(id)
+            .unwrap()
+            .teleport(Vec3::new(0.0, 10.0, 0.0));
         mgr.update_all(Vec3::new(0.0, -10.0, 0.0), 0.1);
         let y = mgr.get_controller(id).unwrap().get_position().y;
         assert!(y < 10.0);

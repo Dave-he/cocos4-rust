@@ -326,8 +326,12 @@ impl Vec3 {
 
     pub fn transform_mat4(&self, m: &super::Mat4) -> Vec3 {
         let w = m.m[3] * self.x + m.m[7] * self.y + m.m[11] * self.z + m.m[15];
-        let inv_w = if w.abs() > FLOAT_CMP_PRECISION { 1.0 / w } else { 1.0 };
-        
+        let inv_w = if w.abs() > FLOAT_CMP_PRECISION {
+            1.0 / w
+        } else {
+            1.0
+        };
+
         Vec3 {
             x: (m.m[0] * self.x + m.m[4] * self.y + m.m[8] * self.z + m.m[12]) * inv_w,
             y: (m.m[1] * self.x + m.m[5] * self.y + m.m[9] * self.z + m.m[13]) * inv_w,
@@ -413,7 +417,7 @@ impl Vec3 {
         let angle = Self::angle(from, to);
         let cross = Self::cross_vecs(from, to);
         let dot = cross.dot(axis);
-        
+
         if dot < 0.0 {
             -angle
         } else {
@@ -553,10 +557,12 @@ mod tests {
 
     fn assert_vec3_approx_eq(a: &Vec3, b: &Vec3, epsilon: f32) {
         assert!(
-            (a.x - b.x).abs() < epsilon &&
-            (a.y - b.y).abs() < epsilon &&
-            (a.z - b.z).abs() < epsilon,
-            "Vec3 not equal: {:?} != {:?}", a, b
+            (a.x - b.x).abs() < epsilon
+                && (a.y - b.y).abs() < epsilon
+                && (a.z - b.z).abs() < epsilon,
+            "Vec3 not equal: {:?} != {:?}",
+            a,
+            b
         );
     }
 
@@ -848,11 +854,11 @@ mod tests {
         let v1 = Vec3::new(1.0, 2.0, 3.0);
         let v2 = Vec3::new(2.0, 3.0, 4.0);
         let v3 = Vec3::new(1.0, 2.0, 3.0);
-        
+
         assert_eq!(v1.partial_cmp(&v2), Some(std::cmp::Ordering::Less));
         assert_eq!(v2.partial_cmp(&v1), Some(std::cmp::Ordering::Greater));
         assert_eq!(v1.partial_cmp(&v3), Some(std::cmp::Ordering::Equal));
-        
+
         // Incomparable case
         let v4 = Vec3::new(2.0, 1.0, 3.0);
         assert_eq!(v1.partial_cmp(&v4), None);

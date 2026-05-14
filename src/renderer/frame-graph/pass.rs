@@ -3,7 +3,7 @@ Rust port of Cocos Creator Frame Graph Pass System
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use crate::renderer::gfx_base::{Color, LoadOp, StoreOp, Viewport, Rect};
+use crate::renderer::gfx_base::{Color, LoadOp, Rect, StoreOp, Viewport};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Handle {

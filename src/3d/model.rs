@@ -3,9 +3,9 @@ Rust port of Cocos Creator 3D Model
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use crate::math::{Mat4, Vec3};
-use crate::core::geometry::AABB;
 use super::mesh::Mesh3D;
+use crate::core::geometry::AABB;
+use crate::math::{Mat4, Vec3};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelType {

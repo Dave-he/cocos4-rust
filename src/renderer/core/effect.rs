@@ -3,10 +3,10 @@ Rust port of Cocos Creator Renderer Effect System
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use std::collections::HashMap;
-use crate::base::{RefCounted, RefCountedImpl};
-use super::pass::{Pass, PassProperty, IPassInfo};
+use super::pass::{IPassInfo, Pass, PassProperty};
 use super::program::{ProgramLib, ShaderInfo};
+use crate::base::{RefCounted, RefCountedImpl};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Default)]
 pub struct TechniqueInfo {
@@ -92,7 +92,8 @@ impl Effect {
     }
 
     pub fn set_property(&mut self, name: &str, value: PassProperty) {
-        self.default_properties.insert(name.to_string(), value.clone());
+        self.default_properties
+            .insert(name.to_string(), value.clone());
         self.property_layout.insert(name.to_string(), value);
     }
 
@@ -121,10 +122,18 @@ impl Effect {
 }
 
 impl RefCounted for Effect {
-    fn add_ref(&self) { self.ref_count.add_ref(); }
-    fn release(&self) { self.ref_count.release(); }
-    fn get_ref_count(&self) -> u32 { self.ref_count.get_ref_count() }
-    fn is_last_reference(&self) -> bool { self.ref_count.is_last_reference() }
+    fn add_ref(&self) {
+        self.ref_count.add_ref();
+    }
+    fn release(&self) {
+        self.ref_count.release();
+    }
+    fn get_ref_count(&self) -> u32 {
+        self.ref_count.get_ref_count()
+    }
+    fn is_last_reference(&self) -> bool {
+        self.ref_count.is_last_reference()
+    }
 }
 
 #[derive(Debug)]
@@ -134,7 +143,9 @@ pub struct EffectLib {
 
 impl EffectLib {
     pub fn new() -> Self {
-        EffectLib { effects: HashMap::new() }
+        EffectLib {
+            effects: HashMap::new(),
+        }
     }
 
     pub fn register(&mut self, info: EffectInfo, program_lib: &mut ProgramLib) -> &Effect {
@@ -170,7 +181,9 @@ impl EffectLib {
 }
 
 impl Default for EffectLib {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]

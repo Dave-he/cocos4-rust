@@ -4,10 +4,10 @@ Original C++ version Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 // SPDX-License-Identifier: MIT
 
-use std::cell::RefCell;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 use rand::Rng;
+use rand::SeedableRng;
+use std::cell::RefCell;
 
 thread_local! {
     static RNG: RefCell<StdRng> = RefCell::new(StdRng::from_entropy());
@@ -80,7 +80,9 @@ mod tests {
         let mut count = 0;
         for _ in 0..1000 {
             let val = random_range_f(0.0, 1.0);
-            if val > 0.5 { count += 1; }
+            if val > 0.5 {
+                count += 1;
+            }
         }
         assert!(count > 300 && count < 700);
     }

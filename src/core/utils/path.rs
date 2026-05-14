@@ -70,7 +70,11 @@ pub fn change_basename(path: &str, base_name: &str, is_same_ext: bool) -> String
         return change_extname(path, base_name);
     }
     let (new_path, query) = split_query_string(path);
-    let ext = if is_same_ext { extname(&new_path) } else { String::new() };
+    let ext = if is_same_ext {
+        extname(&new_path)
+    } else {
+        String::new()
+    };
     let sep_index = find_last_sep(&new_path);
     let dir_part = match sep_index {
         Some(i) if i > 0 => new_path[..i + 1].to_string(),
@@ -89,7 +93,11 @@ pub fn normalize(url: &str) -> String {
             if idx > 0 {
                 let prev_slash = find_last_sep(&new_url[..idx]);
                 let prev_twice_slash = prev_slash.and_then(|ps| {
-                    if ps > 0 { find_last_sep(&new_url[..ps]) } else { None }
+                    if ps > 0 {
+                        find_last_sep(&new_url[..ps])
+                    } else {
+                        None
+                    }
                 });
                 match (prev_slash, prev_twice_slash) {
                     (_ps, Some(pts)) => {
@@ -209,8 +217,14 @@ mod tests {
 
     #[test]
     fn test_change_basename() {
-        assert_eq!(change_basename("path/to/old.png", "new", true), "path/to/new.png");
-        assert_eq!(change_basename("path/to/old.png", "new", false), "path/to/new");
+        assert_eq!(
+            change_basename("path/to/old.png", "new", true),
+            "path/to/new.png"
+        );
+        assert_eq!(
+            change_basename("path/to/old.png", "new", false),
+            "path/to/new"
+        );
     }
 
     #[test]

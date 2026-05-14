@@ -35,8 +35,12 @@ impl Counter {
         self.sample_count += 1;
         self.accumulator += value;
 
-        if value < self.min { self.min = value; }
-        if value > self.max { self.max = value; }
+        if value < self.min {
+            self.min = value;
+        }
+        if value > self.max {
+            self.max = value;
+        }
 
         self.history.push(value);
         if self.history.len() > self.history_size {

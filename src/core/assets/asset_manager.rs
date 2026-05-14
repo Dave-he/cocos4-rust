@@ -1,6 +1,6 @@
+use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::any::{Any, TypeId};
 
 pub trait Asset: Any + Send + Sync {
     fn get_uuid(&self) -> &str;
@@ -168,7 +168,10 @@ impl AssetManager {
     }
 
     pub fn is_loaded(&self, uuid: &str) -> bool {
-        self.entries.get(uuid).map(|e| e.load_state == LoadState::Loaded).unwrap_or(false)
+        self.entries
+            .get(uuid)
+            .map(|e| e.load_state == LoadState::Loaded)
+            .unwrap_or(false)
     }
 
     pub fn get_total_loaded(&self) -> u64 {
@@ -180,7 +183,10 @@ impl AssetManager {
     }
 
     pub fn get_loaded_count(&self) -> usize {
-        self.entries.values().filter(|e| e.load_state == LoadState::Loaded).count()
+        self.entries
+            .values()
+            .filter(|e| e.load_state == LoadState::Loaded)
+            .count()
     }
 
     pub fn get_registered_count(&self) -> usize {
@@ -205,9 +211,15 @@ mod tests {
     }
 
     impl Asset for TextAsset {
-        fn get_uuid(&self) -> &str { &self.uuid }
-        fn get_name(&self) -> &str { &self.name }
-        fn as_any(&self) -> &dyn Any { self }
+        fn get_uuid(&self) -> &str {
+            &self.uuid
+        }
+        fn get_name(&self) -> &str {
+            &self.name
+        }
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
     }
 
     fn make_manager() -> AssetManager {

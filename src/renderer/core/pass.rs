@@ -3,8 +3,8 @@ Rust port of Cocos Creator Renderer Pass System
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use std::collections::HashMap;
 use crate::base::{RefCounted, RefCountedImpl};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PassType {
@@ -265,8 +265,7 @@ impl Pass {
     }
 
     pub fn is_transparent(&self) -> bool {
-        self.info.queue == RenderQueueType::Transparent
-            || self.info.blend_state.enabled
+        self.info.queue == RenderQueueType::Transparent || self.info.blend_state.enabled
     }
 
     pub fn get_type(&self) -> PassType {
@@ -335,10 +334,18 @@ impl Pass {
 }
 
 impl RefCounted for Pass {
-    fn add_ref(&self) { self.ref_count.add_ref(); }
-    fn release(&self) { self.ref_count.release(); }
-    fn get_ref_count(&self) -> u32 { self.ref_count.get_ref_count() }
-    fn is_last_reference(&self) -> bool { self.ref_count.is_last_reference() }
+    fn add_ref(&self) {
+        self.ref_count.add_ref();
+    }
+    fn release(&self) {
+        self.ref_count.release();
+    }
+    fn get_ref_count(&self) -> u32 {
+        self.ref_count.get_ref_count()
+    }
+    fn is_last_reference(&self) -> bool {
+        self.ref_count.is_last_reference()
+    }
 }
 
 pub trait IPass: RefCounted {

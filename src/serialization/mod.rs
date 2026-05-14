@@ -1,7 +1,7 @@
-pub mod value;
-pub mod serializer;
 pub mod deserializer;
+pub mod serializer;
+pub mod value;
 
-pub use value::SerializedValue;
-pub use serializer::Serializer;
 pub use deserializer::Deserializer;
+pub use serializer::Serializer;
+pub use value::SerializedValue;

@@ -3,8 +3,8 @@ Rust port of Cocos Creator PipelineUBO
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
+use super::defines::{UBOCamera, UBOGlobal, UBOShadow, UBOCSM};
 use crate::math::{Mat4, Vec3, Vec4};
-use super::defines::{UBOGlobal, UBOCamera, UBOShadow, UBOCSM};
 
 #[derive(Debug, Default)]
 pub struct PipelineUBO {
@@ -42,8 +42,14 @@ impl PipelineUBO {
         self.initialized
     }
 
-    pub fn update_global_ubo(&mut self, time: f32, frame_time: f32, frame_count: u32,
-                             width: f32, height: f32) {
+    pub fn update_global_ubo(
+        &mut self,
+        time: f32,
+        frame_time: f32,
+        frame_count: u32,
+        width: f32,
+        height: f32,
+    ) {
         let fv = &mut self.global_ubo;
         let time_off = UBOGlobal::TIME_OFFSET as usize;
         fv[time_off] = time;
@@ -64,9 +70,16 @@ impl PipelineUBO {
         fv[native_off + 3] = 1.0 / height;
     }
 
-    pub fn update_camera_ubo(&mut self, mat_view: &Mat4, mat_proj: &Mat4,
-                             mat_view_proj: &Mat4, camera_pos: Vec3,
-                             exposure: f32, near: f32, far: f32) {
+    pub fn update_camera_ubo(
+        &mut self,
+        mat_view: &Mat4,
+        mat_proj: &Mat4,
+        mat_view_proj: &Mat4,
+        camera_pos: Vec3,
+        exposure: f32,
+        near: f32,
+        far: f32,
+    ) {
         let fv = &mut self.camera_ubo;
         let mat_view_off = UBOCamera::MAT_VIEW_OFFSET as usize;
         fv[mat_view_off..mat_view_off + 16].copy_from_slice(&mat_view.m);
@@ -94,9 +107,13 @@ impl PipelineUBO {
         fv[nf_off + 3] = 1.0 / far;
     }
 
-    pub fn update_shadow_ubo(&mut self, mat_light_view_proj: &Mat4,
-                             shadow_info: Vec4, shadow_color: Vec4,
-                             planar_nd_info: Vec4) {
+    pub fn update_shadow_ubo(
+        &mut self,
+        mat_light_view_proj: &Mat4,
+        shadow_info: Vec4,
+        shadow_color: Vec4,
+        planar_nd_info: Vec4,
+    ) {
         let fv = &mut self.shadow_ubo;
         let mat_off = UBOShadow::MAT_LIGHT_VIEW_PROJ_OFFSET as usize;
         fv[mat_off..mat_off + 16].copy_from_slice(&mat_light_view_proj.m);

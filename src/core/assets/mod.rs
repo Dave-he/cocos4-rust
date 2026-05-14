@@ -18,7 +18,7 @@ pub mod texture_cube;
 
 pub use asset::*;
 pub use asset_enum::*;
-pub use asset_manager::{AssetManager, Asset, LoadState};
+pub use asset_manager::{Asset, AssetManager, LoadState};
 pub use bitmap_font::*;
 pub use buffer_asset::*;
 pub use effect::*;
@@ -28,7 +28,7 @@ pub use material::*;
 pub use mesh::*;
 pub use render_texture::*;
 pub use rendering_sub_mesh::*;
-pub use resource_loader::{ResourceLoader, LoadHandle, LoadStatus};
+pub use resource_loader::{LoadHandle, LoadStatus, ResourceLoader};
 pub use scene::*;
 pub use text_asset::*;
 pub use texture::*;

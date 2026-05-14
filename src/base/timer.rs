@@ -1,5 +1,5 @@
-use std::sync::{Arc, Mutex};
 use crate::base::scheduler::Scheduler;
+use std::sync::{Arc, Mutex};
 
 static TIMER_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
@@ -83,11 +83,7 @@ impl TimerManager {
         let id = next_timer_id();
         let key = format!("timer-{}", id);
         if let Ok(mut sched) = self.scheduler.lock() {
-            sched.schedule_once(
-                Arc::new(move |_dt| callback()),
-                delay,
-                key.clone(),
-            );
+            sched.schedule_once(Arc::new(move |_dt| callback()), delay, key.clone());
         }
         TimerHandle::new(id, key, Arc::clone(&self.scheduler))
     }

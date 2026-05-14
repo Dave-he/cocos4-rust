@@ -4,8 +4,8 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
 use crate::math::Vec3;
-use crate::renderer::gfx_base::PrimitiveMode;
 use crate::renderer::gfx_base::shader::Attribute;
+use crate::renderer::gfx_base::PrimitiveMode;
 
 #[derive(Debug, Clone, Default)]
 pub struct IGeometryOptions {
@@ -15,7 +15,10 @@ pub struct IGeometryOptions {
 
 impl IGeometryOptions {
     pub fn new() -> Self {
-        IGeometryOptions { include_normal: true, include_uv: true }
+        IGeometryOptions {
+            include_normal: true,
+            include_uv: true,
+        }
     }
 }
 
@@ -43,7 +46,9 @@ pub struct IGeometry {
 }
 
 impl IGeometry {
-    pub fn new() -> Self { IGeometry::default() }
+    pub fn new() -> Self {
+        IGeometry::default()
+    }
 
     pub fn vertex_count(&self) -> usize {
         self.positions.len() / 3

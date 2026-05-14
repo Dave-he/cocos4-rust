@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::any::Any;
+use std::collections::HashMap;
 
 pub trait State: Any + Send + Sync {
     fn name(&self) -> &str;
@@ -69,7 +69,8 @@ impl StateMachine {
     }
 
     pub fn add_state<S: State + 'static>(&mut self, state: S) {
-        self.states.insert(state.name().to_string(), Box::new(state));
+        self.states
+            .insert(state.name().to_string(), Box::new(state));
     }
 
     pub fn add_transition(&mut self, t: Transition) {
@@ -92,7 +93,10 @@ impl StateMachine {
         self.transitions.sort_by(|a, b| b.priority.cmp(&a.priority));
     }
 
-    pub fn set_global_guard<F: Fn(&str, &str) -> bool + Send + Sync + 'static>(&mut self, guard: F) {
+    pub fn set_global_guard<F: Fn(&str, &str) -> bool + Send + Sync + 'static>(
+        &mut self,
+        guard: F,
+    ) {
         self.global_guard = Some(Box::new(guard));
     }
 
@@ -246,16 +250,34 @@ mod tests {
     }
 
     impl IdleState {
-        fn new() -> Self { IdleState { enter_count: 0, exit_count: 0, update_count: 0 } }
+        fn new() -> Self {
+            IdleState {
+                enter_count: 0,
+                exit_count: 0,
+                update_count: 0,
+            }
+        }
     }
 
     impl State for IdleState {
-        fn name(&self) -> &str { "Idle" }
-        fn on_enter(&mut self, _: Option<&str>) { self.enter_count += 1; }
-        fn on_exit(&mut self, _: Option<&str>) { self.exit_count += 1; }
-        fn on_update(&mut self, _dt: f32) { self.update_count += 1; }
-        fn as_any(&self) -> &dyn Any { self }
-        fn as_any_mut(&mut self) -> &mut dyn Any { self }
+        fn name(&self) -> &str {
+            "Idle"
+        }
+        fn on_enter(&mut self, _: Option<&str>) {
+            self.enter_count += 1;
+        }
+        fn on_exit(&mut self, _: Option<&str>) {
+            self.exit_count += 1;
+        }
+        fn on_update(&mut self, _dt: f32) {
+            self.update_count += 1;
+        }
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
     }
 
     struct RunState {
@@ -264,21 +286,40 @@ mod tests {
     }
 
     impl RunState {
-        fn new(speed: f32) -> Self { RunState { speed, enter_count: 0 } }
+        fn new(speed: f32) -> Self {
+            RunState {
+                speed,
+                enter_count: 0,
+            }
+        }
     }
 
     impl State for RunState {
-        fn name(&self) -> &str { "Run" }
-        fn on_enter(&mut self, _: Option<&str>) { self.enter_count += 1; }
-        fn as_any(&self) -> &dyn Any { self }
-        fn as_any_mut(&mut self) -> &mut dyn Any { self }
+        fn name(&self) -> &str {
+            "Run"
+        }
+        fn on_enter(&mut self, _: Option<&str>) {
+            self.enter_count += 1;
+        }
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
     }
 
     struct AttackState;
     impl State for AttackState {
-        fn name(&self) -> &str { "Attack" }
-        fn as_any(&self) -> &dyn Any { self }
-        fn as_any_mut(&mut self) -> &mut dyn Any { self }
+        fn name(&self) -> &str {
+            "Attack"
+        }
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
     }
 
     fn make_sm() -> StateMachine {

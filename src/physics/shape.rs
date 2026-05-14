@@ -27,7 +27,10 @@ pub struct BoxShape {
 
 impl BoxShape {
     pub fn new(center: Vec3, half_extents: Vec3) -> Self {
-        BoxShape { center, half_extents }
+        BoxShape {
+            center,
+            half_extents,
+        }
     }
 }
 
@@ -71,7 +74,12 @@ pub struct CapsuleShape {
 
 impl CapsuleShape {
     pub fn new(center: Vec3, radius: f32, height: f32) -> Self {
-        CapsuleShape { center, radius, height, direction: 1 }
+        CapsuleShape {
+            center,
+            radius,
+            height,
+            direction: 1,
+        }
     }
 }
 
@@ -148,7 +156,11 @@ pub struct MeshShape {
 
 impl MeshShape {
     pub fn new(vertices: Vec<Vec3>, indices: Vec<u32>, convex: bool) -> Self {
-        MeshShape { vertices, indices, convex }
+        MeshShape {
+            vertices,
+            indices,
+            convex,
+        }
     }
 }
 
@@ -284,10 +296,18 @@ impl PhysicsShapeImpl {
 }
 
 impl RefCounted for PhysicsShapeImpl {
-    fn add_ref(&self) { self.ref_count.add_ref(); }
-    fn release(&self) { self.ref_count.release(); }
-    fn get_ref_count(&self) -> u32 { self.ref_count.get_ref_count() }
-    fn is_last_reference(&self) -> bool { self.ref_count.is_last_reference() }
+    fn add_ref(&self) {
+        self.ref_count.add_ref();
+    }
+    fn release(&self) {
+        self.ref_count.release();
+    }
+    fn get_ref_count(&self) -> u32 {
+        self.ref_count.get_ref_count()
+    }
+    fn is_last_reference(&self) -> bool {
+        self.ref_count.is_last_reference()
+    }
 }
 
 pub struct PhysicsShapeManager {
@@ -327,7 +347,10 @@ impl PhysicsShapeManager {
     }
 
     pub fn get_shapes_by_group(&self, group: i32) -> Vec<&PhysicsShapeImpl> {
-        self.shapes.values().filter(|s| s.config.group == group).collect()
+        self.shapes
+            .values()
+            .filter(|s| s.config.group == group)
+            .collect()
     }
 }
 
@@ -350,15 +373,27 @@ impl Shape for PhysicsShapeImpl {
     }
 
     fn get_box_shape(&self) -> Option<&BoxShape> {
-        if let ShapeGeometry::Box(ref b) = self.config.geometry { Some(b) } else { None }
+        if let ShapeGeometry::Box(ref b) = self.config.geometry {
+            Some(b)
+        } else {
+            None
+        }
     }
 
     fn get_sphere_shape(&self) -> Option<&SphereShape> {
-        if let ShapeGeometry::Sphere(ref s) = self.config.geometry { Some(s) } else { None }
+        if let ShapeGeometry::Sphere(ref s) = self.config.geometry {
+            Some(s)
+        } else {
+            None
+        }
     }
 
     fn get_capsule_shape(&self) -> Option<&CapsuleShape> {
-        if let ShapeGeometry::Capsule(ref c) = self.config.geometry { Some(c) } else { None }
+        if let ShapeGeometry::Capsule(ref c) = self.config.geometry {
+            Some(c)
+        } else {
+            None
+        }
     }
 }
 

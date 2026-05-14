@@ -319,9 +319,15 @@ impl Mat3 {
         let adjusted_up = Vec3::cross_vecs(&z, &right);
 
         Mat3::new(
-            right.x, right.y, right.z,
-            adjusted_up.x, adjusted_up.y, adjusted_up.z,
-            z.x, z.y, z.z,
+            right.x,
+            right.y,
+            right.z,
+            adjusted_up.x,
+            adjusted_up.y,
+            adjusted_up.z,
+            z.x,
+            z.y,
+            z.z,
         )
     }
 
@@ -361,17 +367,14 @@ impl Mat3 {
 
     pub fn from_mat4(m: &Mat4) -> Mat3 {
         Mat3::new(
-            m.m[0], m.m[1], m.m[2],
-            m.m[4], m.m[5], m.m[6],
-            m.m[8], m.m[9], m.m[10],
+            m.m[0], m.m[1], m.m[2], m.m[4], m.m[5], m.m[6], m.m[8], m.m[9], m.m[10],
         )
     }
 
     pub fn from_axes(x_axis: &Vec3, y_axis: &Vec3, z_axis: &Vec3) -> Mat3 {
         Mat3::new(
-            x_axis.x, x_axis.y, x_axis.z,
-            y_axis.x, y_axis.y, y_axis.z,
-            z_axis.x, z_axis.y, z_axis.z,
+            x_axis.x, x_axis.y, x_axis.z, y_axis.x, y_axis.y, y_axis.z, z_axis.x, z_axis.y,
+            z_axis.z,
         )
     }
 
@@ -395,31 +398,19 @@ impl Mat3 {
     }
 
     pub fn from_translation_2d(x: f32, y: f32) -> Mat3 {
-        Mat3::new(
-            1.0, 0.0, 0.0,
-            0.0, 1.0, 0.0,
-            x, y, 1.0,
-        )
+        Mat3::new(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, x, y, 1.0)
     }
 
     /// 从 2D 缩放创建矩阵
     pub fn from_scaling_2d(x: f32, y: f32) -> Mat3 {
-        Mat3::new(
-            x, 0.0, 0.0,
-            0.0, y, 0.0,
-            0.0, 0.0, 1.0,
-        )
+        Mat3::new(x, 0.0, 0.0, 0.0, y, 0.0, 0.0, 0.0, 1.0)
     }
 
     /// 从 2D 旋转创建矩阵
     pub fn from_rotation_2d(rad: f32) -> Mat3 {
         let s = rad.sin();
         let c = rad.cos();
-        Mat3::new(
-            c, s, 0.0,
-            -s, c, 0.0,
-            0.0, 0.0, 1.0,
-        )
+        Mat3::new(c, s, 0.0, -s, c, 0.0, 0.0, 0.0, 1.0)
     }
 
     /// 矩阵与向量乘法
@@ -457,9 +448,15 @@ impl std::fmt::Display for Mat3 {
         write!(
             f,
             "Mat3([{:.2}, {:.2}, {:.2}], [{:.2}, {:.2}, {:.2}], [{:.2}, {:.2}, {:.2}])",
-            self.m[0], self.m[1], self.m[2],
-            self.m[3], self.m[4], self.m[5],
-            self.m[6], self.m[7], self.m[8]
+            self.m[0],
+            self.m[1],
+            self.m[2],
+            self.m[3],
+            self.m[4],
+            self.m[5],
+            self.m[6],
+            self.m[7],
+            self.m[8]
         )
     }
 }
@@ -508,11 +505,7 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let m = Mat3::new(
-            1.0, 2.0, 3.0,
-            4.0, 5.0, 6.0,
-            7.0, 8.0, 9.0,
-        );
+        let m = Mat3::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0);
         assert_float_eq(m.m[0], 1.0, EPSILON);
         assert_float_eq(m.m[4], 5.0, EPSILON);
         assert_float_eq(m.m[8], 9.0, EPSILON);
@@ -585,7 +578,7 @@ mod tests {
         let view = Vec3::new(0.0, 0.0, 1.0);
         let up = Vec3::UNIT_Y;
         let m = Mat3::from_view_up(&view, Some(&up));
-        
+
         assert_float_eq(m.m[0], 1.0, EPSILON);
         assert_float_eq(m.m[4], 1.0, EPSILON);
         assert_float_eq(m.m[8], 1.0, EPSILON);
@@ -610,13 +603,9 @@ mod tests {
 
     #[test]
     fn test_transpose() {
-        let mut m = Mat3::new(
-            1.0, 2.0, 3.0,
-            4.0, 5.0, 6.0,
-            7.0, 8.0, 9.0,
-        );
+        let mut m = Mat3::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0);
         m.transpose();
-        
+
         assert_float_eq(m.m[1], 4.0, EPSILON);
         assert_float_eq(m.m[2], 7.0, EPSILON);
         assert_float_eq(m.m[3], 2.0, EPSILON);
@@ -627,13 +616,9 @@ mod tests {
 
     #[test]
     fn test_get_transposed() {
-        let m = Mat3::new(
-            1.0, 2.0, 3.0,
-            4.0, 5.0, 6.0,
-            7.0, 8.0, 9.0,
-        );
+        let m = Mat3::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0);
         let mt = m.get_transposed();
-        
+
         assert_float_eq(mt.m[1], 4.0, EPSILON);
         assert_float_eq(mt.m[3], 2.0, EPSILON);
     }
@@ -661,18 +646,21 @@ mod tests {
     fn test_invert_scale() {
         let mut m = Mat3::from_scale(2.0, 4.0);
         m.invert();
-        
+
         assert_float_eq(m.m[0], 0.5, EPSILON);
         assert_float_eq(m.m[4], 0.25, EPSILON);
     }
 
     #[test]
     fn test_invert_multiply() {
-        let original = Mat3::from_quat(&Quaternion::from_axis_angle(&Vec3::new(0.0, 1.0, 0.0).get_normalized(), 0.7));
-        
+        let original = Mat3::from_quat(&Quaternion::from_axis_angle(
+            &Vec3::new(0.0, 1.0, 0.0).get_normalized(),
+            0.7,
+        ));
+
         let mut inv = original;
         inv.invert();
-        
+
         let result = Mat3::multiply_mat3(&original, &inv);
         assert_mat3_eq(&result, &Mat3::IDENTITY, EPSILON);
     }
@@ -767,11 +755,7 @@ mod tests {
 
     #[test]
     fn test_subtract() {
-        let mut m1 = Mat3::new(
-            2.0, 2.0, 2.0,
-            2.0, 2.0, 2.0,
-            2.0, 2.0, 2.0,
-        );
+        let mut m1 = Mat3::new(2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0);
         let m2 = Mat3::IDENTITY;
         m1.subtract(&m2);
         assert_float_eq(m1.m[0], 1.0, EPSILON);

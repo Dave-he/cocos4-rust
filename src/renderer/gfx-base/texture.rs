@@ -96,7 +96,9 @@ impl GfxTexture {
             Format::DepthStencil => 4,
             _ => 4,
         };
-        info.width as usize * info.height as usize * info.depth as usize
+        info.width as usize
+            * info.height as usize
+            * info.depth as usize
             * info.array_layers as usize
             * bytes_per_pixel
     }

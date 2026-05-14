@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::math::Vec3;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Cell(i32, i32, i32);
@@ -96,9 +96,12 @@ impl<T: Clone> SpatialGrid<T> {
                     let cell = Cell(cx, cy, cz);
                     if let Some(entries) = self.cells.get(&cell) {
                         for (pos, val) in entries {
-                            if pos.x >= min.x && pos.x <= max.x
-                                && pos.y >= min.y && pos.y <= max.y
-                                && pos.z >= min.z && pos.z <= max.z
+                            if pos.x >= min.x
+                                && pos.x <= max.x
+                                && pos.y >= min.y
+                                && pos.y <= max.y
+                                && pos.z >= min.z
+                                && pos.z <= max.z
                             {
                                 results.push((*pos, val));
                             }

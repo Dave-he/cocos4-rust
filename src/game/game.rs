@@ -1,5 +1,5 @@
-use std::sync::{Arc, Mutex};
 use crate::game::director::Director;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameEvent {

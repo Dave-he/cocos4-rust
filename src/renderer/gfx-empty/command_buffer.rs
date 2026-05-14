@@ -36,7 +36,8 @@ impl EmptyCommandBuffer {
         subpass: u32,
         framebuffer: Option<u32>,
     ) {
-        self.inner.begin_with_render_pass(render_pass, subpass, framebuffer);
+        self.inner
+            .begin_with_render_pass(render_pass, subpass, framebuffer);
     }
 
     pub fn end(&mut self) {
@@ -52,7 +53,8 @@ impl EmptyCommandBuffer {
         _depth: f32,
         _stencil: u32,
     ) {
-        self.inner.begin_render_pass(render_pass, framebuffer, &Rect::default(), &[], 1.0, 0);
+        self.inner
+            .begin_render_pass(render_pass, framebuffer, &Rect::default(), &[], 1.0, 0);
     }
 
     pub fn end_render_pass(&mut self) {
@@ -71,7 +73,13 @@ impl EmptyCommandBuffer {
         self.inner.bind_pipeline_state(pipeline_id);
     }
 
-    pub fn bind_descriptor_set(&mut self, _set: u32, _descriptor_set_id: u32, _dynamic_offsets: &[u32]) {}
+    pub fn bind_descriptor_set(
+        &mut self,
+        _set: u32,
+        _descriptor_set_id: u32,
+        _dynamic_offsets: &[u32],
+    ) {
+    }
 
     pub fn bind_input_assembler(&mut self, _ia_id: u32) {}
 
@@ -102,7 +110,8 @@ impl EmptyCommandBuffer {
         _buffers: &[&[u8]],
         _texture_id: u32,
         _regions: &[BufferTextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn blit_texture(
         &mut self,
@@ -110,49 +119,51 @@ impl EmptyCommandBuffer {
         _dst_texture: u32,
         _regions: &[TextureBlit],
         _filter: Filter,
-    ) {}
+    ) {
+    }
 
-    pub fn copy_texture(
-        &mut self,
-        _src_texture: u32,
-        _dst_texture: u32,
-        _regions: &[TextureCopy],
-    ) {}
+    pub fn copy_texture(&mut self, _src_texture: u32, _dst_texture: u32, _regions: &[TextureCopy]) {
+    }
 
     pub fn resolve_texture(
         &mut self,
         _src_texture: u32,
         _dst_texture: u32,
         _regions: &[TextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn copy_buffer_to_buffer(
         &mut self,
         _src_buffer: u32,
         _dst_buffer: u32,
         _regions: &[BufferTextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn copy_buffer_to_texture(
         &mut self,
         _src_buffer: u32,
         _dst_texture: u32,
         _regions: &[BufferTextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn copy_texture_to_buffer(
         &mut self,
         _src_texture: u32,
         _dst_buffer: u32,
         _regions: &[BufferTextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn copy_texture_to_texture(
         &mut self,
         _src_texture: u32,
         _dst_texture: u32,
         _regions: &[TextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn execute(&mut self, _cmd_buffers: &[u32]) {}
 
@@ -171,7 +182,8 @@ impl EmptyCommandBuffer {
         _buffers: &[u32],
         _texture_barriers: &[u32],
         _textures: &[u32],
-    ) {}
+    ) {
+    }
 
     pub fn set_dynamic_states(&mut self, _flags: DynamicStateFlags) {}
 
@@ -228,7 +240,11 @@ mod tests {
     fn test_empty_cmd_buffer_draw() {
         let mut cmd = EmptyCommandBuffer::new(CommandBufferInfo::default());
         cmd.begin();
-        cmd.draw(&DrawInfo { index_count: 6, instance_count: 1, ..Default::default() });
+        cmd.draw(&DrawInfo {
+            index_count: 6,
+            instance_count: 1,
+            ..Default::default()
+        });
         assert_eq!(cmd.get_num_draw_calls(), 1);
         assert_eq!(cmd.get_num_tris(), 2);
         cmd.end();

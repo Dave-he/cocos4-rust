@@ -3,10 +3,10 @@ Rust port of Cocos Creator DevicePass + DevicePassResourceTable
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use std::collections::HashMap;
-use super::pass::Handle;
 use super::callback_pass::Executable;
-use crate::renderer::gfx_base::{Viewport, Rect};
+use super::pass::Handle;
+use crate::renderer::gfx_base::{Rect, Viewport};
+use std::collections::HashMap;
 
 pub struct DevicePassResourceTable {
     reads: HashMap<u16, u32>,
@@ -23,11 +23,7 @@ impl DevicePassResourceTable {
         }
     }
 
-    pub fn from_pass_node(
-        reads: &[Handle],
-        writes: &[Handle],
-        subpass_index: u32,
-    ) -> Self {
+    pub fn from_pass_node(reads: &[Handle], writes: &[Handle], subpass_index: u32) -> Self {
         let mut rt = DevicePassResourceTable::new();
         rt.subpass_index = subpass_index;
         for h in reads {
@@ -74,7 +70,12 @@ pub struct LogicPass {
 }
 
 impl LogicPass {
-    pub fn new(executable: Option<Box<dyn Executable>>, custom_viewport: bool, viewport: Viewport, scissor: Rect) -> Self {
+    pub fn new(
+        executable: Option<Box<dyn Executable>>,
+        custom_viewport: bool,
+        viewport: Viewport,
+        scissor: Rect,
+    ) -> Self {
         LogicPass {
             executable,
             custom_viewport,
@@ -143,7 +144,10 @@ pub struct Attachment {
 
 impl Attachment {
     pub fn new(attachment: u32, render_target: u32) -> Self {
-        Attachment { attachment, render_target }
+        Attachment {
+            attachment,
+            render_target,
+        }
     }
 
     pub fn get_attachment(&self) -> u32 {
@@ -235,8 +239,8 @@ impl DevicePass {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::callback_pass::CallbackPass;
+    use super::*;
 
     #[test]
     fn test_device_pass_resource_table() {
@@ -271,7 +275,12 @@ mod tests {
         let pass = CallbackPass::new(data, |d, _rt| {
             assert_eq!(*d, 42);
         });
-        let lp = LogicPass::new(Some(Box::new(pass)), false, Viewport::default(), Rect::default());
+        let lp = LogicPass::new(
+            Some(Box::new(pass)),
+            false,
+            Viewport::default(),
+            Rect::default(),
+        );
         let rt = DevicePassResourceTable::new();
         lp.execute(&rt);
     }
@@ -282,7 +291,12 @@ mod tests {
         let pass = CallbackPass::new(data, |d, _rt| {
             assert_eq!(*d, 10);
         });
-        let lp = LogicPass::new(Some(Box::new(pass)), false, Viewport::default(), Rect::default());
+        let lp = LogicPass::new(
+            Some(Box::new(pass)),
+            false,
+            Viewport::default(),
+            Rect::default(),
+        );
         let mut subpass = Subpass::new(0, 0);
         subpass.add_logic_pass(lp);
         let rt = DevicePassResourceTable::new();
@@ -294,7 +308,12 @@ mod tests {
     fn test_device_pass() {
         let data = 1i32;
         let pass = CallbackPass::new(data, |_d, _rt| {});
-        let lp = LogicPass::new(Some(Box::new(pass)), false, Viewport::default(), Rect::default());
+        let lp = LogicPass::new(
+            Some(Box::new(pass)),
+            false,
+            Viewport::default(),
+            Rect::default(),
+        );
         let mut subpass = Subpass::new(0, 0);
         subpass.add_logic_pass(lp);
         let rt = DevicePassResourceTable::new();

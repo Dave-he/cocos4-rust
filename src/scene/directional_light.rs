@@ -1,7 +1,7 @@
-use crate::math::Vec3;
-use super::define::{PCFType, CSMLevel, CSMOptimizationMode, SUN_ILLUM};
-use super::light::Light;
 use super::define::LightType;
+use super::define::{CSMLevel, CSMOptimizationMode, PCFType, SUN_ILLUM};
+use super::light::Light;
+use crate::math::Vec3;
 
 #[derive(Debug)]
 pub struct DirectionalLight {

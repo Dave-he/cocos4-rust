@@ -53,7 +53,9 @@ pub fn project(samples: &[Vec3], values: &[Vec3]) -> Vec<Vec3> {
 }
 
 pub fn convolve_cosine(radiance_coefficients: &[Vec3]) -> Vec<Vec3> {
-    let cosine_kernel = [0.282095, 0.488603, 0.488603, 0.488603, 1.092548, 1.092548, 0.315392, 1.092548, 0.546274];
+    let cosine_kernel = [
+        0.282095, 0.488603, 0.488603, 0.488603, 1.092548, 1.092548, 0.315392, 1.092548, 0.546274,
+    ];
     let mut irradiance = vec![Vec3::new(0.0, 0.0, 0.0); SH_BASIS_COUNT];
     for i in 0..SH_BASIS_COUNT.min(radiance_coefficients.len()) {
         irradiance[i] = radiance_coefficients[i] * cosine_kernel[i];
@@ -68,7 +70,10 @@ pub fn reduce_ringing(coefficients: &mut [Vec3], lambda: f32) {
     let l0_factor = 1.0;
     let l1_factor = 1.0;
     let l2_factor = 1.0 - lambda;
-    let scales = [l0_factor, l1_factor, l1_factor, l1_factor, l2_factor, l2_factor, l2_factor, l2_factor, l2_factor];
+    let scales = [
+        l0_factor, l1_factor, l1_factor, l1_factor, l2_factor, l2_factor, l2_factor, l2_factor,
+        l2_factor,
+    ];
     for i in 0..SH_BASIS_COUNT {
         coefficients[i] = coefficients[i] * scales[i];
     }

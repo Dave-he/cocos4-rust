@@ -3,8 +3,8 @@ Rust port of Cocos Creator Resource / ResourceEntry / ResourceAllocator
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use std::collections::HashMap;
 use super::VirtualResourceKind;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct TextureDescriptor {
@@ -216,7 +216,9 @@ impl Resource {
 
     pub fn new_imported(id: u32, kind: VirtualResourceKind, device_object_id: u32) -> Self {
         let descriptor = match kind {
-            VirtualResourceKind::Texture => ResourceDescriptor::Texture(TextureDescriptor::default()),
+            VirtualResourceKind::Texture => {
+                ResourceDescriptor::Texture(TextureDescriptor::default())
+            }
             VirtualResourceKind::Buffer => ResourceDescriptor::Buffer(BufferDescriptor::default()),
         };
         Resource {
@@ -343,7 +345,9 @@ impl ResourceAllocator {
     pub fn alloc(&mut self, desc_hash: u64) -> u32 {
         if let Some(pool) = self.pools.get_mut(&desc_hash) {
             for entry in pool.iter_mut() {
-                if entry.age < 0 || (self.current_age as i64 - entry.age) as u64 >= self.unused_frame_count {
+                if entry.age < 0
+                    || (self.current_age as i64 - entry.age) as u64 >= self.unused_frame_count
+                {
                     entry.age = -1;
                     self.ages.insert(entry.resource_id, -1);
                     return entry.resource_id;
@@ -351,13 +355,22 @@ impl ResourceAllocator {
             }
         }
 
-        let resource_id = self.pools.values().flat_map(|v| v.iter().map(|e| e.resource_id)).max().unwrap_or(0) + 1;
+        let resource_id = self
+            .pools
+            .values()
+            .flat_map(|v| v.iter().map(|e| e.resource_id))
+            .max()
+            .unwrap_or(0)
+            + 1;
         let entry = ResourcePoolEntry {
             resource_id,
             age: -1,
             descriptor_hash: desc_hash,
         };
-        self.pools.entry(desc_hash).or_insert_with(Vec::new).push(entry);
+        self.pools
+            .entry(desc_hash)
+            .or_insert_with(Vec::new)
+            .push(entry);
         self.ages.insert(resource_id, -1);
         resource_id
     }

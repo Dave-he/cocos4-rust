@@ -3,9 +3,11 @@ Rust implementation of platform-specific SystemWindow
 Original C++ version Copyright (c) 2022-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
+use crate::platform::interfaces::{
+    ISystemWindow, ISystemWindowManager, SystemWindowInfo, SystemWindowMap,
+};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use crate::platform::interfaces::{ISystemWindow, ISystemWindowManager, SystemWindowInfo, SystemWindowMap};
 
 #[derive(Debug)]
 pub struct SystemWindow {

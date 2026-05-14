@@ -1,8 +1,8 @@
-use std::collections::{HashMap, HashSet, VecDeque};
 use crate::input::types::{
     EventKeyboard, EventMouse, EventTouch, InputEventType, KeyCode, MouseButton, Touch,
 };
 use crate::math::Vec2;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 type KeyboardCallback = Box<dyn Fn(&EventKeyboard) + Send + Sync>;
 type MouseCallback = Box<dyn Fn(&EventMouse) + Send + Sync>;
@@ -130,8 +130,8 @@ impl Input {
     pub fn dispatch_mouse_move(&mut self, x: f32, y: f32) {
         let old = self.mouse_position;
         self.mouse_position = Vec2::new(x, y);
-        let mut event = EventMouse::new(MouseButton::Left, InputEventType::MouseMove)
-            .with_position(x, y);
+        let mut event =
+            EventMouse::new(MouseButton::Left, InputEventType::MouseMove).with_position(x, y);
         event.delta = Vec2::new(x - old.x, y - old.y);
         for (et, cb) in &self.mouse_listeners {
             if *et == InputEventType::MouseMove {
@@ -142,8 +142,8 @@ impl Input {
 
     pub fn dispatch_mouse_scroll(&mut self, dx: f32, dy: f32) {
         self.mouse_scroll = Vec2::new(dx, dy);
-        let event = EventMouse::new(MouseButton::Left, InputEventType::MouseScroll)
-            .with_scroll(dx, dy);
+        let event =
+            EventMouse::new(MouseButton::Left, InputEventType::MouseScroll).with_scroll(dx, dy);
         for (et, cb) in &self.mouse_listeners {
             if *et == InputEventType::MouseScroll {
                 cb(&event);

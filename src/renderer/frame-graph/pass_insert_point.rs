@@ -3,8 +3,8 @@ Rust port of Cocos Creator PassInsertPointManager
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use std::collections::HashMap;
 use super::pass::PassInsertPoint;
+use std::collections::HashMap;
 
 pub struct PassInsertPointManager {
     string_pool: HashMap<String, u32>,
@@ -35,7 +35,10 @@ impl PassInsertPointManager {
     }
 
     pub fn get(&self, name: &str) -> Option<PassInsertPoint> {
-        self.string_pool.get(name).and_then(|&idx| self.insert_points.get(idx as usize)).copied()
+        self.string_pool
+            .get(name)
+            .and_then(|&idx| self.insert_points.get(idx as usize))
+            .copied()
     }
 
     pub fn get_or_default(&self, name: &str, default_point: PassInsertPoint) -> PassInsertPoint {

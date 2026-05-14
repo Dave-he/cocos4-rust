@@ -1,6 +1,6 @@
 use super::asset::AssetBase;
+use crate::math::{Color, Mat4, Vec4};
 use std::collections::HashMap;
-use crate::math::{Vec4, Mat4, Color};
 
 #[derive(Debug, Clone)]
 pub enum UniformValue {
@@ -212,7 +212,9 @@ impl Material {
 
     fn update_hash(&mut self) {
         let mut h: u64 = 0;
-        h = h.wrapping_mul(31).wrapping_add(self.effect_name.len() as u64);
+        h = h
+            .wrapping_mul(31)
+            .wrapping_add(self.effect_name.len() as u64);
         h = h.wrapping_mul(31).wrapping_add(self.technique_index as u64);
         h = h.wrapping_mul(31).wrapping_add(self.passes.len() as u64);
         self.hash = h;
@@ -258,7 +260,10 @@ mod tests {
         let mut mat = Material::new();
         mat.add_pass(PassInfo::new("test-program"));
         mat.set_property(0, "mainTexture", "white");
-        assert_eq!(mat.get_property(0, "mainTexture"), Some(&"white".to_string()));
+        assert_eq!(
+            mat.get_property(0, "mainTexture"),
+            Some(&"white".to_string())
+        );
         assert_eq!(mat.get_property(0, "nonexistent"), None);
     }
 
@@ -301,8 +306,14 @@ mod tests {
     #[test]
     fn test_material_uniform_texture() {
         let mut mat = Material::new();
-        mat.set_uniform("mainTexture", UniformValue::Texture("texture-uuid-001".to_string()));
-        assert_eq!(mat.get_uniform_texture("mainTexture"), Some("texture-uuid-001"));
+        mat.set_uniform(
+            "mainTexture",
+            UniformValue::Texture("texture-uuid-001".to_string()),
+        );
+        assert_eq!(
+            mat.get_uniform_texture("mainTexture"),
+            Some("texture-uuid-001")
+        );
     }
 
     #[test]

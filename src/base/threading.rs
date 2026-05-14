@@ -17,7 +17,9 @@ pub struct ReadWriteLock<T> {
 
 impl<T> ReadWriteLock<T> {
     pub fn new(value: T) -> Self {
-        ReadWriteLock { inner: RwLock::new(value) }
+        ReadWriteLock {
+            inner: RwLock::new(value),
+        }
     }
 
     pub fn lock_read<F, R>(&self, f: F) -> R
@@ -135,7 +137,11 @@ impl ThreadPool {
             workers.push(handle);
         }
 
-        ThreadPool { workers, queue, worker_count }
+        ThreadPool {
+            workers,
+            queue,
+            worker_count,
+        }
     }
 
     pub fn dispatch<F>(&self, f: F)
@@ -177,7 +183,9 @@ pub struct ThreadSafeCounter {
 
 impl ThreadSafeCounter {
     pub fn new(initial: i32) -> Self {
-        ThreadSafeCounter { value: AtomicI32::new(initial) }
+        ThreadSafeCounter {
+            value: AtomicI32::new(initial),
+        }
     }
 
     pub fn increment(&self) -> i32 {
@@ -213,7 +221,9 @@ pub struct AutoReleasePool {
 
 impl AutoReleasePool {
     pub fn new() -> Self {
-        AutoReleasePool { objects: Mutex::new(Vec::new()) }
+        AutoReleasePool {
+            objects: Mutex::new(Vec::new()),
+        }
     }
 
     pub fn add<F>(&self, f: F)
@@ -266,9 +276,13 @@ mod tests {
         let counter = Arc::new(AtomicU32::new(0));
         let mut mq = MessageQueue::new();
         let c1 = Arc::clone(&counter);
-        mq.enqueue(move || { c1.fetch_add(1, Ordering::SeqCst); });
+        mq.enqueue(move || {
+            c1.fetch_add(1, Ordering::SeqCst);
+        });
         let c2 = Arc::clone(&counter);
-        mq.enqueue(move || { c2.fetch_add(1, Ordering::SeqCst); });
+        mq.enqueue(move || {
+            c2.fetch_add(1, Ordering::SeqCst);
+        });
         assert_eq!(mq.get_pending_count(), 2);
         mq.flush_messages();
         assert_eq!(counter.load(Ordering::SeqCst), 2);
@@ -299,7 +313,9 @@ mod tests {
         let counter = Arc::new(AtomicU32::new(0));
         let pool = ThreadPool::new(2);
         let c = Arc::clone(&counter);
-        pool.dispatch(move || { c.fetch_add(1, Ordering::SeqCst); });
+        pool.dispatch(move || {
+            c.fetch_add(1, Ordering::SeqCst);
+        });
         pool.stop();
         assert_eq!(counter.load(Ordering::SeqCst), 1);
     }
@@ -309,7 +325,9 @@ mod tests {
         let pool = AutoReleasePool::new();
         let counter = Arc::new(AtomicU32::new(0));
         let c = Arc::clone(&counter);
-        pool.add(move || { c.fetch_add(1, Ordering::SeqCst); });
+        pool.add(move || {
+            c.fetch_add(1, Ordering::SeqCst);
+        });
         assert_eq!(pool.count(), 1);
         pool.drain();
         assert_eq!(counter.load(Ordering::SeqCst), 1);

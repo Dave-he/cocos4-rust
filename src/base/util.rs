@@ -137,12 +137,12 @@ mod tests {
     #[test]
     fn test_get_bit_position() {
         assert_eq!(get_bit_position(0), 0);
-        assert_eq!(get_bit_position(1), 0);  // bit 0 is set
-        assert_eq!(get_bit_position(2), 1);  // bit 1 is set
-        assert_eq!(get_bit_position(3), 0);  // bit 0 is the lowest set bit
-        assert_eq!(get_bit_position(4), 2);  // bit 2 is set
-        assert_eq!(get_bit_position(5), 0);  // bit 0 is the lowest set bit
-        assert_eq!(get_bit_position(8), 3);  // bit 3 is set
+        assert_eq!(get_bit_position(1), 0); // bit 0 is set
+        assert_eq!(get_bit_position(2), 1); // bit 1 is set
+        assert_eq!(get_bit_position(3), 0); // bit 0 is the lowest set bit
+        assert_eq!(get_bit_position(4), 2); // bit 2 is set
+        assert_eq!(get_bit_position(5), 0); // bit 0 is the lowest set bit
+        assert_eq!(get_bit_position(8), 3); // bit 3 is set
         assert_eq!(get_bit_position(16), 4); // bit 4 is set
         assert_eq!(get_bit_position(255), 0); // bit 0 is the lowest set bit
     }
@@ -160,9 +160,9 @@ mod tests {
     fn test_popcount() {
         assert_eq!(popcount(0b0000_0000), 0);
         assert_eq!(popcount(0b0000_0001), 1);
-        assert_eq!(popcount(0b0000_1111), 4);  // 4 bits set
-        assert_eq!(popcount(0b1111_0000), 4);  // 4 bits set
-        assert_eq!(popcount(0b1111_1111), 8);  // 8 bits set
+        assert_eq!(popcount(0b0000_1111), 4); // 4 bits set
+        assert_eq!(popcount(0b1111_0000), 4); // 4 bits set
+        assert_eq!(popcount(0b1111_1111), 8); // 8 bits set
         assert_eq!(popcount(0b1111_1111_1111), 12); // 12 bits set
     }
 

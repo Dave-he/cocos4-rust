@@ -3,8 +3,8 @@ Rust port of Cocos Creator WebSocket / Downloader / SocketIO
 Original C++ version Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use std::sync::{Arc, Mutex};
 use crate::base::{RefCounted, RefCountedImpl};
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WebSocketErrorCode {
@@ -52,10 +52,18 @@ impl WebSocketData {
         self.len.saturating_sub(self.issued)
     }
 
-    pub fn get_bytes(&self) -> &[u8] { &self.bytes }
-    pub fn get_len(&self) -> u32 { self.len }
-    pub fn get_issued(&self) -> u32 { self.issued }
-    pub fn is_binary(&self) -> bool { self.is_binary }
+    pub fn get_bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+    pub fn get_len(&self) -> u32 {
+        self.len
+    }
+    pub fn get_issued(&self) -> u32 {
+        self.issued
+    }
+    pub fn is_binary(&self) -> bool {
+        self.is_binary
+    }
 }
 
 pub type WebSocketOnOpen = Arc<dyn Fn(&WebSocket) + Send + Sync>;
@@ -103,7 +111,12 @@ impl WebSocket {
         }
     }
 
-    pub fn init(&mut self, url: &str, protocols: Option<&[String]>, ca_file_path: Option<&str>) -> bool {
+    pub fn init(
+        &mut self,
+        url: &str,
+        protocols: Option<&[String]>,
+        ca_file_path: Option<&str>,
+    ) -> bool {
         self.url = url.to_string();
         *self.state.lock().unwrap() = WebSocketState::Connecting;
         true
@@ -133,25 +146,53 @@ impl WebSocket {
         *self.state.lock().unwrap()
     }
 
-    pub fn get_url(&self) -> &str { &self.url }
-    pub fn get_buffered_amount(&self) -> usize { self.buffered_amount }
-    pub fn get_extensions(&self) -> &str { &self.extensions }
-    pub fn get_protocol(&self) -> &str { &self.protocol }
+    pub fn get_url(&self) -> &str {
+        &self.url
+    }
+    pub fn get_buffered_amount(&self) -> usize {
+        self.buffered_amount
+    }
+    pub fn get_extensions(&self) -> &str {
+        &self.extensions
+    }
+    pub fn get_protocol(&self) -> &str {
+        &self.protocol
+    }
 
-    pub fn set_on_open(&mut self, cb: WebSocketOnOpen) { self.on_open = Some(cb); }
-    pub fn set_on_message(&mut self, cb: WebSocketOnMessage) { self.on_message = Some(cb); }
-    pub fn set_on_close(&mut self, cb: WebSocketOnClose) { self.on_close = Some(cb); }
-    pub fn set_on_error(&mut self, cb: WebSocketOnError) { self.on_error = Some(cb); }
+    pub fn set_on_open(&mut self, cb: WebSocketOnOpen) {
+        self.on_open = Some(cb);
+    }
+    pub fn set_on_message(&mut self, cb: WebSocketOnMessage) {
+        self.on_message = Some(cb);
+    }
+    pub fn set_on_close(&mut self, cb: WebSocketOnClose) {
+        self.on_close = Some(cb);
+    }
+    pub fn set_on_error(&mut self, cb: WebSocketOnError) {
+        self.on_error = Some(cb);
+    }
 }
 
 impl RefCounted for WebSocket {
-    fn add_ref(&self) { self.ref_count.add_ref(); }
-    fn release(&self) { self.ref_count.release(); }
-    fn get_ref_count(&self) -> u32 { self.ref_count.get_ref_count() }
-    fn is_last_reference(&self) -> bool { self.ref_count.is_last_reference() }
+    fn add_ref(&self) {
+        self.ref_count.add_ref();
+    }
+    fn release(&self) {
+        self.ref_count.release();
+    }
+    fn get_ref_count(&self) -> u32 {
+        self.ref_count.get_ref_count()
+    }
+    fn is_last_reference(&self) -> bool {
+        self.ref_count.is_last_reference()
+    }
 }
 
-impl Default for WebSocket { fn default() -> Self { Self::new() } }
+impl Default for WebSocket {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct DownloadTask {
@@ -177,18 +218,38 @@ impl DownloadTask {
         }
     }
 
-    pub fn set_identifier(&mut self, id: &str) { self.identifier = id.to_string(); }
-    pub fn set_request_url(&mut self, url: &str) { self.request_url = url.to_string(); }
-    pub fn set_storage_path(&mut self, path: &str) { self.storage_path = path.to_string(); }
-    pub fn set_header(&mut self, key: &str, value: &str) { self.header.insert(key.to_string(), value.to_string()); }
+    pub fn set_identifier(&mut self, id: &str) {
+        self.identifier = id.to_string();
+    }
+    pub fn set_request_url(&mut self, url: &str) {
+        self.request_url = url.to_string();
+    }
+    pub fn set_storage_path(&mut self, path: &str) {
+        self.storage_path = path.to_string();
+    }
+    pub fn set_header(&mut self, key: &str, value: &str) {
+        self.header.insert(key.to_string(), value.to_string());
+    }
 
-    pub fn get_identifier(&self) -> &str { &self.identifier }
-    pub fn get_request_url(&self) -> &str { &self.request_url }
-    pub fn get_storage_path(&self) -> &str { &self.storage_path }
-    pub fn get_header(&self) -> &std::collections::HashMap<String, String> { &self.header }
+    pub fn get_identifier(&self) -> &str {
+        &self.identifier
+    }
+    pub fn get_request_url(&self) -> &str {
+        &self.request_url
+    }
+    pub fn get_storage_path(&self) -> &str {
+        &self.storage_path
+    }
+    pub fn get_header(&self) -> &std::collections::HashMap<String, String> {
+        &self.header
+    }
 }
 
-impl Default for DownloadTask { fn default() -> Self { Self::new() } }
+impl Default for DownloadTask {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct DownloaderHints {
@@ -234,9 +295,14 @@ impl std::fmt::Debug for Downloader {
 }
 
 impl Downloader {
-    pub fn new() -> Self { Downloader::default() }
+    pub fn new() -> Self {
+        Downloader::default()
+    }
     pub fn with_hints(hints: DownloaderHints) -> Self {
-        Downloader { hints, ..Default::default() }
+        Downloader {
+            hints,
+            ..Default::default()
+        }
     }
 
     pub fn create_data_task(&mut self, src_url: &str, identifier: &str) -> DownloadTask {
@@ -246,7 +312,12 @@ impl Downloader {
         task
     }
 
-    pub fn create_download_task(&mut self, src_url: &str, storage_path: &str, identifier: &str) -> DownloadTask {
+    pub fn create_download_task(
+        &mut self,
+        src_url: &str,
+        storage_path: &str,
+        identifier: &str,
+    ) -> DownloadTask {
         let mut task = DownloadTask::new();
         task.set_request_url(src_url);
         task.set_storage_path(storage_path);
@@ -290,14 +361,24 @@ impl SIOClient {
         }
     }
 
-    pub fn disconnect(&mut self) { self.connected = false; }
+    pub fn disconnect(&mut self) {
+        self.connected = false;
+    }
     pub fn send(&self, _message: &str) {}
     pub fn emit(&self, _event: &str, _args: &str) {}
     pub fn on(&mut self, _event_name: &str, _handler: Box<dyn Fn(&str) + Send + Sync>) {}
-    pub fn set_tag(&mut self, tag: &str) { self.tag = tag.to_string(); }
-    pub fn get_tag(&self) -> &str { &self.tag }
-    pub fn get_instance_id(&self) -> u32 { self.instance_id }
-    pub fn is_connected(&self) -> bool { self.connected }
+    pub fn set_tag(&mut self, tag: &str) {
+        self.tag = tag.to_string();
+    }
+    pub fn get_tag(&self) -> &str {
+        &self.tag
+    }
+    pub fn get_instance_id(&self) -> u32 {
+        self.instance_id
+    }
+    pub fn is_connected(&self) -> bool {
+        self.connected
+    }
 }
 
 #[cfg(test)]
@@ -358,7 +439,9 @@ mod tests {
         let count = Arc::new(Mutex::new(0u32));
         let c = Arc::clone(&count);
         let mut ws = WebSocket::new();
-        ws.set_on_open(Arc::new(move |_| { *c.lock().unwrap() += 1; }));
+        ws.set_on_open(Arc::new(move |_| {
+            *c.lock().unwrap() += 1;
+        }));
         assert!(ws.on_open.is_some());
     }
 

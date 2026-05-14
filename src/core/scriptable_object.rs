@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use std::any::Any;
 use crate::serialization::value::SerializedValue;
+use std::any::Any;
+use std::collections::HashMap;
 
 pub trait ScriptableObject: Any + Send + Sync {
     fn type_name(&self) -> &'static str;
@@ -17,7 +17,9 @@ pub struct ScriptableObjectRegistry {
 
 impl ScriptableObjectRegistry {
     pub fn new() -> Self {
-        ScriptableObjectRegistry { factories: HashMap::new() }
+        ScriptableObjectRegistry {
+            factories: HashMap::new(),
+        }
     }
 
     pub fn register<T, F>(&mut self, type_name: &str, factory: F)
@@ -25,7 +27,8 @@ impl ScriptableObjectRegistry {
         T: ScriptableObject + 'static,
         F: Fn() -> T + Send + Sync + 'static,
     {
-        self.factories.insert(type_name.to_string(), Box::new(move || Box::new(factory())));
+        self.factories
+            .insert(type_name.to_string(), Box::new(move || Box::new(factory())));
     }
 
     pub fn create(&self, type_name: &str) -> Option<Box<dyn ScriptableObject>> {
@@ -44,7 +47,9 @@ impl ScriptableObjectRegistry {
 }
 
 impl Default for ScriptableObjectRegistry {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 pub struct SoDatabase {
@@ -127,7 +132,9 @@ impl SoDatabase {
 }
 
 impl Default for SoDatabase {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]
@@ -144,20 +151,39 @@ mod tests {
 
     impl GameConfig {
         fn new() -> Self {
-            GameConfig { difficulty: 1, music_vol: 0.8, player_name: "Player".to_string() }
+            GameConfig {
+                difficulty: 1,
+                music_vol: 0.8,
+                player_name: "Player".to_string(),
+            }
         }
     }
 
     impl ScriptableObject for GameConfig {
-        fn type_name(&self) -> &'static str { "GameConfig" }
-        fn as_any(&self) -> &dyn Any { self }
-        fn as_any_mut(&mut self) -> &mut dyn Any { self }
+        fn type_name(&self) -> &'static str {
+            "GameConfig"
+        }
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
 
         fn serialize(&self) -> SerializedValue {
             let mut map = HashMap::new();
-            map.insert("difficulty".to_string(), SerializedValue::Int(self.difficulty));
-            map.insert("music_vol".to_string(), SerializedValue::Float(self.music_vol));
-            map.insert("player_name".to_string(), SerializedValue::String(self.player_name.clone()));
+            map.insert(
+                "difficulty".to_string(),
+                SerializedValue::Int(self.difficulty),
+            );
+            map.insert(
+                "music_vol".to_string(),
+                SerializedValue::Float(self.music_vol),
+            );
+            map.insert(
+                "player_name".to_string(),
+                SerializedValue::String(self.player_name.clone()),
+            );
             SerializedValue::Object(map)
         }
 
@@ -186,13 +212,24 @@ mod tests {
     }
 
     impl LevelData {
-        fn new() -> Self { LevelData { level: 1, enemies: 10 } }
+        fn new() -> Self {
+            LevelData {
+                level: 1,
+                enemies: 10,
+            }
+        }
     }
 
     impl ScriptableObject for LevelData {
-        fn type_name(&self) -> &'static str { "LevelData" }
-        fn as_any(&self) -> &dyn Any { self }
-        fn as_any_mut(&mut self) -> &mut dyn Any { self }
+        fn type_name(&self) -> &'static str {
+            "LevelData"
+        }
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
         fn serialize(&self) -> SerializedValue {
             let mut map = HashMap::new();
             map.insert("level".to_string(), SerializedValue::Int(self.level));
@@ -200,8 +237,12 @@ mod tests {
             SerializedValue::Object(map)
         }
         fn deserialize(&mut self, data: &SerializedValue) {
-            if let Some(v) = data.get("level").and_then(|v| v.as_int()) { self.level = v; }
-            if let Some(v) = data.get("enemies").and_then(|v| v.as_int()) { self.enemies = v; }
+            if let Some(v) = data.get("level").and_then(|v| v.as_int()) {
+                self.level = v;
+            }
+            if let Some(v) = data.get("enemies").and_then(|v| v.as_int()) {
+                self.enemies = v;
+            }
         }
     }
 
@@ -269,7 +310,14 @@ mod tests {
     #[test]
     fn test_serialize_deserialize_roundtrip() {
         let mut db = SoDatabase::new();
-        db.store("cfg", GameConfig { difficulty: 3, music_vol: 0.5, player_name: "Hero".to_string() });
+        db.store(
+            "cfg",
+            GameConfig {
+                difficulty: 3,
+                music_vol: 0.5,
+                player_name: "Hero".to_string(),
+            },
+        );
         let json = db.save_to_json("cfg").unwrap();
         db.store("cfg2", GameConfig::new());
         let ok = db.load_from_json("cfg2", &json);
@@ -304,7 +352,13 @@ mod tests {
     fn test_multiple_types_in_db() {
         let mut db = SoDatabase::new();
         db.store("config", GameConfig::new());
-        db.store("level1", LevelData { level: 1, enemies: 5 });
+        db.store(
+            "level1",
+            LevelData {
+                level: 1,
+                enemies: 5,
+            },
+        );
         let cfg = db.get::<GameConfig>("config");
         let lvl = db.get::<LevelData>("level1");
         assert!(cfg.is_some());

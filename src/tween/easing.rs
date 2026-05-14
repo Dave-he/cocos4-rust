@@ -45,8 +45,11 @@ impl EasingMethod {
             EasingMethod::QuadIn => t * t,
             EasingMethod::QuadOut => t * (2.0 - t),
             EasingMethod::QuadInOut => {
-                if t < 0.5 { 2.0 * t * t }
-                else { -1.0 + (4.0 - 2.0 * t) * t }
+                if t < 0.5 {
+                    2.0 * t * t
+                } else {
+                    -1.0 + (4.0 - 2.0 * t) * t
+                }
             }
             EasingMethod::CubicIn => t * t * t,
             EasingMethod::CubicOut => {
@@ -54,8 +57,9 @@ impl EasingMethod {
                 s * s * s + 1.0
             }
             EasingMethod::CubicInOut => {
-                if t < 0.5 { 4.0 * t * t * t }
-                else {
+                if t < 0.5 {
+                    4.0 * t * t * t
+                } else {
                     let s = t - 1.0;
                     (2.0 * s) * (2.0 * s) * (2.0 * s) / 2.0 + 1.0
                 }
@@ -66,8 +70,9 @@ impl EasingMethod {
                 1.0 - s * s * s * s
             }
             EasingMethod::QuartInOut => {
-                if t < 0.5 { 8.0 * t * t * t * t }
-                else {
+                if t < 0.5 {
+                    8.0 * t * t * t * t
+                } else {
                     let s = t - 1.0;
                     1.0 - 8.0 * s * s * s * s
                 }
@@ -78,26 +83,42 @@ impl EasingMethod {
                 s * s * s * s * s + 1.0
             }
             EasingMethod::QuintInOut => {
-                if t < 0.5 { 16.0 * t * t * t * t * t }
-                else {
+                if t < 0.5 {
+                    16.0 * t * t * t * t * t
+                } else {
                     let s = t - 1.0;
                     16.0 * s * s * s * s * s + 1.0
                 }
             }
             EasingMethod::SineIn => 1.0 - (t * PI / 2.0).cos(),
             EasingMethod::SineOut => (t * PI / 2.0).sin(),
-            EasingMethod::SineInOut => -(( PI * t).cos() - 1.0) / 2.0,
+            EasingMethod::SineInOut => -((PI * t).cos() - 1.0) / 2.0,
             EasingMethod::ExpoIn => {
-                if t == 0.0 { 0.0 } else { (2.0f32).powf(10.0 * t - 10.0) }
+                if t == 0.0 {
+                    0.0
+                } else {
+                    (2.0f32).powf(10.0 * t - 10.0)
+                }
             }
             EasingMethod::ExpoOut => {
-                if t == 1.0 { 1.0 } else { 1.0 - (2.0f32).powf(-10.0 * t) }
+                if t == 1.0 {
+                    1.0
+                } else {
+                    1.0 - (2.0f32).powf(-10.0 * t)
+                }
             }
             EasingMethod::ExpoInOut => {
-                if t == 0.0 { return 0.0; }
-                if t == 1.0 { return 1.0; }
-                if t < 0.5 { (2.0f32).powf(20.0 * t - 10.0) / 2.0 }
-                else { (2.0 - (2.0f32).powf(-20.0 * t + 10.0)) / 2.0 }
+                if t == 0.0 {
+                    return 0.0;
+                }
+                if t == 1.0 {
+                    return 1.0;
+                }
+                if t < 0.5 {
+                    (2.0f32).powf(20.0 * t - 10.0) / 2.0
+                } else {
+                    (2.0 - (2.0f32).powf(-20.0 * t + 10.0)) / 2.0
+                }
             }
             EasingMethod::CircIn => 1.0 - (1.0 - t * t).sqrt(),
             EasingMethod::CircOut => (1.0 - (t - 1.0) * (t - 1.0)).sqrt(),
@@ -131,20 +152,32 @@ impl EasingMethod {
                 }
             }
             EasingMethod::ElasticIn => {
-                if t == 0.0 { return 0.0; }
-                if t == 1.0 { return 1.0; }
+                if t == 0.0 {
+                    return 0.0;
+                }
+                if t == 1.0 {
+                    return 1.0;
+                }
                 let c4 = (2.0 * PI) / 3.0;
                 -(2.0f32).powf(10.0 * t - 10.0) * ((10.0 * t - 10.75) * c4).sin()
             }
             EasingMethod::ElasticOut => {
-                if t == 0.0 { return 0.0; }
-                if t == 1.0 { return 1.0; }
+                if t == 0.0 {
+                    return 0.0;
+                }
+                if t == 1.0 {
+                    return 1.0;
+                }
                 let c4 = (2.0 * PI) / 3.0;
                 (2.0f32).powf(-10.0 * t) * ((10.0 * t - 0.75) * c4).sin() + 1.0
             }
             EasingMethod::ElasticInOut => {
-                if t == 0.0 { return 0.0; }
-                if t == 1.0 { return 1.0; }
+                if t == 0.0 {
+                    return 0.0;
+                }
+                if t == 1.0 {
+                    return 1.0;
+                }
                 let c5 = (2.0 * PI) / 4.5;
                 if t < 0.5 {
                     -(2.0f32).powf(20.0 * t - 10.0) * ((20.0 * t - 11.125) * c5).sin() / 2.0
@@ -169,7 +202,8 @@ impl EasingMethod {
                 if t < 0.5 {
                     ((2.0 * t) * (2.0 * t) * ((c2 + 1.0) * 2.0 * t - c2)) / 2.0
                 } else {
-                    ((2.0 * t - 2.0) * (2.0 * t - 2.0) * ((c2 + 1.0) * (2.0 * t - 2.0) + c2) + 2.0) / 2.0
+                    ((2.0 * t - 2.0) * (2.0 * t - 2.0) * ((c2 + 1.0) * (2.0 * t - 2.0) + c2) + 2.0)
+                        / 2.0
                 }
             }
             EasingMethod::Smooth => t * t * (3.0 - 2.0 * t),
@@ -193,12 +227,22 @@ mod tests {
     fn test_all_start_at_0_end_at_1() {
         let methods = [
             EasingMethod::Linear,
-            EasingMethod::QuadIn, EasingMethod::QuadOut, EasingMethod::QuadInOut,
-            EasingMethod::CubicIn, EasingMethod::CubicOut, EasingMethod::CubicInOut,
-            EasingMethod::SineIn, EasingMethod::SineOut, EasingMethod::SineInOut,
-            EasingMethod::BounceIn, EasingMethod::BounceOut, EasingMethod::BounceInOut,
-            EasingMethod::BackIn, EasingMethod::BackOut,
-            EasingMethod::Smooth, EasingMethod::Fade,
+            EasingMethod::QuadIn,
+            EasingMethod::QuadOut,
+            EasingMethod::QuadInOut,
+            EasingMethod::CubicIn,
+            EasingMethod::CubicOut,
+            EasingMethod::CubicInOut,
+            EasingMethod::SineIn,
+            EasingMethod::SineOut,
+            EasingMethod::SineInOut,
+            EasingMethod::BounceIn,
+            EasingMethod::BounceOut,
+            EasingMethod::BounceInOut,
+            EasingMethod::BackIn,
+            EasingMethod::BackOut,
+            EasingMethod::Smooth,
+            EasingMethod::Fade,
         ];
         for m in &methods {
             let v0 = m.apply(0.0);

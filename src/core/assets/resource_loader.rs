@@ -74,7 +74,8 @@ impl ResourceLoader {
     where
         F: Fn(&str) -> Result<Vec<u8>, String> + Send + Sync + 'static,
     {
-        self.providers.push((prefix.to_string(), Box::new(provider)));
+        self.providers
+            .push((prefix.to_string(), Box::new(provider)));
     }
 
     pub fn load<S, E>(&mut self, url: &str, on_success: S, on_error: E) -> LoadHandle
@@ -127,9 +128,15 @@ impl ResourceLoader {
     }
 
     pub fn pump(&mut self) {
-        let handles: Vec<LoadHandle> = self.tasks.keys().copied()
+        let handles: Vec<LoadHandle> = self
+            .tasks
+            .keys()
+            .copied()
             .filter(|h| {
-                self.tasks.get(h).map(|t| t.status == LoadStatus::Pending).unwrap_or(false)
+                self.tasks
+                    .get(h)
+                    .map(|t| t.status == LoadStatus::Pending)
+                    .unwrap_or(false)
             })
             .take(self.max_concurrent.saturating_sub(self.loading_count))
             .collect();
@@ -140,7 +147,11 @@ impl ResourceLoader {
                 self.loading_count += 1;
             }
 
-            let url = self.tasks.get(&handle).map(|t| t.url.clone()).unwrap_or_default();
+            let url = self
+                .tasks
+                .get(&handle)
+                .map(|t| t.url.clone())
+                .unwrap_or_default();
             let result = self.run_provider(&url);
 
             if let Some(task) = self.tasks.get_mut(&handle) {
@@ -232,7 +243,10 @@ impl ResourceLoader {
     }
 
     pub fn get_pending_count(&self) -> usize {
-        self.tasks.values().filter(|t| t.status == LoadStatus::Pending).count()
+        self.tasks
+            .values()
+            .filter(|t| t.status == LoadStatus::Pending)
+            .count()
     }
 }
 
@@ -271,9 +285,13 @@ mod tests {
         let mut loader = make_loader();
         let result = Arc::new(Mutex::new(None::<Vec<u8>>));
         let r = Arc::clone(&result);
-        let h = loader.load("res/sprite.png", move |data| {
-            *r.lock().unwrap() = Some(data.to_vec());
-        }, |_| {});
+        let h = loader.load(
+            "res/sprite.png",
+            move |data| {
+                *r.lock().unwrap() = Some(data.to_vec());
+            },
+            |_| {},
+        );
         loader.pump();
         assert_eq!(loader.get_status(h), Some(LoadStatus::Success));
         assert!(result.lock().unwrap().is_some());
@@ -285,9 +303,13 @@ mod tests {
         let mut loader = make_loader();
         let err_msg = Arc::new(Mutex::new(String::new()));
         let e = Arc::clone(&err_msg);
-        let h = loader.load("res/missing.fail", |_| {}, move |err| {
-            *e.lock().unwrap() = err.to_string();
-        });
+        let h = loader.load(
+            "res/missing.fail",
+            |_| {},
+            move |err| {
+                *e.lock().unwrap() = err.to_string();
+            },
+        );
         loader.pump();
         assert_eq!(loader.get_status(h), Some(LoadStatus::Failed));
         assert!(!err_msg.lock().unwrap().is_empty());
@@ -299,10 +321,22 @@ mod tests {
         let mut loader = make_loader();
         let count = Arc::new(Mutex::new(0u32));
         let c1 = Arc::clone(&count);
-        let _h1 = loader.load("cached/asset.png", move |_| { *c1.lock().unwrap() += 1; }, |_| {});
+        let _h1 = loader.load(
+            "cached/asset.png",
+            move |_| {
+                *c1.lock().unwrap() += 1;
+            },
+            |_| {},
+        );
         loader.pump();
         let c2 = Arc::clone(&count);
-        let h2 = loader.load("cached/asset.png", move |_| { *c2.lock().unwrap() += 1; }, |_| {});
+        let h2 = loader.load(
+            "cached/asset.png",
+            move |_| {
+                *c2.lock().unwrap() += 1;
+            },
+            |_| {},
+        );
         assert_eq!(*count.lock().unwrap(), 2);
         assert_eq!(loader.get_status(h2), Some(LoadStatus::Success));
     }
@@ -313,10 +347,22 @@ mod tests {
         loader.set_cache_enabled(false);
         let count = Arc::new(Mutex::new(0u32));
         let c = Arc::clone(&count);
-        loader.load("asset.dat", move |_| { *c.lock().unwrap() += 1; }, |_| {});
+        loader.load(
+            "asset.dat",
+            move |_| {
+                *c.lock().unwrap() += 1;
+            },
+            |_| {},
+        );
         loader.pump();
         let c2 = Arc::clone(&count);
-        loader.load("asset.dat", move |_| { *c2.lock().unwrap() += 1; }, |_| {});
+        loader.load(
+            "asset.dat",
+            move |_| {
+                *c2.lock().unwrap() += 1;
+            },
+            |_| {},
+        );
         loader.pump();
         assert_eq!(*count.lock().unwrap(), 2);
     }
@@ -358,7 +404,9 @@ mod tests {
             "file.png",
             |_| {},
             |_| {},
-            move |v| { *p.lock().unwrap() = v; },
+            move |v| {
+                *p.lock().unwrap() = v;
+            },
         );
         loader.pump();
         assert!((loader.get_progress(h) - 1.0).abs() < 1e-6);
@@ -372,9 +420,13 @@ mod tests {
         loader.register_provider("file://", |url| Ok(format!("local:{}", url).into_bytes()));
         let result = Arc::new(Mutex::new(String::new()));
         let r = Arc::clone(&result);
-        let _h = loader.load("http://example.com/img.png", move |data| {
-            *r.lock().unwrap() = String::from_utf8_lossy(data).to_string();
-        }, |_| {});
+        let _h = loader.load(
+            "http://example.com/img.png",
+            move |data| {
+                *r.lock().unwrap() = String::from_utf8_lossy(data).to_string();
+            },
+            |_| {},
+        );
         loader.pump();
         assert!(result.lock().unwrap().starts_with("remote:"));
     }

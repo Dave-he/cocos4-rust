@@ -285,7 +285,10 @@ mod tests {
         let mut label = Label::new();
         label.set_horizontal_align(HorizontalTextAlignment::Center);
         label.set_vertical_align(VerticalTextAlignment::Center);
-        assert_eq!(label.get_horizontal_align(), HorizontalTextAlignment::Center);
+        assert_eq!(
+            label.get_horizontal_align(),
+            HorizontalTextAlignment::Center
+        );
         assert_eq!(label.get_vertical_align(), VerticalTextAlignment::Center);
     }
 

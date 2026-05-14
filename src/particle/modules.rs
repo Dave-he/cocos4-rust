@@ -17,16 +17,28 @@ impl ColorOverLifetime {
         ColorOverLifetime {
             enabled: false,
             keys: vec![
-                GradientKey { time: 0.0, value: Color::WHITE },
-                GradientKey { time: 1.0, value: Color::WHITE },
+                GradientKey {
+                    time: 0.0,
+                    value: Color::WHITE,
+                },
+                GradientKey {
+                    time: 1.0,
+                    value: Color::WHITE,
+                },
             ],
         }
     }
 
     pub fn evaluate(&self, t: f32) -> Color {
-        if self.keys.is_empty() { return Color::WHITE; }
-        if t <= self.keys[0].time { return self.keys[0].value; }
-        if t >= self.keys.last().unwrap().time { return self.keys.last().unwrap().value; }
+        if self.keys.is_empty() {
+            return Color::WHITE;
+        }
+        if t <= self.keys[0].time {
+            return self.keys[0].value;
+        }
+        if t >= self.keys.last().unwrap().time {
+            return self.keys.last().unwrap().value;
+        }
         for i in 0..self.keys.len() - 1 {
             let k0 = &self.keys[i];
             let k1 = &self.keys[i + 1];
@@ -66,17 +78,29 @@ impl SizeOverLifetime {
         SizeOverLifetime {
             enabled: false,
             keys: vec![
-                GradientKey { time: 0.0, value: 1.0 },
-                GradientKey { time: 1.0, value: 1.0 },
+                GradientKey {
+                    time: 0.0,
+                    value: 1.0,
+                },
+                GradientKey {
+                    time: 1.0,
+                    value: 1.0,
+                },
             ],
             separate_axes: false,
         }
     }
 
     pub fn evaluate(&self, t: f32) -> f32 {
-        if self.keys.is_empty() { return 1.0; }
-        if t <= self.keys[0].time { return self.keys[0].value; }
-        if t >= self.keys.last().unwrap().time { return self.keys.last().unwrap().value; }
+        if self.keys.is_empty() {
+            return 1.0;
+        }
+        if t <= self.keys[0].time {
+            return self.keys[0].value;
+        }
+        if t >= self.keys.last().unwrap().time {
+            return self.keys.last().unwrap().value;
+        }
         for i in 0..self.keys.len() - 1 {
             let k0 = &self.keys[i];
             let k1 = &self.keys[i + 1];
@@ -107,16 +131,49 @@ impl VelocityOverLifetime {
     pub fn new() -> Self {
         VelocityOverLifetime {
             enabled: false,
-            x_keys: vec![GradientKey { time: 0.0, value: 0.0 }, GradientKey { time: 1.0, value: 0.0 }],
-            y_keys: vec![GradientKey { time: 0.0, value: 0.0 }, GradientKey { time: 1.0, value: 0.0 }],
-            z_keys: vec![GradientKey { time: 0.0, value: 0.0 }, GradientKey { time: 1.0, value: 0.0 }],
+            x_keys: vec![
+                GradientKey {
+                    time: 0.0,
+                    value: 0.0,
+                },
+                GradientKey {
+                    time: 1.0,
+                    value: 0.0,
+                },
+            ],
+            y_keys: vec![
+                GradientKey {
+                    time: 0.0,
+                    value: 0.0,
+                },
+                GradientKey {
+                    time: 1.0,
+                    value: 0.0,
+                },
+            ],
+            z_keys: vec![
+                GradientKey {
+                    time: 0.0,
+                    value: 0.0,
+                },
+                GradientKey {
+                    time: 1.0,
+                    value: 0.0,
+                },
+            ],
         }
     }
 
     fn eval_channel(keys: &[GradientKey<f32>], t: f32) -> f32 {
-        if keys.is_empty() { return 0.0; }
-        if t <= keys[0].time { return keys[0].value; }
-        if t >= keys.last().unwrap().time { return keys.last().unwrap().value; }
+        if keys.is_empty() {
+            return 0.0;
+        }
+        if t <= keys[0].time {
+            return keys[0].value;
+        }
+        if t >= keys.last().unwrap().time {
+            return keys.last().unwrap().value;
+        }
         for i in 0..keys.len() - 1 {
             let k0 = &keys[i];
             let k1 = &keys[i + 1];
@@ -154,14 +211,25 @@ impl RotationOverLifetime {
         RotationOverLifetime {
             enabled: false,
             keys: vec![
-                GradientKey { time: 0.0, value: 0.0 },
-                GradientKey { time: 1.0, value: 0.0 },
+                GradientKey {
+                    time: 0.0,
+                    value: 0.0,
+                },
+                GradientKey {
+                    time: 1.0,
+                    value: 0.0,
+                },
             ],
         }
     }
 
     pub fn evaluate(&self, t: f32) -> f32 {
-        SizeOverLifetime { enabled: false, keys: self.keys.clone(), separate_axes: false }.evaluate(t)
+        SizeOverLifetime {
+            enabled: false,
+            keys: self.keys.clone(),
+            separate_axes: false,
+        }
+        .evaluate(t)
     }
 }
 
@@ -186,8 +254,14 @@ mod tests {
     fn test_color_over_lifetime_interpolation() {
         let mut col = ColorOverLifetime::new();
         col.keys = vec![
-            GradientKey { time: 0.0, value: Color::new(0, 0, 0, 255) },
-            GradientKey { time: 1.0, value: Color::new(255, 255, 255, 255) },
+            GradientKey {
+                time: 0.0,
+                value: Color::new(0, 0, 0, 255),
+            },
+            GradientKey {
+                time: 1.0,
+                value: Color::new(255, 255, 255, 255),
+            },
         ];
         let c = col.evaluate(0.5);
         assert!((c.r as f32 - 127.5).abs() < 2.0);
@@ -197,8 +271,14 @@ mod tests {
     fn test_size_over_lifetime() {
         let mut sol = SizeOverLifetime::new();
         sol.keys = vec![
-            GradientKey { time: 0.0, value: 0.0 },
-            GradientKey { time: 1.0, value: 2.0 },
+            GradientKey {
+                time: 0.0,
+                value: 0.0,
+            },
+            GradientKey {
+                time: 1.0,
+                value: 2.0,
+            },
         ];
         let s = sol.evaluate(0.5);
         assert!((s - 1.0).abs() < 1e-5);

@@ -3,13 +3,13 @@ Rust port of Cocos Creator Root Manager
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use crate::scene::render_scene::{RenderScene, RenderSceneInfo};
-use crate::scene::camera::Camera;
-use crate::scene::model::Model;
-use crate::scene::directional_light::DirectionalLight;
-use crate::scene::lights::{SpotLight, PointLight, SphereLight};
-use crate::renderer::pipeline::render_pipeline::RenderPipeline;
 use crate::renderer::core::material::MaterialPool;
+use crate::renderer::pipeline::render_pipeline::RenderPipeline;
+use crate::scene::camera::Camera;
+use crate::scene::directional_light::DirectionalLight;
+use crate::scene::lights::{PointLight, SphereLight, SpotLight};
+use crate::scene::model::Model;
+use crate::scene::render_scene::{RenderScene, RenderSceneInfo};
 
 #[derive(Debug, Clone, Default)]
 pub struct RootInfo {
@@ -298,7 +298,9 @@ mod tests {
     fn test_root_destroy() {
         let mut root = Root::new();
         root.initialize(&RootInfo::default());
-        root.create_scene(RenderSceneInfo { name: "s1".to_string() });
+        root.create_scene(RenderSceneInfo {
+            name: "s1".to_string(),
+        });
         root.create_window(RenderWindowInfo::default());
         root.destroy();
         assert!(!root.initialized);
@@ -312,7 +314,10 @@ mod tests {
         let id = root.create_window(RenderWindowInfo::default());
         assert!(root.get_window(id).is_some());
         assert_eq!(root.get_main_window().unwrap().id, id);
-        let id2 = root.create_window(RenderWindowInfo { title: "Secondary".to_string(), ..Default::default() });
+        let id2 = root.create_window(RenderWindowInfo {
+            title: "Secondary".to_string(),
+            ..Default::default()
+        });
         assert!(root.get_window(id2).is_some());
         root.destroy_window(id);
         assert!(root.get_window(id).is_none());
@@ -322,7 +327,9 @@ mod tests {
     #[test]
     fn test_root_scene_lifecycle() {
         let mut root = Root::new();
-        let idx = root.create_scene(RenderSceneInfo { name: "main".to_string() });
+        let idx = root.create_scene(RenderSceneInfo {
+            name: "main".to_string(),
+        });
         assert_eq!(root.get_scene_count(), 1);
         assert_eq!(root.get_scene(idx).unwrap().name, "main");
         root.destroy_scene(idx);
@@ -342,7 +349,11 @@ mod tests {
     #[test]
     fn test_root_resize() {
         let mut root = Root::new();
-        root.create_window(RenderWindowInfo { width: 800, height: 600, ..Default::default() });
+        root.create_window(RenderWindowInfo {
+            width: 800,
+            height: 600,
+            ..Default::default()
+        });
         root.resize(1280, 720);
         let win = root.get_main_window().unwrap();
         assert_eq!(win.width, 1280);
@@ -352,7 +363,9 @@ mod tests {
     #[test]
     fn test_root_create_model() {
         let mut root = Root::new();
-        let idx = root.create_scene(RenderSceneInfo { name: "s".to_string() });
+        let idx = root.create_scene(RenderSceneInfo {
+            name: "s".to_string(),
+        });
         let model_id = root.create_model(idx);
         assert!(model_id.is_some());
         assert_eq!(root.get_scene(idx).unwrap().models.len(), 1);
@@ -361,7 +374,9 @@ mod tests {
     #[test]
     fn test_root_create_lights() {
         let mut root = Root::new();
-        let idx = root.create_scene(RenderSceneInfo { name: "s".to_string() });
+        let idx = root.create_scene(RenderSceneInfo {
+            name: "s".to_string(),
+        });
         assert!(root.create_directional_light(idx));
         assert!(root.get_scene(idx).unwrap().main_light.is_some());
         assert!(root.create_spot_light(idx).is_some());
@@ -372,8 +387,12 @@ mod tests {
     #[test]
     fn test_root_multiple_scenes() {
         let mut root = Root::new();
-        root.create_scene(RenderSceneInfo { name: "scene1".to_string() });
-        root.create_scene(RenderSceneInfo { name: "scene2".to_string() });
+        root.create_scene(RenderSceneInfo {
+            name: "scene1".to_string(),
+        });
+        root.create_scene(RenderSceneInfo {
+            name: "scene2".to_string(),
+        });
         assert_eq!(root.get_scene_count(), 2);
         root.destroy_scenes();
         assert_eq!(root.get_scene_count(), 0);

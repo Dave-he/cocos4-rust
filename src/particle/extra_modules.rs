@@ -1,7 +1,9 @@
-use crate::math::{Vec3, Color};
+use crate::math::{Color, Vec3};
 
 fn pseudo_rand(seed: u64) -> f32 {
-    let h = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+    let h = seed
+        .wrapping_mul(6364136223846793005)
+        .wrapping_add(1442695040888963407);
     let h = ((h >> 33) ^ h).wrapping_mul(0xff51afd7ed558ccd);
     let h = ((h >> 33) ^ h).wrapping_mul(0xc4ceb9fe1a85ec53);
     let h = (h >> 33) ^ h;
@@ -63,8 +65,14 @@ impl NoiseModule {
     }
 
     pub fn evaluate(&self, pos: Vec3, normalized_lifetime: f32) -> Vec3 {
-        if !self.enabled { return Vec3::ZERO; }
-        let scale = if self.damping { 1.0 - normalized_lifetime } else { 1.0 };
+        if !self.enabled {
+            return Vec3::ZERO;
+        }
+        let scale = if self.damping {
+            1.0 - normalized_lifetime
+        } else {
+            1.0
+        };
         let mut result = Vec3::ZERO;
         let mut amp = self.strength * scale;
         let mut freq = self.frequency;
@@ -76,9 +84,21 @@ impl NoiseModule {
         );
         for oct in 0..self.octaves {
             let seed = oct as u64 * 7919 + 12345;
-            let nx = value_noise_3d(Vec3::new(sample_pos.x * (freq / self.frequency), pos.y, pos.z), seed) * 2.0 - 1.0;
-            let ny = value_noise_3d(Vec3::new(pos.x, sample_pos.y * (freq / self.frequency), pos.z), seed + 1) * 2.0 - 1.0;
-            let nz = value_noise_3d(Vec3::new(pos.x, pos.y, sample_pos.z * (freq / self.frequency)), seed + 2) * 2.0 - 1.0;
+            let nx = value_noise_3d(
+                Vec3::new(sample_pos.x * (freq / self.frequency), pos.y, pos.z),
+                seed,
+            ) * 2.0
+                - 1.0;
+            let ny = value_noise_3d(
+                Vec3::new(pos.x, sample_pos.y * (freq / self.frequency), pos.z),
+                seed + 1,
+            ) * 2.0
+                - 1.0;
+            let nz = value_noise_3d(
+                Vec3::new(pos.x, pos.y, sample_pos.z * (freq / self.frequency)),
+                seed + 2,
+            ) * 2.0
+                - 1.0;
             result.x += nx * amp;
             result.y += ny * amp;
             result.z += nz * amp;
@@ -90,7 +110,9 @@ impl NoiseModule {
 }
 
 impl Default for NoiseModule {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -104,7 +126,13 @@ pub struct TrailPoint {
 
 impl TrailPoint {
     fn new(pos: Vec3, color: Color, width: f32, lifetime: f32) -> Self {
-        TrailPoint { position: pos, color, width, lifetime, elapsed: 0.0 }
+        TrailPoint {
+            position: pos,
+            color,
+            width,
+            lifetime,
+            elapsed: 0.0,
+        }
     }
 
     fn is_expired(&self) -> bool {
@@ -214,14 +242,18 @@ impl TrailModule {
 }
 
 impl Default for TrailModule {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn pos(x: f32, y: f32, z: f32) -> Vec3 { Vec3::new(x, y, z) }
+    fn pos(x: f32, y: f32, z: f32) -> Vec3 {
+        Vec3::new(x, y, z)
+    }
 
     #[test]
     fn test_noise_module_disabled_returns_zero() {
@@ -246,7 +278,8 @@ mod tests {
         nm.strength = 10.0;
         let v_start = nm.evaluate(pos(1.0, 1.0, 1.0), 0.0);
         let v_end = nm.evaluate(pos(1.0, 1.0, 1.0), 1.0);
-        let len_start = (v_start.x * v_start.x + v_start.y * v_start.y + v_start.z * v_start.z).sqrt();
+        let len_start =
+            (v_start.x * v_start.x + v_start.y * v_start.y + v_start.z * v_start.z).sqrt();
         let len_end = (v_end.x * v_end.x + v_end.y * v_end.y + v_end.z * v_end.z).sqrt();
         assert!(len_start >= len_end);
     }

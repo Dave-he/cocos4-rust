@@ -79,17 +79,33 @@ impl AssetBase {
 }
 
 impl RefCounted for AssetBase {
-    fn add_ref(&self) { self.ref_count.add_ref(); }
-    fn release(&self) { self.ref_count.release(); }
-    fn get_ref_count(&self) -> u32 { self.ref_count.get_ref_count() }
-    fn is_last_reference(&self) -> bool { self.ref_count.is_last_reference() }
+    fn add_ref(&self) {
+        self.ref_count.add_ref();
+    }
+    fn release(&self) {
+        self.ref_count.release();
+    }
+    fn get_ref_count(&self) -> u32 {
+        self.ref_count.get_ref_count()
+    }
+    fn is_last_reference(&self) -> bool {
+        self.ref_count.is_last_reference()
+    }
 }
 
 impl Asset for AssetBase {
-    fn get_asset_type(&self) -> AssetType { self.asset_type }
-    fn get_name(&self) -> &str { &self.name }
-    fn is_loaded(&self) -> bool { self.loaded }
-    fn destroy(&mut self) { self.loaded = false; }
+    fn get_asset_type(&self) -> AssetType {
+        self.asset_type
+    }
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+    fn is_loaded(&self) -> bool {
+        self.loaded
+    }
+    fn destroy(&mut self) {
+        self.loaded = false;
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -180,17 +196,33 @@ impl MeshAsset {
 }
 
 impl RefCounted for MeshAsset {
-    fn add_ref(&self) { self.base.ref_count.add_ref(); }
-    fn release(&self) { self.base.ref_count.release(); }
-    fn get_ref_count(&self) -> u32 { self.base.ref_count.get_ref_count() }
-    fn is_last_reference(&self) -> bool { self.base.ref_count.is_last_reference() }
+    fn add_ref(&self) {
+        self.base.ref_count.add_ref();
+    }
+    fn release(&self) {
+        self.base.ref_count.release();
+    }
+    fn get_ref_count(&self) -> u32 {
+        self.base.ref_count.get_ref_count()
+    }
+    fn is_last_reference(&self) -> bool {
+        self.base.ref_count.is_last_reference()
+    }
 }
 
 impl Mesh for MeshAsset {
-    fn get_vertex_count(&self) -> u32 { self.total_vertex_count() }
-    fn get_index_count(&self) -> u32 { self.total_index_count() }
-    fn get_sub_mesh_count(&self) -> usize { self.sub_meshes.len() }
-    fn get_name(&self) -> &str { &self.base.name }
+    fn get_vertex_count(&self) -> u32 {
+        self.total_vertex_count()
+    }
+    fn get_index_count(&self) -> u32 {
+        self.total_index_count()
+    }
+    fn get_sub_mesh_count(&self) -> usize {
+        self.sub_meshes.len()
+    }
+    fn get_name(&self) -> &str {
+        &self.base.name
+    }
 }
 
 #[derive(Debug)]
@@ -233,16 +265,30 @@ impl ModelAsset {
 }
 
 impl RefCounted for ModelAsset {
-    fn add_ref(&self) { self.base.ref_count.add_ref(); }
-    fn release(&self) { self.base.ref_count.release(); }
-    fn get_ref_count(&self) -> u32 { self.base.ref_count.get_ref_count() }
-    fn is_last_reference(&self) -> bool { self.base.ref_count.is_last_reference() }
+    fn add_ref(&self) {
+        self.base.ref_count.add_ref();
+    }
+    fn release(&self) {
+        self.base.ref_count.release();
+    }
+    fn get_ref_count(&self) -> u32 {
+        self.base.ref_count.get_ref_count()
+    }
+    fn is_last_reference(&self) -> bool {
+        self.base.ref_count.is_last_reference()
+    }
 }
 
 impl Model for ModelAsset {
-    fn get_name(&self) -> &str { &self.base.name }
-    fn is_enabled(&self) -> bool { self.base.loaded }
-    fn set_enabled(&mut self, enabled: bool) { self.base.loaded = enabled; }
+    fn get_name(&self) -> &str {
+        &self.base.name
+    }
+    fn is_enabled(&self) -> bool {
+        self.base.loaded
+    }
+    fn set_enabled(&mut self, enabled: bool) {
+        self.base.loaded = enabled;
+    }
 }
 
 #[cfg(test)]

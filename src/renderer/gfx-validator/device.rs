@@ -4,18 +4,18 @@ Wraps GFX device operations with parameter and lifecycle validation.
 ****************************************************************************/
 
 use crate::renderer::gfx_base::{
-    API, BufferInfo, BufferViewInfo, CommandBufferInfo, DescriptorSetLayoutInfo,
-    DeviceInfo, Format, FormatFeature, FramebufferInfo, GfxBuffer, GfxCommandBuffer,
-    GfxDescriptorSet, GfxDescriptorSetLayout, GfxDevice, GfxFramebuffer, GfxInputAssembler,
-    GfxPipelineLayout, GfxPipelineState, GfxQueryPool, GfxQueue, GfxRenderPass, GfxSampler,
-    GfxShader, GfxSwapchain, GfxTexture, InputAssemblerInfo, MemoryStatus,
-    PipelineLayoutInfo, PipelineStateInfo, QueryPoolInfo, QueueInfo, RenderPassInfo,
-    SamplerInfo, ShaderInfo, SwapchainInfo, TextureInfo, TextureViewInfo,
+    BufferInfo, BufferViewInfo, CommandBufferInfo, DescriptorSetLayoutInfo, DeviceInfo, Format,
+    FormatFeature, FramebufferInfo, GfxBuffer, GfxCommandBuffer, GfxDescriptorSet,
+    GfxDescriptorSetLayout, GfxDevice, GfxFramebuffer, GfxInputAssembler, GfxPipelineLayout,
+    GfxPipelineState, GfxQueryPool, GfxQueue, GfxRenderPass, GfxSampler, GfxShader, GfxSwapchain,
+    GfxTexture, InputAssemblerInfo, MemoryStatus, PipelineLayoutInfo, PipelineStateInfo,
+    QueryPoolInfo, QueueInfo, RenderPassInfo, SamplerInfo, ShaderInfo, SwapchainInfo, TextureInfo,
+    TextureViewInfo, API,
 };
 
 use super::command_buffer::CommandBufferValidator;
 use super::resource_tracker::{ResourceTracker, ResourceType};
-use super::validation_utils::{ValidationLog, ValidationErrorKind};
+use super::validation_utils::{ValidationErrorKind, ValidationLog};
 
 pub struct DeviceValidator {
     device: GfxDevice,
@@ -90,13 +90,15 @@ impl DeviceValidator {
 
     pub fn create_command_buffer(&mut self, info: CommandBufferInfo) -> CommandBufferValidator {
         let cmd = self.device.create_command_buffer(info);
-        self.resource_tracker.push(ResourceType::CommandBuffer, cmd.id);
+        self.resource_tracker
+            .push(ResourceType::CommandBuffer, cmd.id);
         CommandBufferValidator::from_command_buffer(cmd)
     }
 
     pub fn create_command_buffer_raw(&mut self, info: CommandBufferInfo) -> GfxCommandBuffer {
         let cmd = self.device.create_command_buffer(info);
-        self.resource_tracker.push(ResourceType::CommandBuffer, cmd.id);
+        self.resource_tracker
+            .push(ResourceType::CommandBuffer, cmd.id);
         cmd
     }
 
@@ -115,7 +117,8 @@ impl DeviceValidator {
 
     fn validate_buffer_info(&mut self, info: &BufferInfo) {
         if info.size == 0 {
-            self.log.error(ValidationErrorKind::Buffer, "Buffer size must not be zero");
+            self.log
+                .error(ValidationErrorKind::Buffer, "Buffer size must not be zero");
         }
         if info.stride > 0 && info.size % info.stride != 0 {
             self.log.warn(&format!(
@@ -140,12 +143,17 @@ impl DeviceValidator {
 
     fn validate_texture_info(&mut self, info: &TextureInfo) {
         if info.width == 0 || info.height == 0 {
-            self.log.error(ValidationErrorKind::Texture, "Texture width and height must not be zero");
+            self.log.error(
+                ValidationErrorKind::Texture,
+                "Texture width and height must not be zero",
+            );
         }
         let fmt = info.format;
         let fmt_features = self.device.get_format_features(fmt);
         if !fmt_features.contains(FormatFeature::NONE) && fmt != Format::Unknown {
-            if info.usage.contains(crate::renderer::gfx_base::TextureUsage::COLOR_ATTACHMENT)
+            if info
+                .usage
+                .contains(crate::renderer::gfx_base::TextureUsage::COLOR_ATTACHMENT)
                 && !fmt_features.contains(FormatFeature::RENDER_TARGET)
             {
                 self.log.error(
@@ -170,7 +178,8 @@ impl DeviceValidator {
 
     pub fn create_input_assembler(&mut self, info: InputAssemblerInfo) -> GfxInputAssembler {
         let ia = self.device.create_input_assembler(info);
-        self.resource_tracker.push(ResourceType::InputAssembler, ia.id);
+        self.resource_tracker
+            .push(ResourceType::InputAssembler, ia.id);
         ia
     }
 
@@ -180,48 +189,63 @@ impl DeviceValidator {
         rp
     }
 
-    pub fn create_framebuffer(&mut self, info: FramebufferInfo, width: u32, height: u32) -> GfxFramebuffer {
+    pub fn create_framebuffer(
+        &mut self,
+        info: FramebufferInfo,
+        width: u32,
+        height: u32,
+    ) -> GfxFramebuffer {
         let fb = self.device.create_framebuffer(info, width, height);
         self.resource_tracker.push(ResourceType::Framebuffer, fb.id);
         fb
     }
 
-    pub fn create_descriptor_set_layout(&mut self, info: DescriptorSetLayoutInfo) -> GfxDescriptorSetLayout {
+    pub fn create_descriptor_set_layout(
+        &mut self,
+        info: DescriptorSetLayoutInfo,
+    ) -> GfxDescriptorSetLayout {
         let layout = self.device.create_descriptor_set_layout(info);
-        self.resource_tracker.push(ResourceType::DescriptorSetLayout, layout.id);
+        self.resource_tracker
+            .push(ResourceType::DescriptorSetLayout, layout.id);
         layout
     }
 
     pub fn create_descriptor_set(&mut self, layout_id: u32) -> GfxDescriptorSet {
         let ds = self.device.create_descriptor_set(layout_id);
-        self.resource_tracker.push(ResourceType::DescriptorSet, ds.id);
+        self.resource_tracker
+            .push(ResourceType::DescriptorSet, ds.id);
         ds
     }
 
     pub fn create_pipeline_layout(&mut self, info: PipelineLayoutInfo) -> GfxPipelineLayout {
         let layout = self.device.create_pipeline_layout(info);
-        self.resource_tracker.push(ResourceType::PipelineLayout, layout.id);
+        self.resource_tracker
+            .push(ResourceType::PipelineLayout, layout.id);
         layout
     }
 
     pub fn create_pipeline_state(&mut self, info: PipelineStateInfo) -> GfxPipelineState {
         let pso = self.device.create_pipeline_state(info);
-        self.resource_tracker.push(ResourceType::PipelineState, pso.id);
+        self.resource_tracker
+            .push(ResourceType::PipelineState, pso.id);
         pso
     }
 
     pub fn create_sampler(&mut self, info: SamplerInfo) -> GfxSampler {
         if info.address_u != info.address_v || info.address_v != info.address_w {
-            self.log.warn("Samplers with different wrapping modes may cause reduced performance");
+            self.log
+                .warn("Samplers with different wrapping modes may cause reduced performance");
         }
         let sampler = self.device.create_sampler(info);
-        self.resource_tracker.push(ResourceType::Sampler, sampler.id);
+        self.resource_tracker
+            .push(ResourceType::Sampler, sampler.id);
         sampler
     }
 
     pub fn create_swapchain(&mut self, info: SwapchainInfo) -> GfxSwapchain {
         let swapchain = self.device.create_swapchain(info);
-        self.resource_tracker.push(ResourceType::Swapchain, swapchain.id);
+        self.resource_tracker
+            .push(ResourceType::Swapchain, swapchain.id);
         swapchain
     }
 
@@ -306,7 +330,9 @@ mod tests {
             ..Default::default()
         });
         assert_eq!(buf.get_size(), 256);
-        assert!(!validator.get_resource_tracker().check_empty(ResourceType::Buffer));
+        assert!(!validator
+            .get_resource_tracker()
+            .check_empty(ResourceType::Buffer));
     }
 
     #[test]
@@ -318,7 +344,9 @@ mod tests {
             ..Default::default()
         });
         assert!(validator.get_log().has_errors());
-        validator.resource_tracker.erase(ResourceType::Buffer, buf.id);
+        validator
+            .resource_tracker
+            .erase(ResourceType::Buffer, buf.id);
     }
 
     #[test]
@@ -332,7 +360,9 @@ mod tests {
         });
         assert!(!validator.get_log().has_errors());
         assert_eq!(validator.get_log().get_warnings().len(), 1);
-        validator.resource_tracker.erase(ResourceType::Buffer, buf.id);
+        validator
+            .resource_tracker
+            .erase(ResourceType::Buffer, buf.id);
     }
 
     #[test]
@@ -345,8 +375,12 @@ mod tests {
             ..Default::default()
         });
         assert_eq!(tex.get_width(), 512);
-        assert!(!validator.get_resource_tracker().check_empty(ResourceType::Texture));
-        validator.resource_tracker.erase(ResourceType::Texture, tex.id);
+        assert!(!validator
+            .get_resource_tracker()
+            .check_empty(ResourceType::Texture));
+        validator
+            .resource_tracker
+            .erase(ResourceType::Texture, tex.id);
     }
 
     #[test]
@@ -359,7 +393,9 @@ mod tests {
             ..Default::default()
         });
         assert!(validator.get_log().has_errors());
-        validator.resource_tracker.erase(ResourceType::Texture, tex.id);
+        validator
+            .resource_tracker
+            .erase(ResourceType::Texture, tex.id);
     }
 
     #[test]
@@ -371,7 +407,9 @@ mod tests {
             ..Default::default()
         });
         assert_eq!(shader.get_name(), "TestShader");
-        validator.resource_tracker.erase(ResourceType::Shader, shader.id);
+        validator
+            .resource_tracker
+            .erase(ResourceType::Shader, shader.id);
     }
 
     #[test]
@@ -385,7 +423,9 @@ mod tests {
             ..Default::default()
         });
         assert_eq!(validator.get_log().get_warnings().len(), 1);
-        validator.resource_tracker.erase(ResourceType::Sampler, sampler.id);
+        validator
+            .resource_tracker
+            .erase(ResourceType::Sampler, sampler.id);
     }
 
     #[test]
@@ -396,14 +436,19 @@ mod tests {
         cmd.state_tracker.on_begin();
         cmd.begin();
         cmd.end();
-        assert!(!validator.get_resource_tracker().check_empty(ResourceType::CommandBuffer));
+        assert!(!validator
+            .get_resource_tracker()
+            .check_empty(ResourceType::CommandBuffer));
     }
 
     #[test]
     fn test_device_validator_resource_leak_on_destroy() {
         let mut validator = DeviceValidator::default();
         validator.initialize();
-        let buf = validator.create_buffer(BufferInfo { size: 64, ..Default::default() });
+        let buf = validator.create_buffer(BufferInfo {
+            size: 64,
+            ..Default::default()
+        });
         validator.destroy();
         assert!(validator.get_log().has_errors());
     }
@@ -412,8 +457,13 @@ mod tests {
     fn test_device_validator_no_leak_on_destroy() {
         let mut validator = DeviceValidator::default();
         validator.initialize();
-        let buf = validator.create_buffer(BufferInfo { size: 64, ..Default::default() });
-        validator.resource_tracker.erase(ResourceType::Buffer, buf.id);
+        let buf = validator.create_buffer(BufferInfo {
+            size: 64,
+            ..Default::default()
+        });
+        validator
+            .resource_tracker
+            .erase(ResourceType::Buffer, buf.id);
         validator.destroy();
         assert!(!validator.get_log().has_errors());
     }
@@ -423,7 +473,10 @@ mod tests {
         let mut validator = DeviceValidator::default();
         validator.set_enabled(false);
         validator.initialize();
-        let buf = validator.create_buffer(BufferInfo { size: 0, ..Default::default() });
+        let buf = validator.create_buffer(BufferInfo {
+            size: 0,
+            ..Default::default()
+        });
         assert!(!validator.get_log().has_errors());
     }
 
@@ -441,8 +494,12 @@ mod tests {
         let layout = validator.create_descriptor_set_layout(DescriptorSetLayoutInfo::default());
         let ds = validator.create_descriptor_set(layout.id);
         assert!(ds.id > 0);
-        validator.resource_tracker.erase(ResourceType::DescriptorSet, ds.id);
-        validator.resource_tracker.erase(ResourceType::DescriptorSetLayout, layout.id);
+        validator
+            .resource_tracker
+            .erase(ResourceType::DescriptorSet, ds.id);
+        validator
+            .resource_tracker
+            .erase(ResourceType::DescriptorSetLayout, layout.id);
     }
 
     #[test]
@@ -451,6 +508,8 @@ mod tests {
         validator.initialize();
         let pso = validator.create_pipeline_state(PipelineStateInfo::default());
         assert!(pso.id > 0);
-        validator.resource_tracker.erase(ResourceType::PipelineState, pso.id);
+        validator
+            .resource_tracker
+            .erase(ResourceType::PipelineState, pso.id);
     }
 }

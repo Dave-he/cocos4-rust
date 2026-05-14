@@ -16,7 +16,9 @@ impl Toggle {
     }
 
     pub fn check(&mut self) {
-        if !self.interactable { return; }
+        if !self.interactable {
+            return;
+        }
         if !self.is_checked {
             self.is_checked = true;
             self.emit(true);
@@ -24,7 +26,9 @@ impl Toggle {
     }
 
     pub fn uncheck(&mut self) {
-        if !self.interactable { return; }
+        if !self.interactable {
+            return;
+        }
         if self.is_checked {
             self.is_checked = false;
             self.emit(false);
@@ -32,7 +36,9 @@ impl Toggle {
     }
 
     pub fn toggle(&mut self) {
-        if !self.interactable { return; }
+        if !self.interactable {
+            return;
+        }
         self.is_checked = !self.is_checked;
         let v = self.is_checked;
         self.emit(v);
@@ -157,7 +163,9 @@ mod tests {
         let mut t = Toggle::new();
         let val = Arc::new(Mutex::new(false));
         let v = Arc::clone(&val);
-        t.on_change(move |checked| { *v.lock().unwrap() = checked; });
+        t.on_change(move |checked| {
+            *v.lock().unwrap() = checked;
+        });
         t.check();
         assert!(*val.lock().unwrap());
         t.uncheck();

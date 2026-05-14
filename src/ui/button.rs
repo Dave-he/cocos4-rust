@@ -60,7 +60,11 @@ impl Button {
 
     pub fn set_enabled(&mut self, enabled: bool) {
         self.interactable = enabled;
-        self.state = if enabled { ButtonState::Normal } else { ButtonState::Disabled };
+        self.state = if enabled {
+            ButtonState::Normal
+        } else {
+            ButtonState::Disabled
+        };
     }
 
     pub fn on_click<F: Fn() + Send + Sync + 'static>(&mut self, f: F) {
@@ -68,17 +72,23 @@ impl Button {
     }
 
     pub fn simulate_hover(&mut self) {
-        if !self.interactable { return; }
+        if !self.interactable {
+            return;
+        }
         self.state = ButtonState::Hover;
     }
 
     pub fn simulate_press(&mut self) {
-        if !self.interactable { return; }
+        if !self.interactable {
+            return;
+        }
         self.state = ButtonState::Pressed;
     }
 
     pub fn simulate_release(&mut self) {
-        if !self.interactable { return; }
+        if !self.interactable {
+            return;
+        }
         if self.state == ButtonState::Pressed {
             self.state = ButtonState::Normal;
             self.fire_click();
@@ -150,7 +160,9 @@ mod tests {
         let mut b = Button::new();
         let clicked = Arc::new(Mutex::new(false));
         let c = Arc::clone(&clicked);
-        b.on_click(move || { *c.lock().unwrap() = true; });
+        b.on_click(move || {
+            *c.lock().unwrap() = true;
+        });
         b.simulate_press();
         b.simulate_release();
         assert!(*clicked.lock().unwrap());
@@ -161,7 +173,9 @@ mod tests {
         let mut b = Button::new();
         let clicked = Arc::new(Mutex::new(false));
         let c = Arc::clone(&clicked);
-        b.on_click(move || { *c.lock().unwrap() = true; });
+        b.on_click(move || {
+            *c.lock().unwrap() = true;
+        });
         b.set_enabled(false);
         b.simulate_press();
         b.simulate_release();
@@ -203,7 +217,9 @@ mod tests {
         let count = Arc::new(Mutex::new(0u32));
         for _ in 0..3 {
             let c = Arc::clone(&count);
-            b.on_click(move || { *c.lock().unwrap() += 1; });
+            b.on_click(move || {
+                *c.lock().unwrap() += 1;
+            });
         }
         b.simulate_press();
         b.simulate_release();

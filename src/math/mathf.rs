@@ -53,7 +53,13 @@ pub fn approximately(a: f32, b: f32) -> bool {
 }
 
 pub fn sign(v: f32) -> f32 {
-    if v > 0.0 { 1.0 } else if v < 0.0 { -1.0 } else { 0.0 }
+    if v > 0.0 {
+        1.0
+    } else if v < 0.0 {
+        -1.0
+    } else {
+        0.0
+    }
 }
 
 pub fn deg_to_rad(deg: f32) -> f32 {
@@ -113,7 +119,12 @@ impl BezierCurve2D {
     }
 
     pub fn quadratic(p0: Vec2, p1: Vec2, p2: Vec2) -> Self {
-        BezierCurve2D { p0, p1, p2: p1, p3: p2 }
+        BezierCurve2D {
+            p0,
+            p1,
+            p2: p1,
+            p3: p2,
+        }
     }
 
     pub fn evaluate(&self, t: f32) -> Vec2 {
@@ -124,8 +135,14 @@ impl BezierCurve2D {
         let t2 = t * t;
         let t3 = t2 * t;
         Vec2 {
-            x: mt3 * self.p0.x + 3.0 * mt2 * t * self.p1.x + 3.0 * mt * t2 * self.p2.x + t3 * self.p3.x,
-            y: mt3 * self.p0.y + 3.0 * mt2 * t * self.p1.y + 3.0 * mt * t2 * self.p2.y + t3 * self.p3.y,
+            x: mt3 * self.p0.x
+                + 3.0 * mt2 * t * self.p1.x
+                + 3.0 * mt * t2 * self.p2.x
+                + t3 * self.p3.x,
+            y: mt3 * self.p0.y
+                + 3.0 * mt2 * t * self.p1.y
+                + 3.0 * mt * t2 * self.p2.y
+                + t3 * self.p3.y,
         }
     }
 
@@ -133,8 +150,14 @@ impl BezierCurve2D {
         let t = clamp01(t);
         let mt = 1.0 - t;
         Vec2 {
-            x: 3.0 * (mt * mt * (self.p1.x - self.p0.x) + 2.0 * mt * t * (self.p2.x - self.p1.x) + t * t * (self.p3.x - self.p2.x)),
-            y: 3.0 * (mt * mt * (self.p1.y - self.p0.y) + 2.0 * mt * t * (self.p2.y - self.p1.y) + t * t * (self.p3.y - self.p2.y)),
+            x: 3.0
+                * (mt * mt * (self.p1.x - self.p0.x)
+                    + 2.0 * mt * t * (self.p2.x - self.p1.x)
+                    + t * t * (self.p3.x - self.p2.x)),
+            y: 3.0
+                * (mt * mt * (self.p1.y - self.p0.y)
+                    + 2.0 * mt * t * (self.p2.y - self.p1.y)
+                    + t * t * (self.p3.y - self.p2.y)),
         }
     }
 
@@ -154,7 +177,9 @@ impl BezierCurve2D {
     }
 
     pub fn sample_uniform(&self, count: usize) -> Vec<Vec2> {
-        (0..count).map(|i| self.evaluate(i as f32 / (count - 1).max(1) as f32)).collect()
+        (0..count)
+            .map(|i| self.evaluate(i as f32 / (count - 1).max(1) as f32))
+            .collect()
     }
 }
 
@@ -165,7 +190,9 @@ pub struct AnimationCurve {
 
 impl AnimationCurve {
     pub fn new() -> Self {
-        AnimationCurve { keyframes: Vec::new() }
+        AnimationCurve {
+            keyframes: Vec::new(),
+        }
     }
 
     pub fn linear(from: f32, to: f32) -> Self {

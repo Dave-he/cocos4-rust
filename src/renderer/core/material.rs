@@ -3,9 +3,9 @@ Rust port of Cocos Creator Renderer Material System
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use std::collections::HashMap;
-use crate::base::{RefCounted, RefCountedImpl};
 use super::pass::{Pass, PassOverrides, PassProperty};
+use crate::base::{RefCounted, RefCountedImpl};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct MacroRecord {
@@ -15,7 +15,10 @@ pub struct MacroRecord {
 
 impl MacroRecord {
     pub fn new(name: &str, value: &str) -> Self {
-        MacroRecord { name: name.to_string(), value: value.to_string() }
+        MacroRecord {
+            name: name.to_string(),
+            value: value.to_string(),
+        }
     }
 }
 
@@ -100,7 +103,10 @@ impl Material {
     }
 
     pub fn get_define(&self, name: &str) -> Option<&str> {
-        self.defines.iter().find(|d| d.name == name).map(|d| d.value.as_str())
+        self.defines
+            .iter()
+            .find(|d| d.name == name)
+            .map(|d| d.value.as_str())
     }
 
     pub fn recompile_shaders(&mut self, overrides: &[MacroRecord]) {
@@ -139,10 +145,18 @@ impl Material {
 }
 
 impl RefCounted for Material {
-    fn add_ref(&self) { self.ref_count.add_ref(); }
-    fn release(&self) { self.ref_count.release(); }
-    fn get_ref_count(&self) -> u32 { self.ref_count.get_ref_count() }
-    fn is_last_reference(&self) -> bool { self.ref_count.is_last_reference() }
+    fn add_ref(&self) {
+        self.ref_count.add_ref();
+    }
+    fn release(&self) {
+        self.ref_count.release();
+    }
+    fn get_ref_count(&self) -> u32 {
+        self.ref_count.get_ref_count()
+    }
+    fn is_last_reference(&self) -> bool {
+        self.ref_count.is_last_reference()
+    }
 }
 
 pub struct MaterialPool {
@@ -151,11 +165,15 @@ pub struct MaterialPool {
 
 impl MaterialPool {
     pub fn new() -> Self {
-        MaterialPool { materials: HashMap::new() }
+        MaterialPool {
+            materials: HashMap::new(),
+        }
     }
 
     pub fn create(&mut self, name: &str) -> &mut Material {
-        self.materials.entry(name.to_string()).or_insert_with(|| Material::new(name))
+        self.materials
+            .entry(name.to_string())
+            .or_insert_with(|| Material::new(name))
     }
 
     pub fn get(&self, name: &str) -> Option<&Material> {
@@ -191,7 +209,10 @@ mod tests {
     use crate::renderer::core::pass::{IPassInfo, RenderQueueType};
 
     fn make_pass(name: &str) -> Pass {
-        let info = IPassInfo { name: name.to_string(), ..Default::default() };
+        let info = IPassInfo {
+            name: name.to_string(),
+            ..Default::default()
+        };
         Pass::with_info(info)
     }
 
@@ -271,7 +292,10 @@ mod tests {
             ..Default::default()
         };
         m.override_pipeline_states(0, &overrides);
-        assert_eq!(m.get_pass(0).unwrap().get_queue(), RenderQueueType::Transparent);
+        assert_eq!(
+            m.get_pass(0).unwrap().get_queue(),
+            RenderQueueType::Transparent
+        );
     }
 
     #[test]

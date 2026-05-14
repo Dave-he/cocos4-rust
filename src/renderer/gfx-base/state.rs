@@ -50,9 +50,12 @@ mod tests {
 
     #[test]
     fn test_pipeline_layout_with_sets() {
-        let layout = GfxPipelineLayout::new(1, PipelineLayoutInfo {
-            set_layouts: vec![0, 1, 2],
-        });
+        let layout = GfxPipelineLayout::new(
+            1,
+            PipelineLayoutInfo {
+                set_layouts: vec![0, 1, 2],
+            },
+        );
         assert_eq!(layout.get_set_layout_count(), 3);
     }
 

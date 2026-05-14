@@ -86,11 +86,19 @@ impl JsonValue {
     }
 
     pub fn as_bool(&self) -> Option<bool> {
-        if let JsonValue::Bool(v) = self { Some(*v) } else { None }
+        if let JsonValue::Bool(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
     }
 
     pub fn as_i64(&self) -> Option<i64> {
-        if let JsonValue::Int(v) = self { Some(*v) } else { None }
+        if let JsonValue::Int(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
     }
 
     pub fn as_f64(&self) -> Option<f64> {
@@ -102,15 +110,27 @@ impl JsonValue {
     }
 
     pub fn as_str(&self) -> Option<&str> {
-        if let JsonValue::String(v) = self { Some(v.as_str()) } else { None }
+        if let JsonValue::String(v) = self {
+            Some(v.as_str())
+        } else {
+            None
+        }
     }
 
     pub fn as_array(&self) -> Option<&Vec<JsonValue>> {
-        if let JsonValue::Array(v) = self { Some(v) } else { None }
+        if let JsonValue::Array(v) = self {
+            Some(v)
+        } else {
+            None
+        }
     }
 
     pub fn as_object(&self) -> Option<&HashMap<String, JsonValue>> {
-        if let JsonValue::Object(v) = self { Some(v) } else { None }
+        if let JsonValue::Object(v) = self {
+            Some(v)
+        } else {
+            None
+        }
     }
 
     pub fn to_json_string(&self) -> String {
@@ -125,7 +145,8 @@ impl JsonValue {
                 format!("[{}]", items.join(","))
             }
             JsonValue::Object(obj) => {
-                let items: Vec<String> = obj.iter()
+                let items: Vec<String> = obj
+                    .iter()
                     .map(|(k, v)| format!("\"{}\":{}", k, v.to_json_string()))
                     .collect();
                 format!("{{{}}}", items.join(","))
@@ -146,7 +167,9 @@ impl JsonValue {
         }
         if s.starts_with('"') && s.ends_with('"') {
             let inner = &s[1..s.len() - 1];
-            return Ok(JsonValue::String(inner.replace("\\\"", "\"").replace("\\\\", "\\")));
+            return Ok(JsonValue::String(
+                inner.replace("\\\"", "\"").replace("\\\\", "\\"),
+            ));
         }
         if s.starts_with('{') && s.ends_with('}') {
             return Ok(JsonValue::Object(HashMap::new()));
@@ -167,31 +190,45 @@ impl JsonValue {
 }
 
 impl From<bool> for JsonValue {
-    fn from(v: bool) -> Self { JsonValue::Bool(v) }
+    fn from(v: bool) -> Self {
+        JsonValue::Bool(v)
+    }
 }
 
 impl From<i32> for JsonValue {
-    fn from(v: i32) -> Self { JsonValue::Int(v as i64) }
+    fn from(v: i32) -> Self {
+        JsonValue::Int(v as i64)
+    }
 }
 
 impl From<i64> for JsonValue {
-    fn from(v: i64) -> Self { JsonValue::Int(v) }
+    fn from(v: i64) -> Self {
+        JsonValue::Int(v)
+    }
 }
 
 impl From<f32> for JsonValue {
-    fn from(v: f32) -> Self { JsonValue::Float(v as f64) }
+    fn from(v: f32) -> Self {
+        JsonValue::Float(v as f64)
+    }
 }
 
 impl From<f64> for JsonValue {
-    fn from(v: f64) -> Self { JsonValue::Float(v) }
+    fn from(v: f64) -> Self {
+        JsonValue::Float(v)
+    }
 }
 
 impl From<String> for JsonValue {
-    fn from(v: String) -> Self { JsonValue::String(v) }
+    fn from(v: String) -> Self {
+        JsonValue::String(v)
+    }
 }
 
 impl From<&str> for JsonValue {
-    fn from(v: &str) -> Self { JsonValue::String(v.to_string()) }
+    fn from(v: &str) -> Self {
+        JsonValue::String(v.to_string())
+    }
 }
 
 /// JSON-aware storage that serializes/deserializes values
@@ -207,7 +244,8 @@ impl JsonStorage {
     }
 
     pub fn get(&self, key: &str) -> Option<JsonValue> {
-        self.local.get_item(key)
+        self.local
+            .get_item(key)
             .and_then(|s| JsonValue::parse(&s).ok())
     }
 
@@ -326,7 +364,10 @@ mod tests {
         assert_eq!(JsonValue::Bool(true).to_json_string(), "true");
         assert_eq!(JsonValue::Bool(false).to_json_string(), "false");
         assert_eq!(JsonValue::Int(42).to_json_string(), "42");
-        assert_eq!(JsonValue::String("hello".to_string()).to_json_string(), "\"hello\"");
+        assert_eq!(
+            JsonValue::String("hello".to_string()).to_json_string(),
+            "\"hello\""
+        );
     }
 
     #[test]
@@ -337,7 +378,10 @@ mod tests {
         assert_eq!(JsonValue::parse("false").unwrap(), JsonValue::Bool(false));
         assert_eq!(JsonValue::parse("42").unwrap(), JsonValue::Int(42));
         assert_eq!(JsonValue::parse("3.14").unwrap(), JsonValue::Float(3.14));
-        assert_eq!(JsonValue::parse("\"hello\"").unwrap(), JsonValue::String("hello".to_string()));
+        assert_eq!(
+            JsonValue::parse("\"hello\"").unwrap(),
+            JsonValue::String("hello".to_string())
+        );
     }
 
     #[test]

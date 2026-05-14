@@ -1,7 +1,9 @@
 use crate::math::Vec3;
-use crate::particle::particle::Particle;
 use crate::particle::emitter::Emitter;
-use crate::particle::modules::{ColorOverLifetime, SizeOverLifetime, VelocityOverLifetime, RotationOverLifetime};
+use crate::particle::modules::{
+    ColorOverLifetime, RotationOverLifetime, SizeOverLifetime, VelocityOverLifetime,
+};
+use crate::particle::particle::Particle;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParticleSystemState {
@@ -128,7 +130,9 @@ impl ParticleSystem {
         }
 
         for p in self.particles.iter_mut() {
-            if !p.alive { continue; }
+            if !p.alive {
+                continue;
+            }
 
             let t = p.get_normalized_lifetime();
 
@@ -161,8 +165,8 @@ impl ParticleSystem {
             if self.looping {
                 self.elapsed = 0.0;
             } else if self.get_particle_count() == 0 {
-                    self.state = ParticleSystemState::Stopped;
-                }
+                self.state = ParticleSystemState::Stopped;
+            }
         }
     }
 

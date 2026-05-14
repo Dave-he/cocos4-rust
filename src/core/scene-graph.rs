@@ -1,7 +1,7 @@
-use std::sync::{Arc, Mutex, Weak};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, Weak};
 
 pub use crate::math::Vec3;
 pub use crate::math::{Mat4, Quaternion};
@@ -302,15 +302,17 @@ impl BaseNode {
     }
 
     pub fn get_child_by_name(&self, name: &str) -> Option<NodePtr> {
-        self.children.iter().find(|c| {
-            c.lock().map(|n| n.name == name).unwrap_or(false)
-        }).cloned()
+        self.children
+            .iter()
+            .find(|c| c.lock().map(|n| n.name == name).unwrap_or(false))
+            .cloned()
     }
 
     pub fn get_child_by_uuid(&self, uuid: &str) -> Option<NodePtr> {
-        self.children.iter().find(|c| {
-            c.lock().map(|n| n.uuid == uuid).unwrap_or(false)
-        }).cloned()
+        self.children
+            .iter()
+            .find(|c| c.lock().map(|n| n.uuid == uuid).unwrap_or(false))
+            .cloned()
     }
 
     pub fn get_child_by_path(&self, path: &str) -> Option<NodePtr> {
@@ -338,13 +340,17 @@ impl BaseNode {
     pub fn set_position(&mut self, position: Vec3) {
         self.local_position = position;
         self.invalidate(TransformBit::Position);
-        self.event_emitter.emit(&NodeEventType::TransformChanged(TransformBit::Position as u32));
+        self.event_emitter.emit(&NodeEventType::TransformChanged(
+            TransformBit::Position as u32,
+        ));
     }
 
     pub fn set_position_xyz(&mut self, x: f32, y: f32, z: f32) {
         self.local_position = Vec3::new(x, y, z);
         self.invalidate(TransformBit::Position);
-        self.event_emitter.emit(&NodeEventType::TransformChanged(TransformBit::Position as u32));
+        self.event_emitter.emit(&NodeEventType::TransformChanged(
+            TransformBit::Position as u32,
+        ));
     }
 
     pub fn get_rotation(&self) -> Quaternion {
@@ -355,7 +361,9 @@ impl BaseNode {
         self.local_rotation = rotation;
         self.euler_dirty = true;
         self.invalidate(TransformBit::Rotation);
-        self.event_emitter.emit(&NodeEventType::TransformChanged(TransformBit::Rotation as u32));
+        self.event_emitter.emit(&NodeEventType::TransformChanged(
+            TransformBit::Rotation as u32,
+        ));
     }
 
     pub fn set_rotation_from_euler(&mut self, x: f32, y: f32, z: f32) {
@@ -363,7 +371,9 @@ impl BaseNode {
         self.local_rotation = Quaternion::from_euler(x, y, z);
         self.euler_dirty = false;
         self.invalidate(TransformBit::Rotation);
-        self.event_emitter.emit(&NodeEventType::TransformChanged(TransformBit::Rotation as u32));
+        self.event_emitter.emit(&NodeEventType::TransformChanged(
+            TransformBit::Rotation as u32,
+        ));
     }
 
     pub fn get_euler_angles(&self) -> Vec3 {
@@ -381,13 +391,15 @@ impl BaseNode {
     pub fn set_scale(&mut self, scale: Vec3) {
         self.local_scale = scale;
         self.invalidate(TransformBit::Scale);
-        self.event_emitter.emit(&NodeEventType::TransformChanged(TransformBit::Scale as u32));
+        self.event_emitter
+            .emit(&NodeEventType::TransformChanged(TransformBit::Scale as u32));
     }
 
     pub fn set_scale_xyz(&mut self, x: f32, y: f32, z: f32) {
         self.local_scale = Vec3::new(x, y, z);
         self.invalidate(TransformBit::Scale);
-        self.event_emitter.emit(&NodeEventType::TransformChanged(TransformBit::Scale as u32));
+        self.event_emitter
+            .emit(&NodeEventType::TransformChanged(TransformBit::Scale as u32));
     }
 
     pub fn get_world_position(&self) -> Vec3 {
@@ -437,9 +449,21 @@ impl BaseNode {
                 let py = p.world_scale.y;
                 let pz = p.world_scale.z;
                 self.local_scale = Vec3::new(
-                    if px.abs() > 1e-6 { scale.x / px } else { scale.x },
-                    if py.abs() > 1e-6 { scale.y / py } else { scale.y },
-                    if pz.abs() > 1e-6 { scale.z / pz } else { scale.z },
+                    if px.abs() > 1e-6 {
+                        scale.x / px
+                    } else {
+                        scale.x
+                    },
+                    if py.abs() > 1e-6 {
+                        scale.y / py
+                    } else {
+                        scale.y
+                    },
+                    if pz.abs() > 1e-6 {
+                        scale.z / pz
+                    } else {
+                        scale.z
+                    },
                 );
             }
         } else {
@@ -496,7 +520,11 @@ impl BaseNode {
             self.world_scale = self.local_scale;
         }
 
-        self.world_matrix = Mat4::from_srt(&self.world_rotation, &self.world_position, &self.world_scale);
+        self.world_matrix = Mat4::from_srt(
+            &self.world_rotation,
+            &self.world_position,
+            &self.world_scale,
+        );
         self.transform_flags = TransformBit::None as u32;
     }
 
@@ -510,7 +538,8 @@ impl BaseNode {
 
     pub fn set_active(&mut self, active: bool) {
         self.active = active;
-        self.event_emitter.emit(&NodeEventType::ActiveChanged(active));
+        self.event_emitter
+            .emit(&NodeEventType::ActiveChanged(active));
     }
 
     pub fn is_active_in_hierarchy(&self) -> bool {
@@ -547,7 +576,8 @@ impl BaseNode {
 
     pub fn set_mobility(&mut self, mobility: MobilityMode) {
         self.mobility = mobility;
-        self.event_emitter.emit(&NodeEventType::MobilityChanged(mobility));
+        self.event_emitter
+            .emit(&NodeEventType::MobilityChanged(mobility));
     }
 
     pub fn add_component<C: Component + 'static>(&mut self, component: C) {
@@ -567,7 +597,10 @@ impl BaseNode {
 
     pub fn get_component_mut<C: Component + 'static>(&mut self) -> Option<&mut C> {
         let type_id = TypeId::of::<C>();
-        self.components.get_mut(&type_id)?.as_any_mut().downcast_mut::<C>()
+        self.components
+            .get_mut(&type_id)?
+            .as_any_mut()
+            .downcast_mut::<C>()
     }
 
     pub fn remove_component<C: Component + 'static>(&mut self) -> Option<ComponentPtr> {
@@ -663,7 +696,8 @@ impl BaseNode {
             2.0 * (r.x * r.z + r.w * r.y),
             2.0 * (r.y * r.z - r.w * r.x),
             1.0 - 2.0 * (r.x * r.x + r.y * r.y),
-        ).get_normalized()
+        )
+        .get_normalized()
     }
 
     pub fn get_up(&self) -> Vec3 {
@@ -672,7 +706,8 @@ impl BaseNode {
             2.0 * (r.x * r.y - r.w * r.z),
             1.0 - 2.0 * (r.x * r.x + r.z * r.z),
             2.0 * (r.y * r.z + r.w * r.x),
-        ).get_normalized()
+        )
+        .get_normalized()
     }
 
     pub fn get_right(&self) -> Vec3 {
@@ -681,7 +716,8 @@ impl BaseNode {
             1.0 - 2.0 * (r.y * r.y + r.z * r.z),
             2.0 * (r.x * r.y + r.w * r.z),
             2.0 * (r.x * r.z - r.w * r.y),
-        ).get_normalized()
+        )
+        .get_normalized()
     }
 
     /// Depth-first traversal of the node hierarchy.
@@ -936,7 +972,9 @@ impl std::fmt::Debug for NodeEventEmitter {
 
 impl NodeEventEmitter {
     pub fn new() -> Self {
-        NodeEventEmitter { listeners: Vec::new() }
+        NodeEventEmitter {
+            listeners: Vec::new(),
+        }
     }
 
     pub fn on(&mut self, listener: NodeEventListener) {
@@ -1099,7 +1137,10 @@ mod tests {
     fn test_depth() {
         let root = Arc::new(Mutex::new(BaseNode::new("Root")));
         let child = Arc::new(Mutex::new(BaseNode::new("Child")));
-        child.lock().unwrap().set_parent_weak(Some(Arc::downgrade(&root)));
+        child
+            .lock()
+            .unwrap()
+            .set_parent_weak(Some(Arc::downgrade(&root)));
         root.lock().unwrap().add_child(Arc::clone(&child));
 
         assert_eq!(root.lock().unwrap().get_depth(), 0);
@@ -1110,7 +1151,10 @@ mod tests {
     fn test_path_in_hierarchy() {
         let root = Arc::new(Mutex::new(BaseNode::new("Root")));
         let child = Arc::new(Mutex::new(BaseNode::new("Child")));
-        child.lock().unwrap().set_parent_weak(Some(Arc::downgrade(&root)));
+        child
+            .lock()
+            .unwrap()
+            .set_parent_weak(Some(Arc::downgrade(&root)));
         root.lock().unwrap().add_child(Arc::clone(&child));
 
         assert_eq!(child.lock().unwrap().get_path_in_hierarchy(), "Root/Child");
@@ -1149,7 +1193,9 @@ mod tests {
         let count = Arc::new(Mutex::new(0usize));
         let mut emitter = NodeEventEmitter::new();
         let c = Arc::clone(&count);
-        emitter.on(Box::new(move |_| { *c.lock().unwrap() += 1; }));
+        emitter.on(Box::new(move |_| {
+            *c.lock().unwrap() += 1;
+        }));
         emitter.emit(&NodeEventType::ParentChanged);
         assert_eq!(*count.lock().unwrap(), 1);
         emitter.clear();
@@ -1174,8 +1220,12 @@ mod tests {
         fn get_type_id(&self) -> TypeId {
             TypeId::of::<TestComponent>()
         }
-        fn as_any(&self) -> &dyn Any { self }
-        fn as_any_mut(&mut self) -> &mut dyn Any { self }
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
     }
 
     #[test]

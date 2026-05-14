@@ -119,8 +119,12 @@ impl ScrollView {
             offset
         } else {
             Vec2::new(
-                offset.x.clamp(0.0, (self.content_size.x - self.view_size.x).max(0.0)),
-                offset.y.clamp(0.0, (self.content_size.y - self.view_size.y).max(0.0)),
+                offset
+                    .x
+                    .clamp(0.0, (self.content_size.x - self.view_size.x).max(0.0)),
+                offset
+                    .y
+                    .clamp(0.0, (self.content_size.y - self.view_size.y).max(0.0)),
             )
         }
     }
@@ -140,7 +144,8 @@ impl ScrollView {
                 self.velocity.x * (1.0 - self.brake),
                 self.velocity.y * (1.0 - self.brake),
             );
-            let speed = (self.velocity.x * self.velocity.x + self.velocity.y * self.velocity.y).sqrt();
+            let speed =
+                (self.velocity.x * self.velocity.x + self.velocity.y * self.velocity.y).sqrt();
             if speed < 0.1 {
                 self.velocity = Vec2::ZERO;
             }

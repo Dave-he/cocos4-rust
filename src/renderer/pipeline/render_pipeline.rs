@@ -3,12 +3,12 @@ Rust port of Cocos Creator Render Pipeline
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use std::collections::HashMap;
+use super::defines::MacroRecord;
+use super::pipeline_scene_data::PipelineSceneData;
 use super::render_flow::RenderFlow;
 use super::shadow::ShadowsInfo;
 use super::states::PipelineStateManager;
-use super::pipeline_scene_data::PipelineSceneData;
-use super::defines::MacroRecord;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct RenderPipelineInfo {

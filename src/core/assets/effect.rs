@@ -343,12 +343,20 @@ impl EffectAsset {
         self.shaders.iter().find(|s| s.name == name)
     }
 
-    pub fn get_pass_by_index(&self, technique_index: usize, pass_index: usize) -> Option<&EffectPassInfo> {
+    pub fn get_pass_by_index(
+        &self,
+        technique_index: usize,
+        pass_index: usize,
+    ) -> Option<&EffectPassInfo> {
         self.techniques.get(technique_index)?.passes.get(pass_index)
     }
 
     pub fn get_program_name(&self, technique_index: usize, pass_index: usize) -> Option<&str> {
-        Some(&self.get_pass_by_index(technique_index, pass_index)?.program_name)
+        Some(
+            &self
+                .get_pass_by_index(technique_index, pass_index)?
+                .program_name,
+        )
     }
 }
 
@@ -401,8 +409,14 @@ mod tests {
     #[test]
     fn test_shader_info_add_stage() {
         let mut shader = ShaderInfo::new("test-shader");
-        shader.add_stage(ShaderStageInfo::new(ShaderStageFlagBit::Vertex, "void main() {}"));
-        shader.add_stage(ShaderStageInfo::new(ShaderStageFlagBit::Fragment, "void main() { gl_FragColor = vec4(1.0); }"));
+        shader.add_stage(ShaderStageInfo::new(
+            ShaderStageFlagBit::Vertex,
+            "void main() {}",
+        ));
+        shader.add_stage(ShaderStageInfo::new(
+            ShaderStageFlagBit::Fragment,
+            "void main() { gl_FragColor = vec4(1.0); }",
+        ));
         assert_eq!(shader.stages.len(), 2);
     }
 
@@ -442,7 +456,10 @@ mod tests {
     fn test_effect_asset_get_shader() {
         let mut effect = EffectAsset::new("custom");
         let mut shader = ShaderInfo::new("my-vert");
-        shader.add_stage(ShaderStageInfo::new(ShaderStageFlagBit::Vertex, "void main() {}"));
+        shader.add_stage(ShaderStageInfo::new(
+            ShaderStageFlagBit::Vertex,
+            "void main() {}",
+        ));
         effect.add_shader(shader);
         assert!(effect.get_shader("my-vert").is_some());
         assert!(effect.get_shader("nonexistent").is_none());

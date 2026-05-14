@@ -1,5 +1,5 @@
-use crate::math::Vec4;
 use super::define::SKY_ILLUM;
+use crate::math::Vec4;
 
 pub struct AmbientInfo {
     pub sky_color_hdr: Vec4,

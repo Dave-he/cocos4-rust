@@ -194,7 +194,10 @@ mod tests {
     #[test]
     fn test_pipeline_state_manager_register() {
         let mut mgr = PipelineStateManager::new();
-        let state = PipelineStateInfo { hdr_enabled: true, ..Default::default() };
+        let state = PipelineStateInfo {
+            hdr_enabled: true,
+            ..Default::default()
+        };
         mgr.register_state("hdr", state);
         assert!(mgr.get_state("hdr").unwrap().is_hdr_enabled());
         assert!(mgr.get_state("nonexistent").is_none());

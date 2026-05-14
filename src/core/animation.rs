@@ -3,8 +3,8 @@ Rust port of Cocos Creator Skeletal Animation Utilities
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use crate::math::Mat4;
 use crate::core::scene_graph::NodePtr;
+use crate::math::Mat4;
 
 pub trait Texture {}
 
@@ -126,7 +126,7 @@ impl AnimationCurve {
         if self.keys.is_empty() {
             return 0.0;
         }
-        
+
         if self.keys.len() == 1 {
             return self.values[0];
         }
@@ -183,7 +183,8 @@ impl AnimationClip {
 
     pub fn add_event(&mut self, event: AnimationEvent) {
         self.events.push(event);
-        self.events.sort_by(|a, b| a.frame.partial_cmp(&b.frame).unwrap());
+        self.events
+            .sort_by(|a, b| a.frame.partial_cmp(&b.frame).unwrap());
     }
 
     pub fn sample(&self, time: f32) -> Vec<f32> {
@@ -326,8 +327,7 @@ pub fn get_transform(_node: &NodePtr, _root: &NodePtr) -> Option<std::rc::Weak<I
     None
 }
 
-pub fn delete_transform(_node: &()) {
-}
+pub fn delete_transform(_node: &()) {}
 
 /// Blend tree node type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -567,7 +567,9 @@ impl AnimationManager {
     }
 
     pub fn evaluate_blend_tree(&self) -> Vec<(String, f32)> {
-        self.blend_tree.as_ref().map_or(Vec::new(), |t| t.evaluate())
+        self.blend_tree
+            .as_ref()
+            .map_or(Vec::new(), |t| t.evaluate())
     }
 
     pub fn crossfade(&mut self, name: &str, duration: f32) -> bool {
@@ -640,18 +642,34 @@ mod animation_tests {
         tree.parameter = 0.0;
         let result = tree.evaluate();
         assert!(!result.is_empty());
-        let idle_w = result.iter().find(|(n, _)| n == "idle").map(|(_, w)| *w).unwrap_or(0.0);
+        let idle_w = result
+            .iter()
+            .find(|(n, _)| n == "idle")
+            .map(|(_, w)| *w)
+            .unwrap_or(0.0);
         assert!((idle_w - 1.0).abs() < 1e-5);
 
         tree.parameter = 1.0;
         let result = tree.evaluate();
-        let walk_w = result.iter().find(|(n, _)| n == "walk").map(|(_, w)| *w).unwrap_or(0.0);
+        let walk_w = result
+            .iter()
+            .find(|(n, _)| n == "walk")
+            .map(|(_, w)| *w)
+            .unwrap_or(0.0);
         assert!((walk_w - 1.0).abs() < 1e-5);
 
         tree.parameter = 0.5;
         let result = tree.evaluate();
-        let idle_w = result.iter().find(|(n, _)| n == "idle").map(|(_, w)| *w).unwrap_or(0.0);
-        let walk_w = result.iter().find(|(n, _)| n == "walk").map(|(_, w)| *w).unwrap_or(0.0);
+        let idle_w = result
+            .iter()
+            .find(|(n, _)| n == "idle")
+            .map(|(_, w)| *w)
+            .unwrap_or(0.0);
+        let walk_w = result
+            .iter()
+            .find(|(n, _)| n == "walk")
+            .map(|(_, w)| *w)
+            .unwrap_or(0.0);
         assert!((idle_w - 0.5).abs() < 1e-5);
         assert!((walk_w - 0.5).abs() < 1e-5);
     }

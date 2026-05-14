@@ -392,16 +392,24 @@ mod tests {
         let stopped = Arc::new(Mutex::new(false));
 
         let s = Arc::clone(&started);
-        game_loop.add_on_start(move || { *s.lock().unwrap() = true; });
+        game_loop.add_on_start(move || {
+            *s.lock().unwrap() = true;
+        });
 
         let p = Arc::clone(&paused);
-        game_loop.add_on_pause(move || { *p.lock().unwrap() = true; });
+        game_loop.add_on_pause(move || {
+            *p.lock().unwrap() = true;
+        });
 
         let r = Arc::clone(&resumed);
-        game_loop.add_on_resume(move || { *r.lock().unwrap() = true; });
+        game_loop.add_on_resume(move || {
+            *r.lock().unwrap() = true;
+        });
 
         let st = Arc::clone(&stopped);
-        game_loop.add_on_stop(move || { *st.lock().unwrap() = true; });
+        game_loop.add_on_stop(move || {
+            *st.lock().unwrap() = true;
+        });
 
         game_loop.start();
         assert!(*started.lock().unwrap());

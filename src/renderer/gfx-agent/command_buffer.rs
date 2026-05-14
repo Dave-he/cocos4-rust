@@ -59,7 +59,8 @@ impl CommandBufferAgent {
         subpass: u32,
         framebuffer: Option<u32>,
     ) {
-        self.inner.begin_with_render_pass(render_pass, subpass, framebuffer);
+        self.inner
+            .begin_with_render_pass(render_pass, subpass, framebuffer);
     }
 
     pub fn end(&mut self) {
@@ -76,7 +77,14 @@ impl CommandBufferAgent {
         stencil: u32,
     ) {
         if self.immediate_mode {
-            self.inner.begin_render_pass(render_pass, framebuffer, render_area, colors, depth, stencil);
+            self.inner.begin_render_pass(
+                render_pass,
+                framebuffer,
+                render_area,
+                colors,
+                depth,
+                stencil,
+            );
         } else {
             let rp = render_pass;
             let fb = framebuffer;
@@ -113,9 +121,15 @@ impl CommandBufferAgent {
         }
     }
 
-    pub fn bind_descriptor_set(&mut self, set: u32, descriptor_set_id: u32, dynamic_offsets: &[u32]) {
+    pub fn bind_descriptor_set(
+        &mut self,
+        set: u32,
+        descriptor_set_id: u32,
+        dynamic_offsets: &[u32],
+    ) {
         if self.immediate_mode {
-            self.inner.bind_descriptor_set(set, descriptor_set_id, dynamic_offsets);
+            self.inner
+                .bind_descriptor_set(set, descriptor_set_id, dynamic_offsets);
         } else {
             let s = set;
             let ds = descriptor_set_id;
@@ -247,7 +261,8 @@ impl CommandBufferAgent {
         _buffers: &[&[u8]],
         _texture_id: u32,
         _regions: &[BufferTextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn blit_texture(
         &mut self,
@@ -255,49 +270,51 @@ impl CommandBufferAgent {
         _dst_texture: u32,
         _regions: &[TextureBlit],
         _filter: Filter,
-    ) {}
+    ) {
+    }
 
-    pub fn copy_texture(
-        &mut self,
-        _src_texture: u32,
-        _dst_texture: u32,
-        _regions: &[TextureCopy],
-    ) {}
+    pub fn copy_texture(&mut self, _src_texture: u32, _dst_texture: u32, _regions: &[TextureCopy]) {
+    }
 
     pub fn resolve_texture(
         &mut self,
         _src_texture: u32,
         _dst_texture: u32,
         _regions: &[TextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn copy_buffer_to_buffer(
         &mut self,
         _src_buffer: u32,
         _dst_buffer: u32,
         _regions: &[BufferTextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn copy_buffer_to_texture(
         &mut self,
         _src_buffer: u32,
         _dst_texture: u32,
         _regions: &[BufferTextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn copy_texture_to_buffer(
         &mut self,
         _src_texture: u32,
         _dst_buffer: u32,
         _regions: &[BufferTextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn copy_texture_to_texture(
         &mut self,
         _src_texture: u32,
         _dst_texture: u32,
         _regions: &[TextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn execute(&mut self, _cmd_buffers: &[u32]) {}
 
@@ -314,7 +331,8 @@ impl CommandBufferAgent {
         _buffers: &[u32],
         _texture_barriers: &[u32],
         _textures: &[u32],
-    ) {}
+    ) {
+    }
 
     pub fn set_dynamic_states(&mut self, _flags: DynamicStateFlags) {}
 
@@ -431,7 +449,12 @@ mod tests {
         let mut agent = CommandBufferAgent::new(CommandBufferInfo::default());
         agent.set_immediate_mode(false);
         agent.begin();
-        agent.set_scissor(&Rect { x: 0, y: 0, width: 800, height: 600 });
+        agent.set_scissor(&Rect {
+            x: 0,
+            y: 0,
+            width: 800,
+            height: 600,
+        });
         assert_eq!(agent.get_pending_message_count(), 1);
         agent.flush_messages();
         agent.end();
@@ -475,7 +498,12 @@ mod tests {
         let mut agent = CommandBufferAgent::new(CommandBufferInfo::default());
         agent.set_immediate_mode(false);
         agent.begin();
-        agent.set_blend_constants(&Color { x: 0.5, y: 0.5, z: 0.5, w: 1.0 });
+        agent.set_blend_constants(&Color {
+            x: 0.5,
+            y: 0.5,
+            z: 0.5,
+            w: 1.0,
+        });
         assert_eq!(agent.get_pending_message_count(), 1);
         agent.flush_messages();
         agent.end();
@@ -529,7 +557,11 @@ mod tests {
     fn test_cmd_buffer_agent_draw_always_immediate() {
         let mut agent = CommandBufferAgent::new(CommandBufferInfo::default());
         agent.begin();
-        agent.draw(&DrawInfo { index_count: 6, instance_count: 1, ..Default::default() });
+        agent.draw(&DrawInfo {
+            index_count: 6,
+            instance_count: 1,
+            ..Default::default()
+        });
         assert_eq!(agent.get_num_draw_calls(), 1);
         assert_eq!(agent.get_num_tris(), 2);
         agent.end();
@@ -565,7 +597,12 @@ mod tests {
         agent.bind_descriptor_set(0, 2, &[]);
         agent.bind_input_assembler(3);
         agent.set_viewport(&Viewport::new(0, 0, 800, 600));
-        agent.set_scissor(&Rect { x: 0, y: 0, width: 800, height: 600 });
+        agent.set_scissor(&Rect {
+            x: 0,
+            y: 0,
+            width: 800,
+            height: 600,
+        });
         assert_eq!(agent.get_pending_message_count(), 5);
         assert_eq!(agent.get_written_message_count(), 5);
         agent.flush_messages();

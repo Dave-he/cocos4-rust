@@ -3,9 +3,9 @@ Rust port of Cocos Creator SkinningModel
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
+use crate::_3d::baked_skinning::Mesh;
 use crate::base::RefCounted;
 use crate::math::Mat4;
-use crate::_3d::baked_skinning::Mesh;
 
 #[derive(Debug, Clone)]
 pub struct JointInfo {

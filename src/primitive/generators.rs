@@ -3,10 +3,10 @@ Rust port of Cocos Creator Primitive Geometry Generators
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
+use super::define::{CustomAttribute, IGeometry, IGeometryOptions};
 use crate::math::Vec3;
-use crate::renderer::gfx_base::PrimitiveMode;
 use crate::renderer::gfx_base::shader::Attribute;
-use super::define::{IGeometry, IGeometryOptions, CustomAttribute};
+use crate::renderer::gfx_base::PrimitiveMode;
 
 const PI: f32 = std::f32::consts::PI;
 const PI_2: f32 = 2.0 * PI;
@@ -33,66 +33,118 @@ pub fn box_geometry(options: Option<BoxOptions>) -> IGeometry {
 
     // Front face (z = +hle)
     generate_plane(
-        &mut positions, &mut normals, &mut uvs, &mut indices,
-        vertex_offset, ws, hs,
-        hw, hl, hle,
+        &mut positions,
+        &mut normals,
+        &mut uvs,
+        &mut indices,
+        vertex_offset,
+        ws,
+        hs,
+        hw,
+        hl,
+        hle,
         Vec3::new(0.0, 0.0, 1.0),
-        0.0, 0.0,
+        0.0,
+        0.0,
     );
     vertex_offset += (ws + 1) * (hs + 1) as u32;
 
     // Back face (z = -hle)
     generate_plane(
-        &mut positions, &mut normals, &mut uvs, &mut indices,
-        vertex_offset, ws, hs,
-        hw, hl, hle,
+        &mut positions,
+        &mut normals,
+        &mut uvs,
+        &mut indices,
+        vertex_offset,
+        ws,
+        hs,
+        hw,
+        hl,
+        hle,
         Vec3::new(0.0, 0.0, -1.0),
-        PI_2, 0.0,
+        PI_2,
+        0.0,
     );
     vertex_offset += (ws + 1) * (hs + 1) as u32;
 
     // Left face (x = -hw)
     generate_plane(
-        &mut positions, &mut normals, &mut uvs, &mut indices,
-        vertex_offset, ls, hs,
-        hle, hl, hw,
+        &mut positions,
+        &mut normals,
+        &mut uvs,
+        &mut indices,
+        vertex_offset,
+        ls,
+        hs,
+        hle,
+        hl,
+        hw,
         Vec3::new(-1.0, 0.0, 0.0),
-        0.0, 0.0,
+        0.0,
+        0.0,
     );
     vertex_offset += (ls + 1) * (hs + 1) as u32;
 
     // Right face (x = +hw)
     generate_plane(
-        &mut positions, &mut normals, &mut uvs, &mut indices,
-        vertex_offset, ls, hs,
-        hle, hl, hw,
+        &mut positions,
+        &mut normals,
+        &mut uvs,
+        &mut indices,
+        vertex_offset,
+        ls,
+        hs,
+        hle,
+        hl,
+        hw,
         Vec3::new(1.0, 0.0, 0.0),
-        PI_2, 0.0,
+        PI_2,
+        0.0,
     );
     vertex_offset += (ls + 1) * (hs + 1) as u32;
 
     // Top face (y = +hl)
     generate_plane(
-        &mut positions, &mut normals, &mut uvs, &mut indices,
-        vertex_offset, ws, ls,
-        hw, hle, hl,
+        &mut positions,
+        &mut normals,
+        &mut uvs,
+        &mut indices,
+        vertex_offset,
+        ws,
+        ls,
+        hw,
+        hle,
+        hl,
         Vec3::new(0.0, 1.0, 0.0),
-        0.0, 0.0,
+        0.0,
+        0.0,
     );
     vertex_offset += (ws + 1) * (ls + 1) as u32;
 
     // Bottom face (y = -hl)
     generate_plane(
-        &mut positions, &mut normals, &mut uvs, &mut indices,
-        vertex_offset, ws, ls,
-        hw, hle, hl,
+        &mut positions,
+        &mut normals,
+        &mut uvs,
+        &mut indices,
+        vertex_offset,
+        ws,
+        ls,
+        hw,
+        hle,
+        hl,
         Vec3::new(0.0, -1.0, 0.0),
-        PI_2, 0.0,
+        PI_2,
+        0.0,
     );
 
     IGeometry {
         positions,
-        normals: if opts.include_normal { Some(normals) } else { None },
+        normals: if opts.include_normal {
+            Some(normals)
+        } else {
+            None
+        },
         uvs: if opts.include_uv { Some(uvs) } else { None },
         indices: Some(indices),
         min_pos: Some(Vec3::new(-hw, -hl, -hle)),
@@ -104,11 +156,19 @@ pub fn box_geometry(options: Option<BoxOptions>) -> IGeometry {
 }
 
 fn generate_plane(
-    positions: &mut Vec<f32>, normals: &mut Vec<f32>, uvs: &mut Vec<f32>,
+    positions: &mut Vec<f32>,
+    normals: &mut Vec<f32>,
+    uvs: &mut Vec<f32>,
     indices: &mut Vec<u32>,
-    offset: u32, seg_w: u32, seg_h: u32,
-    half_w: f32, half_h: f32, depth: f32,
-    normal: Vec3, azimuth: f32, polar: f32,
+    offset: u32,
+    seg_w: u32,
+    seg_h: u32,
+    half_w: f32,
+    half_h: f32,
+    depth: f32,
+    normal: Vec3,
+    azimuth: f32,
+    polar: f32,
 ) {
     for iy in 0..=seg_h {
         for ix in 0..=seg_w {
@@ -228,7 +288,11 @@ pub fn sphere(radius: f32, options: Option<SphereOptions>) -> IGeometry {
 
     IGeometry {
         positions,
-        normals: if opts.include_normal { Some(normals) } else { None },
+        normals: if opts.include_normal {
+            Some(normals)
+        } else {
+            None
+        },
         uvs: if opts.include_uv { Some(uvs) } else { None },
         indices: Some(indices),
         min_pos: Some(Vec3::new(-radius, -radius, -radius)),
@@ -256,7 +320,12 @@ impl Default for SphereOptions {
     }
 }
 
-pub fn cylinder(radius_top: f32, radius_bottom: f32, height: f32, options: Option<CylinderOptions>) -> IGeometry {
+pub fn cylinder(
+    radius_top: f32,
+    radius_bottom: f32,
+    height: f32,
+    options: Option<CylinderOptions>,
+) -> IGeometry {
     let opts = options.unwrap_or_default();
     let radial_segments = opts.radial_segments;
     let height_segments = opts.height_segments;
@@ -381,8 +450,16 @@ pub fn cylinder(radius_top: f32, radius_bottom: f32, height: f32, options: Optio
         normals: Some(normals),
         uvs: Some(uvs),
         indices: Some(indices),
-        min_pos: Some(Vec3::new(-radius_bottom.max(radius_top), -half_height, -radius_bottom.max(radius_top))),
-        max_pos: Some(Vec3::new(radius_bottom.max(radius_top), half_height, radius_bottom.max(radius_top))),
+        min_pos: Some(Vec3::new(
+            -radius_bottom.max(radius_top),
+            -half_height,
+            -radius_bottom.max(radius_top),
+        )),
+        max_pos: Some(Vec3::new(
+            radius_bottom.max(radius_top),
+            half_height,
+            radius_bottom.max(radius_top),
+        )),
         bounding_radius: Some(radius_bottom.max(radius_top).max(half_height)),
         primitive_mode: Some(PrimitiveMode::TriangleList),
         ..Default::default()
@@ -420,19 +497,22 @@ pub fn quad(options: Option<IGeometryOptions>) -> IGeometry {
     let opts = options.unwrap_or_default();
 
     let positions = vec![
-        -0.5, -0.5, 0.0,
-        -0.5,  0.5, 0.0,
-         0.5,  0.5, 0.0,
-         0.5, -0.5, 0.0,
+        -0.5, -0.5, 0.0, -0.5, 0.5, 0.0, 0.5, 0.5, 0.0, 0.5, -0.5, 0.0,
     ];
 
     let normals = if opts.include_normal {
-        Some(vec![0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0])
-    } else { None };
+        Some(vec![
+            0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+        ])
+    } else {
+        None
+    };
 
     let uvs = if opts.include_uv {
         Some(vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0])
-    } else { None };
+    } else {
+        None
+    };
 
     let indices = Some(vec![0, 1, 2, 0, 2, 3]);
 
@@ -500,7 +580,11 @@ pub fn plane(options: Option<PlaneOptions>) -> IGeometry {
 
     IGeometry {
         positions,
-        normals: if opts.include_normal { Some(normals) } else { None },
+        normals: if opts.include_normal {
+            Some(normals)
+        } else {
+            None
+        },
         uvs: if opts.include_uv { Some(uvs) } else { None },
         indices: Some(indices),
         min_pos: Some(Vec3::new(-hw, 0.0, -hl)),
@@ -585,7 +669,11 @@ mod tests {
 
     #[test]
     fn test_box_no_normal_no_uv() {
-        let geo = box_geometry(Some(BoxOptions { include_normal: false, include_uv: false, ..Default::default() }));
+        let geo = box_geometry(Some(BoxOptions {
+            include_normal: false,
+            include_uv: false,
+            ..Default::default()
+        }));
         assert!(geo.normals.is_none());
         assert!(geo.uvs.is_none());
     }
@@ -603,7 +691,14 @@ mod tests {
 
     #[test]
     fn test_sphere_small() {
-        let geo = sphere(0.5, Some(SphereOptions { segments: Some(8), include_normal: true, include_uv: true }));
+        let geo = sphere(
+            0.5,
+            Some(SphereOptions {
+                segments: Some(8),
+                include_normal: true,
+                include_uv: true,
+            }),
+        );
         let vc = geo.vertex_count();
         assert_eq!(vc, 81); // (8+1) * (8+1) = 81
     }

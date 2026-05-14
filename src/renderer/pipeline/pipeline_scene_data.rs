@@ -3,9 +3,9 @@ Rust port of Cocos Creator PipelineSceneData
 Original C++ version Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use crate::math::{Color, Vec3, Vec4};
 use super::defines::RenderObject;
 use super::shadow::ShadowsInfo;
+use crate::math::{Color, Vec3, Vec4};
 
 #[derive(Debug, Clone, Default)]
 pub struct AmbientInfo {
@@ -355,8 +355,14 @@ mod tests {
     #[test]
     fn test_pipeline_scene_data_render_objects() {
         let mut data = PipelineSceneData::new();
-        data.add_render_object(RenderObject { depth: 1.0, model_id: 42 });
-        data.add_render_object(RenderObject { depth: 2.0, model_id: 43 });
+        data.add_render_object(RenderObject {
+            depth: 1.0,
+            model_id: 42,
+        });
+        data.add_render_object(RenderObject {
+            depth: 2.0,
+            model_id: 43,
+        });
         assert_eq!(data.get_render_objects().len(), 2);
         data.clear_render_objects();
         assert!(data.get_render_objects().is_empty());

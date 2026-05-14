@@ -195,7 +195,12 @@ impl FrameGraph {
         id
     }
 
-    pub fn add_pass_with_builder<F>(&mut self, insert_point: PassInsertPoint, name: &str, setup: F) -> u32
+    pub fn add_pass_with_builder<F>(
+        &mut self,
+        insert_point: PassInsertPoint,
+        name: &str,
+        setup: F,
+    ) -> u32
     where
         F: FnOnce(&mut PassNodeBuilder),
     {
@@ -217,7 +222,8 @@ impl FrameGraph {
 
     pub fn create_texture(&mut self, name: &str) -> Handle {
         let res_id = self.virtual_resources.len() as u32;
-        self.virtual_resources.push(VirtualResource::new_texture(res_id, name, false));
+        self.virtual_resources
+            .push(VirtualResource::new_texture(res_id, name, false));
         let node_id = self.resource_nodes.len() as u32;
         self.resource_nodes.push(ResourceNode::new(node_id, name));
         Handle::new(node_id as u16)
@@ -225,7 +231,8 @@ impl FrameGraph {
 
     pub fn create_texture_with_desc(&mut self, name: &str, _desc: TextureDescriptor) -> Handle {
         let res_id = self.virtual_resources.len() as u32;
-        self.virtual_resources.push(VirtualResource::new_texture(res_id, name, false));
+        self.virtual_resources
+            .push(VirtualResource::new_texture(res_id, name, false));
         let node_id = self.resource_nodes.len() as u32;
         self.resource_nodes.push(ResourceNode::new(node_id, name));
         Handle::new(node_id as u16)
@@ -233,7 +240,8 @@ impl FrameGraph {
 
     pub fn create_buffer(&mut self, name: &str) -> Handle {
         let res_id = self.virtual_resources.len() as u32;
-        self.virtual_resources.push(VirtualResource::new_buffer(res_id, name, false));
+        self.virtual_resources
+            .push(VirtualResource::new_buffer(res_id, name, false));
         let node_id = self.resource_nodes.len() as u32;
         self.resource_nodes.push(ResourceNode::new(node_id, name));
         Handle::new(node_id as u16)
@@ -241,7 +249,8 @@ impl FrameGraph {
 
     pub fn import_external_texture(&mut self, name: &str) -> Handle {
         let res_id = self.virtual_resources.len() as u32;
-        self.virtual_resources.push(VirtualResource::new_texture(res_id, name, true));
+        self.virtual_resources
+            .push(VirtualResource::new_texture(res_id, name, true));
         let node_id = self.resource_nodes.len() as u32;
         self.resource_nodes.push(ResourceNode::new(node_id, name));
         Handle::new(node_id as u16)
@@ -249,7 +258,8 @@ impl FrameGraph {
 
     pub fn import_external_buffer(&mut self, name: &str) -> Handle {
         let res_id = self.virtual_resources.len() as u32;
-        self.virtual_resources.push(VirtualResource::new_buffer(res_id, name, true));
+        self.virtual_resources
+            .push(VirtualResource::new_buffer(res_id, name, true));
         let node_id = self.resource_nodes.len() as u32;
         self.resource_nodes.push(ResourceNode::new(node_id, name));
         Handle::new(node_id as u16)
@@ -333,7 +343,11 @@ impl FrameGraph {
                         self.resource_nodes[node_idx].ref_count -= 1;
                         if self.resource_nodes[node_idx].ref_count == 0 {
                             for j in 0..self.pass_nodes.len() {
-                                if self.pass_nodes[j].get_reads().iter().any(|h| h.index == write_handle.index) {
+                                if self.pass_nodes[j]
+                                    .get_reads()
+                                    .iter()
+                                    .any(|h| h.index == write_handle.index)
+                                {
                                     let other_ref = self.pass_nodes[j].get_ref_count();
                                     if other_ref > 0 {
                                         self.pass_nodes[j].set_ref_count(other_ref - 1);
@@ -349,7 +363,11 @@ impl FrameGraph {
             }
         }
 
-        self.culled_pass_count = self.pass_nodes.iter().filter(|p| p.get_ref_count() > 0 || p.has_side_effect()).count();
+        self.culled_pass_count = self
+            .pass_nodes
+            .iter()
+            .filter(|p| p.get_ref_count() > 0 || p.has_side_effect())
+            .count();
     }
 
     fn compute_resource_lifetime(&mut self) {
@@ -362,8 +380,12 @@ impl FrameGraph {
                 let node_idx = h.index as usize;
                 if node_idx < self.resource_nodes.len() {
                     let rn = &mut self.resource_nodes[node_idx];
-                    if pass_id < rn.first_pass { rn.first_pass = pass_id; }
-                    if pass_id > rn.last_pass { rn.last_pass = pass_id; }
+                    if pass_id < rn.first_pass {
+                        rn.first_pass = pass_id;
+                    }
+                    if pass_id > rn.last_pass {
+                        rn.last_pass = pass_id;
+                    }
                 }
                 if node_idx < self.virtual_resources.len() {
                     self.virtual_resources[node_idx].update_lifetime(pass_id);
@@ -381,8 +403,7 @@ impl FrameGraph {
         }
     }
 
-    fn merge_pass_nodes(&mut self) {
-    }
+    fn merge_pass_nodes(&mut self) {}
 
     fn compute_store_action_and_memoryless(&mut self) {
         for i in 0..self.virtual_resources.len() {
@@ -393,7 +414,11 @@ impl FrameGraph {
             let first = vr.first_use_pass_id;
             let last = vr.last_use_pass_id;
             if first < self.pass_nodes.len() as u32 && last < self.pass_nodes.len() as u32 {
-                let never_loaded = first == 0 || self.pass_nodes[first as usize].get_writes().iter().any(|h| h.index as usize == i);
+                let never_loaded = first == 0
+                    || self.pass_nodes[first as usize]
+                        .get_writes()
+                        .iter()
+                        .any(|h| h.index as usize == i);
                 let never_stored = last == self.pass_nodes.len() as u32 - 1;
                 self.virtual_resources[i].never_loaded = !never_loaded;
                 self.virtual_resources[i].never_stored = never_stored;
@@ -407,11 +432,8 @@ impl FrameGraph {
             if pass.get_ref_count() == 0 && !pass.has_side_effect() {
                 continue;
             }
-            let rt = DevicePassResourceTable::from_pass_node(
-                pass.get_reads(),
-                pass.get_writes(),
-                0,
-            );
+            let rt =
+                DevicePassResourceTable::from_pass_node(pass.get_reads(), pass.get_writes(), 0);
             let subpass = Subpass::new(0, 0);
             let dp = DevicePass::new(
                 vec![subpass],
@@ -506,7 +528,10 @@ impl FrameGraph {
             }
         }
         for rn in &self.resource_nodes {
-            out.push_str(&format!("  res_{} [label=\"{} v{}\"];\n", rn.id, rn.name, rn.version));
+            out.push_str(&format!(
+                "  res_{} [label=\"{} v{}\"];\n",
+                rn.id, rn.name, rn.version
+            ));
         }
         out.push_str("}\n");
         out
@@ -551,7 +576,9 @@ mod tests {
     fn test_frame_graph_compile_execute() {
         let mut fg = FrameGraph::new();
         let depth = fg.create_texture("depth");
-        fg.add_pass(0, "ForwardPass", |node| { node.write(depth); });
+        fg.add_pass(0, "ForwardPass", |node| {
+            node.write(depth);
+        });
         fg.compile();
         assert!(fg.is_compiled());
         fg.execute();
@@ -664,7 +691,9 @@ mod tests {
     fn test_frame_graph_export_graphviz() {
         let mut fg = FrameGraph::new();
         let color = fg.create_texture("color");
-        fg.add_pass(0, "ForwardPass", |node| { node.write(color); });
+        fg.add_pass(0, "ForwardPass", |node| {
+            node.write(color);
+        });
         fg.compile();
         let dot = fg.export_graphviz();
         assert!(dot.contains("digraph"));

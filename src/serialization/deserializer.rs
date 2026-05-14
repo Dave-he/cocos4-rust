@@ -48,7 +48,9 @@ impl Deserializer {
 
     pub fn get_nested(&self, key: &str) -> Option<Deserializer> {
         let child = self.data.get(key)?;
-        Some(Deserializer { data: child.clone() })
+        Some(Deserializer {
+            data: child.clone(),
+        })
     }
 }
 
@@ -79,7 +81,10 @@ fn parse_json(json: &str) -> Result<SerializedValue, String> {
     if let Ok(f) = json.parse::<f64>() {
         return Ok(SerializedValue::Float(f));
     }
-    Err(format!("Cannot parse JSON: {}", &json[..json.len().min(40)]))
+    Err(format!(
+        "Cannot parse JSON: {}",
+        &json[..json.len().min(40)]
+    ))
 }
 
 fn parse_json_array(json: &str) -> Result<SerializedValue, String> {

@@ -5,8 +5,8 @@ Original C++ version Copyright (c) 2023 Xiamen Yaji Software Co., Ltd.
 
 use crate::base::RefCounted;
 use crate::base::RefCountedImpl;
-use crate::math::{Vec3, Quaternion};
 use crate::core::geometry::Ray;
+use crate::math::{Quaternion, Vec3};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PhysicsWorldType {
@@ -86,9 +86,19 @@ pub trait PhysicsWorld: RefCounted {
 
     fn step(&mut self, fixed_time_step: f32, time_since_last_called: f32, max_sub_steps: i32);
 
-    fn raycast(&self, world_ray: &Ray, options: &RaycastOptions, results: &mut Vec<PhysicsRayResult>) -> bool;
+    fn raycast(
+        &self,
+        world_ray: &Ray,
+        options: &RaycastOptions,
+        results: &mut Vec<PhysicsRayResult>,
+    ) -> bool;
 
-    fn raycast_closest(&self, world_ray: &Ray, options: &RaycastOptions, out: &mut PhysicsRayResult) -> bool;
+    fn raycast_closest(
+        &self,
+        world_ray: &Ray,
+        options: &RaycastOptions,
+        out: &mut PhysicsRayResult,
+    ) -> bool;
 
     fn sweep_box(
         &self,
@@ -231,14 +241,23 @@ impl PhysicsWorld for PhysicsWorldImpl {
         self.default_material = material;
     }
 
-    fn step(&mut self, _fixed_time_step: f32, _time_since_last_called: f32, _max_sub_steps: i32) {
-    }
+    fn step(&mut self, _fixed_time_step: f32, _time_since_last_called: f32, _max_sub_steps: i32) {}
 
-    fn raycast(&self, _world_ray: &Ray, _options: &RaycastOptions, _results: &mut Vec<PhysicsRayResult>) -> bool {
+    fn raycast(
+        &self,
+        _world_ray: &Ray,
+        _options: &RaycastOptions,
+        _results: &mut Vec<PhysicsRayResult>,
+    ) -> bool {
         false
     }
 
-    fn raycast_closest(&self, _world_ray: &Ray, _options: &RaycastOptions, _out: &mut PhysicsRayResult) -> bool {
+    fn raycast_closest(
+        &self,
+        _world_ray: &Ray,
+        _options: &RaycastOptions,
+        _out: &mut PhysicsRayResult,
+    ) -> bool {
         false
     }
 
@@ -308,17 +327,13 @@ impl PhysicsWorld for PhysicsWorldImpl {
         false
     }
 
-    fn emit_events(&mut self) {
-    }
+    fn emit_events(&mut self) {}
 
-    fn sync_scene_to_physics(&mut self) {
-    }
+    fn sync_scene_to_physics(&mut self) {}
 
-    fn sync_after_events(&mut self) {
-    }
+    fn sync_after_events(&mut self) {}
 
-    fn destroy(&mut self) {
-    }
+    fn destroy(&mut self) {}
 
     fn get_debug_draw_flags(&self) -> PhysicsDrawFlags {
         self.debug_draw_flags

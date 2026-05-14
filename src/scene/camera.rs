@@ -1,19 +1,29 @@
-use crate::math::{Mat4, Vec3, Vec4};
-use crate::core::geometry::{Frustum, Plane, Ray};
 use super::define::{
-    CameraAperture, CameraFOVAxis, CameraISO, CameraProjection, CameraShutter,
-    CameraType, CameraUsage, TrackingType,
+    CameraAperture, CameraFOVAxis, CameraISO, CameraProjection, CameraShutter, CameraType,
+    CameraUsage, TrackingType,
 };
+use crate::core::geometry::{Frustum, Plane, Ray};
+use crate::math::{Mat4, Vec3, Vec4};
 
 const FSTOPS: &[f32] = &[
-    1.8, 2.0, 2.2, 2.5, 2.8, 3.2, 3.5, 4.0, 4.5, 5.0, 5.6, 6.3,
-    7.1, 8.0, 9.0, 10.0, 11.0, 13.0, 14.0, 16.0, 18.0, 20.0, 22.0,
+    1.8, 2.0, 2.2, 2.5, 2.8, 3.2, 3.5, 4.0, 4.5, 5.0, 5.6, 6.3, 7.1, 8.0, 9.0, 10.0, 11.0, 13.0,
+    14.0, 16.0, 18.0, 20.0, 22.0,
 ];
 
 const SHUTTERS: &[f32] = &[
-    1.0, 1.0 / 2.0, 1.0 / 4.0, 1.0 / 8.0, 1.0 / 15.0, 1.0 / 30.0,
-    1.0 / 60.0, 1.0 / 125.0, 1.0 / 250.0, 1.0 / 500.0, 1.0 / 1000.0,
-    1.0 / 2000.0, 1.0 / 4000.0,
+    1.0,
+    1.0 / 2.0,
+    1.0 / 4.0,
+    1.0 / 8.0,
+    1.0 / 15.0,
+    1.0 / 30.0,
+    1.0 / 60.0,
+    1.0 / 125.0,
+    1.0 / 250.0,
+    1.0 / 500.0,
+    1.0 / 1000.0,
+    1.0 / 2000.0,
+    1.0 / 4000.0,
 ];
 
 const ISOS: &[f32] = &[100.0, 200.0, 400.0, 800.0];
@@ -230,8 +240,7 @@ impl Camera {
     }
 
     fn update_exposure(&mut self) {
-        let ev100 = (self.aperture_value * self.aperture_value)
-            .log2()
+        let ev100 = (self.aperture_value * self.aperture_value).log2()
             - self.shutter_value.log2()
             - (self.iso_value / 100.0).log2()
             + self.ec;
@@ -245,11 +254,7 @@ impl Camera {
         self.is_proj_dirty = false;
 
         if self.projection == CameraProjection::Perspective {
-            let aspect = if self.aspect > 0.0 {
-                self.aspect
-            } else {
-                1.0
-            };
+            let aspect = if self.aspect > 0.0 { self.aspect } else { 1.0 };
             let fov = match self.fov_axis {
                 CameraFOVAxis::Vertical => self.fov,
                 CameraFOVAxis::Horizontal => 2.0 * ((self.fov * 0.5).tan() / aspect).atan(),
@@ -259,9 +264,12 @@ impl Camera {
             let half_w = self.ortho_height * self.aspect * 0.5;
             let half_h = self.ortho_height * 0.5;
             self.mat_proj = Mat4::orthographic(
-                -half_w, half_w,
-                -half_h, half_h,
-                self.near_clip, self.far_clip,
+                -half_w,
+                half_w,
+                -half_h,
+                half_h,
+                self.near_clip,
+                self.far_clip,
             );
         }
 
@@ -296,28 +304,40 @@ impl Camera {
     pub fn get_view_frustum_planes(&self) -> [[f32; 4]; 6] {
         let m = &self.mat_view_proj;
         let left = [
-            m.m[3] + m.m[0], m.m[7] + m.m[4],
-            m.m[11] + m.m[8], m.m[15] + m.m[12],
+            m.m[3] + m.m[0],
+            m.m[7] + m.m[4],
+            m.m[11] + m.m[8],
+            m.m[15] + m.m[12],
         ];
         let right = [
-            m.m[3] - m.m[0], m.m[7] - m.m[4],
-            m.m[11] - m.m[8], m.m[15] - m.m[12],
+            m.m[3] - m.m[0],
+            m.m[7] - m.m[4],
+            m.m[11] - m.m[8],
+            m.m[15] - m.m[12],
         ];
         let bottom = [
-            m.m[3] + m.m[1], m.m[7] + m.m[5],
-            m.m[11] + m.m[9], m.m[15] + m.m[13],
+            m.m[3] + m.m[1],
+            m.m[7] + m.m[5],
+            m.m[11] + m.m[9],
+            m.m[15] + m.m[13],
         ];
         let top = [
-            m.m[3] - m.m[1], m.m[7] - m.m[5],
-            m.m[11] - m.m[9], m.m[15] - m.m[13],
+            m.m[3] - m.m[1],
+            m.m[7] - m.m[5],
+            m.m[11] - m.m[9],
+            m.m[15] - m.m[13],
         ];
         let near = [
-            m.m[3] + m.m[2], m.m[7] + m.m[6],
-            m.m[11] + m.m[10], m.m[15] + m.m[14],
+            m.m[3] + m.m[2],
+            m.m[7] + m.m[6],
+            m.m[11] + m.m[10],
+            m.m[15] + m.m[14],
         ];
         let far = [
-            m.m[3] - m.m[2], m.m[7] - m.m[6],
-            m.m[11] - m.m[10], m.m[15] - m.m[14],
+            m.m[3] - m.m[2],
+            m.m[7] - m.m[6],
+            m.m[11] - m.m[10],
+            m.m[15] - m.m[14],
         ];
         [left, right, bottom, top, near, far]
     }
@@ -349,12 +369,42 @@ impl Camera {
         };
 
         let mut f = Frustum::new();
-        f.planes[0] = make_plane(m.m[3]+m.m[0], m.m[7]+m.m[4], m.m[11]+m.m[8],  m.m[15]+m.m[12]);
-        f.planes[1] = make_plane(m.m[3]-m.m[0], m.m[7]-m.m[4], m.m[11]-m.m[8],  m.m[15]-m.m[12]);
-        f.planes[2] = make_plane(m.m[3]+m.m[1], m.m[7]+m.m[5], m.m[11]+m.m[9],  m.m[15]+m.m[13]);
-        f.planes[3] = make_plane(m.m[3]-m.m[1], m.m[7]-m.m[5], m.m[11]-m.m[9],  m.m[15]-m.m[13]);
-        f.planes[4] = make_plane(m.m[3]+m.m[2], m.m[7]+m.m[6], m.m[11]+m.m[10], m.m[15]+m.m[14]);
-        f.planes[5] = make_plane(m.m[3]-m.m[2], m.m[7]-m.m[6], m.m[11]-m.m[10], m.m[15]-m.m[14]);
+        f.planes[0] = make_plane(
+            m.m[3] + m.m[0],
+            m.m[7] + m.m[4],
+            m.m[11] + m.m[8],
+            m.m[15] + m.m[12],
+        );
+        f.planes[1] = make_plane(
+            m.m[3] - m.m[0],
+            m.m[7] - m.m[4],
+            m.m[11] - m.m[8],
+            m.m[15] - m.m[12],
+        );
+        f.planes[2] = make_plane(
+            m.m[3] + m.m[1],
+            m.m[7] + m.m[5],
+            m.m[11] + m.m[9],
+            m.m[15] + m.m[13],
+        );
+        f.planes[3] = make_plane(
+            m.m[3] - m.m[1],
+            m.m[7] - m.m[5],
+            m.m[11] - m.m[9],
+            m.m[15] - m.m[13],
+        );
+        f.planes[4] = make_plane(
+            m.m[3] + m.m[2],
+            m.m[7] + m.m[6],
+            m.m[11] + m.m[10],
+            m.m[15] + m.m[14],
+        );
+        f.planes[5] = make_plane(
+            m.m[3] - m.m[2],
+            m.m[7] - m.m[6],
+            m.m[11] - m.m[10],
+            m.m[15] - m.m[14],
+        );
         Some(f)
     }
 }

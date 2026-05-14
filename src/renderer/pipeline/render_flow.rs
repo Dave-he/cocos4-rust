@@ -3,8 +3,8 @@ Rust port of Cocos Creator Render Flow
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use super::render_stage::RenderStage;
 use super::defines::RenderFlowType;
+use super::render_stage::RenderStage;
 
 #[derive(Debug)]
 pub struct RenderFlowInfo {

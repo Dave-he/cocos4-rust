@@ -1,6 +1,6 @@
+use crate::base::RefCounted;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use crate::base::RefCounted;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
@@ -30,8 +30,7 @@ pub enum ObjectFlags {
 }
 
 impl ObjectFlags {
-    pub const ALL_HIDE_MASK: u32 = !(
-        ObjectFlags::ToDestroy as u32
+    pub const ALL_HIDE_MASK: u32 = !(ObjectFlags::ToDestroy as u32
         | ObjectFlags::Dirty as u32
         | ObjectFlags::Destroying as u32
         | ObjectFlags::DontDestroy as u32
@@ -44,8 +43,7 @@ impl ObjectFlags {
         | ObjectFlags::IsScaleLocked as u32
         | ObjectFlags::IsAnchorLocked as u32
         | ObjectFlags::IsSizeLocked as u32
-        | ObjectFlags::IsPositionLocked as u32
-    );
+        | ObjectFlags::IsPositionLocked as u32);
 
     pub fn all_hide_mask() -> u32 {
         Self::ALL_HIDE_MASK
@@ -136,7 +134,8 @@ impl Object for CCObject {
     }
 
     fn set_hide_flags(&mut self, flags: u32) {
-        self.flags = (self.flags & !ObjectFlags::ALL_HIDE_MASK) | (flags & ObjectFlags::ALL_HIDE_MASK);
+        self.flags =
+            (self.flags & !ObjectFlags::ALL_HIDE_MASK) | (flags & ObjectFlags::ALL_HIDE_MASK);
     }
 
     fn get_hide_flags(&self) -> u32 {
@@ -265,9 +264,10 @@ impl<T> ObjectPool<T> {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (usize, Arc<Mutex<T>>)> + '_ {
-        self.objects.iter().enumerate().filter_map(|(i, o)| {
-            o.as_ref().map(|arc| (i, Arc::clone(arc)))
-        })
+        self.objects
+            .iter()
+            .enumerate()
+            .filter_map(|(i, o)| o.as_ref().map(|arc| (i, Arc::clone(arc))))
     }
 }
 

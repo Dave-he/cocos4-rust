@@ -108,10 +108,20 @@ mod tests {
 
     #[test]
     fn test_queue_types() {
-        let compute_q = GfxQueue::new(2, QueueInfo { queue_type: QueueType::Compute });
+        let compute_q = GfxQueue::new(
+            2,
+            QueueInfo {
+                queue_type: QueueType::Compute,
+            },
+        );
         assert_eq!(compute_q.get_type(), QueueType::Compute);
 
-        let transfer_q = GfxQueue::new(3, QueueInfo { queue_type: QueueType::Transfer });
+        let transfer_q = GfxQueue::new(
+            3,
+            QueueInfo {
+                queue_type: QueueType::Transfer,
+            },
+        );
         assert_eq!(transfer_q.get_type(), QueueType::Transfer);
     }
 }

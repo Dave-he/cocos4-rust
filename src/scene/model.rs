@@ -1,6 +1,6 @@
-use crate::math::Mat4;
-use crate::core::geometry::AABB;
 use super::define::{ModelType, UseReflectionProbeType, CAMERA_DEFAULT_MASK};
+use crate::core::geometry::AABB;
+use crate::math::Mat4;
 
 #[derive(Debug)]
 pub struct Model {

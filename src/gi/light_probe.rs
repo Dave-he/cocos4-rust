@@ -7,9 +7,9 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 use crate::math::{Vec3, Vec4};
 
 const EPSILON: f32 = 1e-6;
-use crate::gi::delaunay::{Vertex, Tetrahedron, Delaunay};
-use crate::gi::sh::SH_BASIS_COUNT;
+use crate::gi::delaunay::{Delaunay, Tetrahedron, Vertex};
 use crate::gi::polynomial_solver::PolynomialSolver;
+use crate::gi::sh::SH_BASIS_COUNT;
 
 #[derive(Debug, Clone)]
 pub struct LightProbesData {
@@ -18,16 +18,25 @@ pub struct LightProbesData {
 }
 
 impl Default for LightProbesData {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LightProbesData {
     pub fn new() -> Self {
-        Self { probes: Vec::new(), tetrahedrons: Vec::new() }
+        Self {
+            probes: Vec::new(),
+            tetrahedrons: Vec::new(),
+        }
     }
 
-    pub fn probes(&self) -> &Vec<Vertex> { &self.probes }
-    pub fn tetrahedrons(&self) -> &Vec<Tetrahedron> { &self.tetrahedrons }
+    pub fn probes(&self) -> &Vec<Vertex> {
+        &self.probes
+    }
+    pub fn tetrahedrons(&self) -> &Vec<Tetrahedron> {
+        &self.tetrahedrons
+    }
 
     pub fn empty(&self) -> bool {
         self.probes.is_empty() || self.tetrahedrons.is_empty()
@@ -39,7 +48,8 @@ impl LightProbesData {
     }
 
     pub fn update_probes(&mut self, points: &[Vec3]) {
-        self.probes.resize_with(points.len(), || Vertex::new(Vec3::ZERO));
+        self.probes
+            .resize_with(points.len(), || Vertex::new(Vec3::ZERO));
         for i in 0..points.len() {
             self.probes[i].position = points[i];
         }
@@ -55,11 +65,18 @@ impl LightProbesData {
     }
 
     pub fn get_interpolation_sh_coefficients(
-        &self, tet_index: i32, weights: &Vec4, coefficients: &mut Vec<Vec3>,
+        &self,
+        tet_index: i32,
+        weights: &Vec4,
+        coefficients: &mut Vec<Vec3>,
     ) -> bool {
-        if !self.has_coefficients() { return false; }
+        if !self.has_coefficients() {
+            return false;
+        }
         let tet_idx = tet_index as usize;
-        if tet_idx >= self.tetrahedrons.len() { return false; }
+        if tet_idx >= self.tetrahedrons.len() {
+            return false;
+        }
         let tetrahedron = &self.tetrahedrons[tet_idx];
         let c0 = &self.probes[tetrahedron.vertex0 as usize].coefficients;
         let c1 = &self.probes[tetrahedron.vertex1 as usize].coefficients;
@@ -68,7 +85,8 @@ impl LightProbesData {
         if tetrahedron.vertex3 >= 0 {
             let c3 = &self.probes[tetrahedron.vertex3 as usize].coefficients;
             for i in 0..SH_BASIS_COUNT {
-                coefficients[i] = c0[i] * weights.x + c1[i] * weights.y + c2[i] * weights.z + c3[i] * weights.w;
+                coefficients[i] =
+                    c0[i] * weights.x + c1[i] * weights.y + c2[i] * weights.z + c3[i] * weights.w;
             }
         } else {
             for i in 0..SH_BASIS_COUNT {
@@ -80,23 +98,32 @@ impl LightProbesData {
 
     pub fn get_interpolation_weights(&self, position: &Vec3, tet_index: i32) -> (i32, Vec4) {
         let tetrahedron_count = self.tetrahedrons.len() as i32;
-        let mut tet_index = if tet_index < 0 || tet_index >= tetrahedron_count { 0 } else { tet_index };
+        let mut tet_index = if tet_index < 0 || tet_index >= tetrahedron_count {
+            0
+        } else {
+            tet_index
+        };
         let mut weights = Vec4::new(0.0, 0.0, 0.0, 0.0);
         let mut last_index = -1;
         for _ in 0..tetrahedron_count {
             let tetrahedron = &self.tetrahedrons[tet_index as usize];
             self.get_barycentric_coord(position, tetrahedron, &mut weights);
-            if weights.x >= 0.0 && weights.y >= 0.0 && weights.z >= 0.0 && weights.w >= 0.0 { break; }
-            let next_index = if weights.x < weights.y && weights.x < weights.z && weights.x < weights.w {
-                tetrahedron.neighbours[0]
-            } else if weights.y < weights.z && weights.y < weights.w {
-                tetrahedron.neighbours[1]
-            } else if weights.z < weights.w {
-                tetrahedron.neighbours[2]
-            } else {
-                tetrahedron.neighbours[3]
-            };
-            if last_index == next_index { break; }
+            if weights.x >= 0.0 && weights.y >= 0.0 && weights.z >= 0.0 && weights.w >= 0.0 {
+                break;
+            }
+            let next_index =
+                if weights.x < weights.y && weights.x < weights.z && weights.x < weights.w {
+                    tetrahedron.neighbours[0]
+                } else if weights.y < weights.z && weights.y < weights.w {
+                    tetrahedron.neighbours[1]
+                } else if weights.z < weights.w {
+                    tetrahedron.neighbours[2]
+                } else {
+                    tetrahedron.neighbours[3]
+                };
+            if last_index == next_index {
+                break;
+            }
             last_index = tet_index;
             tet_index = next_index;
         }
@@ -107,7 +134,9 @@ impl LightProbesData {
         let v1 = *p1 - *p0;
         let v2 = *p2 - *p0;
         let normal = Vec3::cross_vecs(&v1, &v2);
-        if normal.length_squared() <= EPSILON { return Vec3::ZERO; }
+        if normal.length_squared() <= EPSILON {
+            return Vec3::ZERO;
+        }
         let n_norm = normal.get_normalized();
         let area012_inv = 1.0 / Vec3::dot_vecs(&n_norm, &normal);
         let edge_p0 = *p0 - *position;
@@ -120,7 +149,12 @@ impl LightProbesData {
         Vec3::new(alpha, beta, 1.0 - alpha - beta)
     }
 
-    fn get_barycentric_coord(&self, position: &Vec3, tetrahedron: &Tetrahedron, weights: &mut Vec4) {
+    fn get_barycentric_coord(
+        &self,
+        position: &Vec3,
+        tetrahedron: &Tetrahedron,
+        weights: &mut Vec4,
+    ) {
         if tetrahedron.vertex3 >= 0 {
             self.get_tetrahedron_barycentric_coord(position, tetrahedron, weights);
         } else {
@@ -128,7 +162,12 @@ impl LightProbesData {
         }
     }
 
-    fn get_tetrahedron_barycentric_coord(&self, position: &Vec3, tetrahedron: &Tetrahedron, weights: &mut Vec4) {
+    fn get_tetrahedron_barycentric_coord(
+        &self,
+        position: &Vec3,
+        tetrahedron: &Tetrahedron,
+        weights: &mut Vec4,
+    ) {
         let p3 = self.probes[tetrahedron.vertex3 as usize].position;
         let result = *position - p3;
         let transformed = tetrahedron.matrix.transform_vec3(&result);
@@ -138,7 +177,12 @@ impl LightProbesData {
         weights.w = 1.0 - transformed.x - transformed.y - transformed.z;
     }
 
-    fn get_outer_cell_barycentric_coord(&self, position: &Vec3, tetrahedron: &Tetrahedron, weights: &mut Vec4) {
+    fn get_outer_cell_barycentric_coord(
+        &self,
+        position: &Vec3,
+        tetrahedron: &Tetrahedron,
+        weights: &mut Vec4,
+    ) {
         let p0 = self.probes[tetrahedron.vertex0 as usize].position;
         let p1 = self.probes[tetrahedron.vertex1 as usize].position;
         let p2 = self.probes[tetrahedron.vertex2 as usize].position;
@@ -151,20 +195,30 @@ impl LightProbesData {
         let v = *position - p0;
         let t_dot = Vec3::dot_vecs(&v, &normal2);
         if t_dot < 0.0 {
-            weights.x = 0.0; weights.y = 0.0; weights.z = 0.0; weights.w = -1.0;
+            weights.x = 0.0;
+            weights.y = 0.0;
+            weights.z = 0.0;
+            weights.w = -1.0;
             return;
         }
         let coefficients = tetrahedron.matrix.transform_vec3(position) + tetrahedron.offset;
         let t = if tetrahedron.vertex3 == -1 {
             PolynomialSolver::get_cubic_unique_root(coefficients.x, coefficients.y, coefficients.z)
         } else {
-            PolynomialSolver::get_quadratic_unique_root(coefficients.x, coefficients.y, coefficients.z)
+            PolynomialSolver::get_quadratic_unique_root(
+                coefficients.x,
+                coefficients.y,
+                coefficients.z,
+            )
         };
         let vp0 = p0 + n0 * t;
         let vp1 = p1 + n1 * t;
         let vp2 = p2 + n2 * t;
         let result = Self::get_triangle_barycentric_coord(&vp0, &vp1, &vp2, position);
-        weights.x = result.x; weights.y = result.y; weights.z = result.z; weights.w = 0.0;
+        weights.x = result.x;
+        weights.y = result.y;
+        weights.z = result.z;
+        weights.w = 0.0;
     }
 }
 
@@ -182,15 +236,23 @@ pub struct LightProbes {
 }
 
 impl Default for LightProbes {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LightProbes {
     pub fn new() -> Self {
         Self {
-            gi_scale: 1.0, gi_samples: 1024, bounces: 2, reduce_ringing: 0.0,
-            show_probe: true, show_wireframe: true, show_convex: false,
-            data: None, light_probe_sphere_volume: 1.0,
+            gi_scale: 1.0,
+            gi_samples: 1024,
+            bounces: 2,
+            reduce_ringing: 0.0,
+            show_probe: true,
+            show_wireframe: true,
+            show_convex: false,
+            data: None,
+            light_probe_sphere_volume: 1.0,
         }
     }
 
@@ -206,27 +268,66 @@ impl LightProbes {
         self.data = Some(info.data.clone());
     }
 
-    pub fn gi_scale(&self) -> f32 { self.gi_scale }
-    pub fn set_gi_scale(&mut self, val: f32) { self.gi_scale = val; }
-    pub fn gi_samples(&self) -> u32 { self.gi_samples }
-    pub fn set_gi_samples(&mut self, val: u32) { self.gi_samples = val; }
-    pub fn bounces(&self) -> u32 { self.bounces }
-    pub fn set_bounces(&mut self, val: u32) { self.bounces = val; }
-    pub fn reduce_ringing(&self) -> f32 { self.reduce_ringing }
-    pub fn set_reduce_ringing(&mut self, val: f32) { self.reduce_ringing = val; }
-    pub fn show_probe(&self) -> bool { self.show_probe }
-    pub fn set_show_probe(&mut self, val: bool) { self.show_probe = val; }
-    pub fn show_wireframe(&self) -> bool { self.show_wireframe }
-    pub fn set_show_wireframe(&mut self, val: bool) { self.show_wireframe = val; }
-    pub fn show_convex(&self) -> bool { self.show_convex }
-    pub fn set_show_convex(&mut self, val: bool) { self.show_convex = val; }
-    pub fn data(&self) -> &Option<LightProbesData> { &self.data }
-    pub fn set_data(&mut self, val: LightProbesData) { self.data = Some(val); }
-    pub fn light_probe_sphere_volume(&self) -> f32 { self.light_probe_sphere_volume }
-    pub fn set_light_probe_sphere_volume(&mut self, val: f32) { self.light_probe_sphere_volume = val; }
+    pub fn gi_scale(&self) -> f32 {
+        self.gi_scale
+    }
+    pub fn set_gi_scale(&mut self, val: f32) {
+        self.gi_scale = val;
+    }
+    pub fn gi_samples(&self) -> u32 {
+        self.gi_samples
+    }
+    pub fn set_gi_samples(&mut self, val: u32) {
+        self.gi_samples = val;
+    }
+    pub fn bounces(&self) -> u32 {
+        self.bounces
+    }
+    pub fn set_bounces(&mut self, val: u32) {
+        self.bounces = val;
+    }
+    pub fn reduce_ringing(&self) -> f32 {
+        self.reduce_ringing
+    }
+    pub fn set_reduce_ringing(&mut self, val: f32) {
+        self.reduce_ringing = val;
+    }
+    pub fn show_probe(&self) -> bool {
+        self.show_probe
+    }
+    pub fn set_show_probe(&mut self, val: bool) {
+        self.show_probe = val;
+    }
+    pub fn show_wireframe(&self) -> bool {
+        self.show_wireframe
+    }
+    pub fn set_show_wireframe(&mut self, val: bool) {
+        self.show_wireframe = val;
+    }
+    pub fn show_convex(&self) -> bool {
+        self.show_convex
+    }
+    pub fn set_show_convex(&mut self, val: bool) {
+        self.show_convex = val;
+    }
+    pub fn data(&self) -> &Option<LightProbesData> {
+        &self.data
+    }
+    pub fn set_data(&mut self, val: LightProbesData) {
+        self.data = Some(val);
+    }
+    pub fn light_probe_sphere_volume(&self) -> f32 {
+        self.light_probe_sphere_volume
+    }
+    pub fn set_light_probe_sphere_volume(&mut self, val: f32) {
+        self.light_probe_sphere_volume = val;
+    }
 
     pub fn empty(&self) -> bool {
-        match &self.data { Some(d) => d.empty(), None => true }
+        match &self.data {
+            Some(d) => d.empty(),
+            None => true,
+        }
     }
 }
 
@@ -244,14 +345,22 @@ pub struct LightProbeInfo {
 }
 
 impl Default for LightProbeInfo {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LightProbeInfo {
     pub fn new() -> Self {
         Self {
-            gi_scale: 1.0, light_probe_sphere_volume: 1.0, gi_samples: 1024, bounces: 2,
-            reduce_ringing: 0.0, show_probe: true, show_wireframe: true, show_convex: false,
+            gi_scale: 1.0,
+            light_probe_sphere_volume: 1.0,
+            gi_samples: 1024,
+            bounces: 2,
+            reduce_ringing: 0.0,
+            show_probe: true,
+            show_wireframe: true,
+            show_convex: false,
             data: LightProbesData::new(),
         }
     }
@@ -322,8 +431,11 @@ mod tests {
     #[test]
     fn test_light_probes_setters() {
         let mut lp = LightProbes::new();
-        lp.set_gi_scale(2.0); assert_eq!(lp.gi_scale(), 2.0);
-        lp.set_bounces(4); assert_eq!(lp.bounces(), 4);
-        lp.set_show_convex(true); assert!(lp.show_convex());
+        lp.set_gi_scale(2.0);
+        assert_eq!(lp.gi_scale(), 2.0);
+        lp.set_bounces(4);
+        assert_eq!(lp.bounces(), 4);
+        lp.set_show_convex(true);
+        assert!(lp.show_convex());
     }
 }

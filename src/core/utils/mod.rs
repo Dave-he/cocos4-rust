@@ -7,8 +7,8 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 pub mod id_generator;
 pub mod path;
 
-pub use id_generator::{IDGenerator, NON_UUID_MARK, get_new_global_id};
+pub use id_generator::{get_new_global_id, IDGenerator, NON_UUID_MARK};
 pub use path::{
-    join, extname, main_filename, basename, dirname,
-    change_extname, change_basename, normalize, strip_sep, get_separator,
+    basename, change_basename, change_extname, dirname, extname, get_separator, join,
+    main_filename, normalize, strip_sep,
 };

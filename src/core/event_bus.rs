@@ -44,11 +44,14 @@ impl EventBus {
                 callback(v);
             }
         });
-        self.channels.entry(event.to_string()).or_default().push(BusEntry {
-            id,
-            once: false,
-            callback: cb,
-        });
+        self.channels
+            .entry(event.to_string())
+            .or_default()
+            .push(BusEntry {
+                id,
+                once: false,
+                callback: cb,
+            });
         id
     }
 
@@ -63,11 +66,14 @@ impl EventBus {
                 callback(v);
             }
         });
-        self.channels.entry(event.to_string()).or_default().push(BusEntry {
-            id,
-            once: true,
-            callback: cb,
-        });
+        self.channels
+            .entry(event.to_string())
+            .or_default()
+            .push(BusEntry {
+                id,
+                once: true,
+                callback: cb,
+            });
         id
     }
 
@@ -115,7 +121,10 @@ impl EventBus {
     }
 
     pub fn has_listeners(&self, event: &str) -> bool {
-        self.channels.get(event).map(|v| !v.is_empty()).unwrap_or(false)
+        self.channels
+            .get(event)
+            .map(|v| !v.is_empty())
+            .unwrap_or(false)
     }
 
     pub fn get_emit_count(&self) -> u64 {
@@ -142,7 +151,9 @@ impl EventBus {
 }
 
 impl Default for EventBus {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]
@@ -167,7 +178,9 @@ mod tests {
         let mut bus = EventBus::new();
         let val = Arc::new(Mutex::new(0i32));
         let v = Arc::clone(&val);
-        bus.on::<HealthChanged, _>("health", move |e| { *v.lock().unwrap() = e.0; });
+        bus.on::<HealthChanged, _>("health", move |e| {
+            *v.lock().unwrap() = e.0;
+        });
         bus.emit("health", HealthChanged(50));
         assert_eq!(*val.lock().unwrap(), 50);
         assert_eq!(bus.get_emit_count(), 1);
@@ -178,7 +191,9 @@ mod tests {
         let mut bus = EventBus::new();
         let count = Arc::new(Mutex::new(0u32));
         let c = Arc::clone(&count);
-        bus.once::<HealthChanged, _>("health", move |_| { *c.lock().unwrap() += 1; });
+        bus.once::<HealthChanged, _>("health", move |_| {
+            *c.lock().unwrap() += 1;
+        });
         bus.emit("health", HealthChanged(10));
         bus.emit("health", HealthChanged(20));
         assert_eq!(*count.lock().unwrap(), 1);
@@ -190,7 +205,9 @@ mod tests {
         let mut bus = EventBus::new();
         let count = Arc::new(Mutex::new(0u32));
         let c = Arc::clone(&count);
-        let key = bus.on::<HealthChanged, _>("health", move |_| { *c.lock().unwrap() += 1; });
+        let key = bus.on::<HealthChanged, _>("health", move |_| {
+            *c.lock().unwrap() += 1;
+        });
         bus.emit("health", HealthChanged(1));
         bus.off("health", key);
         bus.emit("health", HealthChanged(2));
@@ -212,7 +229,9 @@ mod tests {
         let count = Arc::new(Mutex::new(0u32));
         for _ in 0..3 {
             let c = Arc::clone(&count);
-            bus.on::<LevelUp, _>("level_up", move |_| { *c.lock().unwrap() += 1; });
+            bus.on::<LevelUp, _>("level_up", move |_| {
+                *c.lock().unwrap() += 1;
+            });
         }
         bus.emit("level_up", LevelUp(2));
         assert_eq!(bus.get_history().last().unwrap().0.as_str(), "level_up");
@@ -226,8 +245,12 @@ mod tests {
         let lv = Arc::new(Mutex::new(0u32));
         let hp2 = Arc::clone(&hp);
         let lv2 = Arc::clone(&lv);
-        bus.on::<HealthChanged, _>("health", move |e| { *hp2.lock().unwrap() = e.0; });
-        bus.on::<LevelUp, _>("level_up", move |e| { *lv2.lock().unwrap() = e.0; });
+        bus.on::<HealthChanged, _>("health", move |e| {
+            *hp2.lock().unwrap() = e.0;
+        });
+        bus.on::<LevelUp, _>("level_up", move |e| {
+            *lv2.lock().unwrap() = e.0;
+        });
         bus.emit("health", HealthChanged(100));
         bus.emit("level_up", LevelUp(5));
         assert_eq!(*hp.lock().unwrap(), 100);
@@ -239,7 +262,9 @@ mod tests {
         let mut bus = EventBus::new();
         let called = Arc::new(Mutex::new(false));
         let c = Arc::clone(&called);
-        bus.on::<HealthChanged, _>("health", move |_| { *c.lock().unwrap() = true; });
+        bus.on::<HealthChanged, _>("health", move |_| {
+            *c.lock().unwrap() = true;
+        });
         bus.emit("health", LevelUp(1));
         assert!(!*called.lock().unwrap());
     }

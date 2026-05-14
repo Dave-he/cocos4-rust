@@ -37,7 +37,9 @@ impl Particle {
     }
 
     pub fn get_normalized_lifetime(&self) -> f32 {
-        if self.start_life <= 0.0 { return 1.0; }
+        if self.start_life <= 0.0 {
+            return 1.0;
+        }
         1.0 - (self.life / self.start_life).clamp(0.0, 1.0)
     }
 
@@ -46,7 +48,9 @@ impl Particle {
     }
 
     pub fn update(&mut self, dt: f32) {
-        if !self.alive { return; }
+        if !self.alive {
+            return;
+        }
         self.velocity.x += self.acceleration.x * dt;
         self.velocity.y += self.acceleration.y * dt;
         self.velocity.z += self.acceleration.z * dt;

@@ -78,15 +78,33 @@ impl DefaultScreen {
 }
 
 impl IScreen for DefaultScreen {
-    fn get_dpi(&self) -> i32 { self.dpi }
-    fn get_device_pixel_ratio(&self) -> f32 { self.pixel_ratio }
-    fn get_device_orientation(&self) -> Orientation { self.orientation }
-    fn is_display_stats(&self) -> bool { self.display_stats }
-    fn set_display_stats(&mut self, is_show: bool) { self.display_stats = is_show; }
-    fn set_keep_screen_on(&mut self, keep_screen_on: bool) { self.keep_screen_on = keep_screen_on; }
-    fn get_safe_area_edge(&self) -> Vec4 { Vec4::new(0.0, 0.0, 0.0, 0.0) }
-    fn get_width(&self) -> u32 { self.width }
-    fn get_height(&self) -> u32 { self.height }
+    fn get_dpi(&self) -> i32 {
+        self.dpi
+    }
+    fn get_device_pixel_ratio(&self) -> f32 {
+        self.pixel_ratio
+    }
+    fn get_device_orientation(&self) -> Orientation {
+        self.orientation
+    }
+    fn is_display_stats(&self) -> bool {
+        self.display_stats
+    }
+    fn set_display_stats(&mut self, is_show: bool) {
+        self.display_stats = is_show;
+    }
+    fn set_keep_screen_on(&mut self, keep_screen_on: bool) {
+        self.keep_screen_on = keep_screen_on;
+    }
+    fn get_safe_area_edge(&self) -> Vec4 {
+        Vec4::new(0.0, 0.0, 0.0, 0.0)
+    }
+    fn get_width(&self) -> u32 {
+        self.width
+    }
+    fn get_height(&self) -> u32 {
+        self.height
+    }
 }
 
 #[cfg(test)]
@@ -130,4 +148,3 @@ mod tests {
         assert!((s.get_device_pixel_ratio() - 2.0).abs() < 1e-5);
     }
 }
-

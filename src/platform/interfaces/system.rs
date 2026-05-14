@@ -120,14 +120,30 @@ impl Default for DefaultSystem {
 }
 
 impl ISystem for DefaultSystem {
-    fn get_os_type(&self) -> OSType { self.os_type }
-    fn get_device_model(&self) -> String { self.model.clone() }
-    fn get_current_language(&self) -> LanguageType { self.language }
-    fn get_current_language_code(&self) -> String { self.language.to_code().to_string() }
-    fn get_system_version(&self) -> String { self.version.clone() }
-    fn get_current_language_to_string(&self) -> String { format!("{:?}", self.language) }
-    fn copy_text_to_clipboard(&mut self, text: &str) { self.clipboard = text.to_string(); }
-    fn open_url(&mut self, _url: &str) -> bool { false }
+    fn get_os_type(&self) -> OSType {
+        self.os_type
+    }
+    fn get_device_model(&self) -> String {
+        self.model.clone()
+    }
+    fn get_current_language(&self) -> LanguageType {
+        self.language
+    }
+    fn get_current_language_code(&self) -> String {
+        self.language.to_code().to_string()
+    }
+    fn get_system_version(&self) -> String {
+        self.version.clone()
+    }
+    fn get_current_language_to_string(&self) -> String {
+        format!("{:?}", self.language)
+    }
+    fn copy_text_to_clipboard(&mut self, text: &str) {
+        self.clipboard = text.to_string();
+    }
+    fn open_url(&mut self, _url: &str) -> bool {
+        false
+    }
 }
 
 #[cfg(test)]

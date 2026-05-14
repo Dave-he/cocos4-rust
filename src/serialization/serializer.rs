@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::serialization::value::SerializedValue;
+use std::collections::HashMap;
 
 pub struct Serializer {
     data: SerializedValue,
@@ -65,7 +65,9 @@ impl Serializer {
     pub fn from_json(json: &str) -> Result<Self, String> {
         use crate::serialization::deserializer::Deserializer;
         let d = Deserializer::from_json(json)?;
-        Ok(Serializer { data: d.get_value().clone() })
+        Ok(Serializer {
+            data: d.get_value().clone(),
+        })
     }
 }
 
@@ -110,11 +112,14 @@ mod tests {
     #[test]
     fn test_serializer_array() {
         let mut s = Serializer::new();
-        s.write_array("items", vec![
-            SerializedValue::from(1i64),
-            SerializedValue::from(2i64),
-            SerializedValue::from(3i64),
-        ]);
+        s.write_array(
+            "items",
+            vec![
+                SerializedValue::from(1i64),
+                SerializedValue::from(2i64),
+                SerializedValue::from(3i64),
+            ],
+        );
         let v = s.finish();
         let arr = v.get("items").unwrap().as_array().unwrap();
         assert_eq!(arr.len(), 3);

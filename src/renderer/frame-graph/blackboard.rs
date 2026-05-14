@@ -19,10 +19,16 @@ pub struct StringHandle {
 }
 
 impl StringHandle {
-    pub const INVALID: StringHandle = StringHandle { index: u32::MAX, index_type: 0 };
+    pub const INVALID: StringHandle = StringHandle {
+        index: u32::MAX,
+        index_type: 0,
+    };
 
     pub fn new(index: u32) -> Self {
-        StringHandle { index, index_type: 1 }
+        StringHandle {
+            index,
+            index_type: 1,
+        }
     }
 
     pub fn is_valid(&self) -> bool {

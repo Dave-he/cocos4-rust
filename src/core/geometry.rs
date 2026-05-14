@@ -53,16 +53,8 @@ impl AABB {
         let (min1, max1) = self.get_boundary();
         let (min2, max2) = other.get_boundary();
 
-        let new_min = Vec3::new(
-            min1.x.min(min2.x),
-            min1.y.min(min2.y),
-            min1.z.min(min2.z),
-        );
-        let new_max = Vec3::new(
-            max1.x.max(max2.x),
-            max1.y.max(max2.y),
-            max1.z.max(max2.z),
-        );
+        let new_min = Vec3::new(min1.x.min(min2.x), min1.y.min(min2.y), min1.z.min(min2.z));
+        let new_max = Vec3::new(max1.x.max(max2.x), max1.y.max(max2.y), max1.z.max(max2.z));
 
         self.center = Vec3::new(
             (new_min.x + new_max.x) * 0.5,
@@ -105,12 +97,20 @@ impl AABB {
             (max.y - min.y) * 0.5,
             (max.z - min.z) * 0.5,
         );
-        AABB { center, half_extents, is_valid: true }
+        AABB {
+            center,
+            half_extents,
+            is_valid: true,
+        }
     }
 
     /// Create an AABB from a center point and half-extents vector.
     pub fn from_center_extents(center: Vec3, half_extents: Vec3) -> Self {
-        AABB { center, half_extents, is_valid: true }
+        AABB {
+            center,
+            half_extents,
+            is_valid: true,
+        }
     }
 
     pub fn contains(&self, point: &Vec3) -> bool {
@@ -300,7 +300,7 @@ impl OBB {
     pub fn contains(&self, point: &Vec3) -> bool {
         let tmp = *point - self.center;
         let local = tmp.transform_mat3(&self.orientation.get_transposed());
-        
+
         local.x.abs() <= self.half_extents.x
             && local.y.abs() <= self.half_extents.y
             && local.z.abs() <= self.half_extents.z
@@ -445,15 +445,23 @@ impl Ray {
     }
 
     pub fn intersect_obb(&self, obb: &OBB) -> Option<f32> {
-        let size = [
-            obb.half_extents.x,
-            obb.half_extents.y,
-            obb.half_extents.z,
-        ];
+        let size = [obb.half_extents.x, obb.half_extents.y, obb.half_extents.z];
 
-        let x = Vec3::new(obb.orientation.m[0], obb.orientation.m[1], obb.orientation.m[2]);
-        let y = Vec3::new(obb.orientation.m[3], obb.orientation.m[4], obb.orientation.m[5]);
-        let z = Vec3::new(obb.orientation.m[6], obb.orientation.m[7], obb.orientation.m[8]);
+        let x = Vec3::new(
+            obb.orientation.m[0],
+            obb.orientation.m[1],
+            obb.orientation.m[2],
+        );
+        let y = Vec3::new(
+            obb.orientation.m[3],
+            obb.orientation.m[4],
+            obb.orientation.m[5],
+        );
+        let z = Vec3::new(
+            obb.orientation.m[6],
+            obb.orientation.m[7],
+            obb.orientation.m[8],
+        );
 
         let p = obb.center - self.origin;
 
@@ -463,11 +471,7 @@ impl Ray {
             z.dot(&self.direction),
         ];
 
-        let e = [
-            x.dot(&p),
-            y.dot(&p),
-            z.dot(&p),
-        ];
+        let e = [x.dot(&p), y.dot(&p), z.dot(&p)];
 
         let mut t = [0.0f32; 6];
 
@@ -586,22 +590,22 @@ impl Frustum {
 
     pub fn update(&mut self, m: &Mat4, inv: &Mat4) {
         let planes = &mut self.planes;
-        
+
         planes[0].normal = Vec3::new(m.m[3] + m.m[0], m.m[7] + m.m[4], m.m[11] + m.m[8]);
         planes[0].distance = -(m.m[15] + m.m[12]);
-        
+
         planes[1].normal = Vec3::new(m.m[3] - m.m[0], m.m[7] - m.m[4], m.m[11] - m.m[8]);
         planes[1].distance = -(m.m[15] - m.m[12]);
-        
+
         planes[2].normal = Vec3::new(m.m[3] + m.m[1], m.m[7] + m.m[5], m.m[11] + m.m[9]);
         planes[2].distance = -(m.m[15] + m.m[13]);
-        
+
         planes[3].normal = Vec3::new(m.m[3] - m.m[1], m.m[7] - m.m[5], m.m[11] - m.m[9]);
         planes[3].distance = -(m.m[15] - m.m[13]);
-        
+
         planes[4].normal = Vec3::new(m.m[3] + m.m[2], m.m[7] + m.m[6], m.m[11] + m.m[10]);
         planes[4].distance = -(m.m[15] + m.m[14]);
-        
+
         planes[5].normal = Vec3::new(m.m[3] - m.m[2], m.m[7] - m.m[6], m.m[11] - m.m[10]);
         planes[5].distance = -(m.m[15] - m.m[14]);
 
@@ -772,9 +776,12 @@ pub fn aabb_aabb(a: &AABB, b: &AABB) -> bool {
     let (a_min, a_max) = a.get_boundary();
     let (b_min, b_max) = b.get_boundary();
 
-    a_min.x <= b_max.x && a_max.x >= b_min.x
-        && a_min.y <= b_max.y && a_max.y >= b_min.y
-        && a_min.z <= b_max.z && a_max.z >= b_min.z
+    a_min.x <= b_max.x
+        && a_max.x >= b_min.x
+        && a_min.y <= b_max.y
+        && a_max.y >= b_min.y
+        && a_min.z <= b_max.z
+        && a_max.z >= b_min.z
 }
 
 pub fn sphere_sphere(a: &Sphere, b: &Sphere) -> bool {
@@ -864,10 +871,22 @@ pub fn obb_obb(a: &OBB, b: &OBB) -> bool {
 fn get_obb_vertices(obb: &OBB) -> [Vec3; 8] {
     let c = obb.center;
     let e = obb.half_extents;
-    
-    let a1 = Vec3::new(obb.orientation.m[0], obb.orientation.m[1], obb.orientation.m[2]);
-    let a2 = Vec3::new(obb.orientation.m[3], obb.orientation.m[4], obb.orientation.m[5]);
-    let a3 = Vec3::new(obb.orientation.m[6], obb.orientation.m[7], obb.orientation.m[8]);
+
+    let a1 = Vec3::new(
+        obb.orientation.m[0],
+        obb.orientation.m[1],
+        obb.orientation.m[2],
+    );
+    let a2 = Vec3::new(
+        obb.orientation.m[3],
+        obb.orientation.m[4],
+        obb.orientation.m[5],
+    );
+    let a3 = Vec3::new(
+        obb.orientation.m[6],
+        obb.orientation.m[7],
+        obb.orientation.m[8],
+    );
 
     [
         c + a1 * e.x + a2 * e.y + a3 * e.z,
@@ -943,9 +962,17 @@ mod tests {
         let mut aabb1 = AABB::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0);
         let aabb2 = AABB::new(2.0, 0.0, 0.0, 1.0, 1.0, 1.0);
         aabb1.merge(&aabb2);
-        
-        assert_vec3_eq(&aabb1.center, &Vec3::new(1.0, 0.0, 0.0), FLOAT_CMP_PRECISION);
-        assert_vec3_eq(&aabb1.half_extents, &Vec3::new(2.0, 1.0, 1.0), FLOAT_CMP_PRECISION);
+
+        assert_vec3_eq(
+            &aabb1.center,
+            &Vec3::new(1.0, 0.0, 0.0),
+            FLOAT_CMP_PRECISION,
+        );
+        assert_vec3_eq(
+            &aabb1.half_extents,
+            &Vec3::new(2.0, 1.0, 1.0),
+            FLOAT_CMP_PRECISION,
+        );
     }
 
     #[test]
@@ -988,7 +1015,11 @@ mod tests {
     #[test]
     fn test_plane_new() {
         let plane = Plane::new(Vec3::new(0.0, 1.0, 0.0), 5.0);
-        assert_vec3_eq(&plane.normal, &Vec3::new(0.0, 1.0, 0.0), FLOAT_CMP_PRECISION);
+        assert_vec3_eq(
+            &plane.normal,
+            &Vec3::new(0.0, 1.0, 0.0),
+            FLOAT_CMP_PRECISION,
+        );
         assert_float_eq(plane.distance, 5.0, FLOAT_CMP_PRECISION);
     }
 
@@ -998,8 +1029,12 @@ mod tests {
         let b = Vec3::new(1.0, 0.0, 0.0);
         let c = Vec3::new(0.0, 1.0, 0.0);
         let plane = Plane::from_points(&a, &b, &c);
-        
-        assert_vec3_eq(&plane.normal, &Vec3::new(0.0, 0.0, 1.0), FLOAT_CMP_PRECISION);
+
+        assert_vec3_eq(
+            &plane.normal,
+            &Vec3::new(0.0, 0.0, 1.0),
+            FLOAT_CMP_PRECISION,
+        );
         assert_float_eq(plane.distance, 0.0, FLOAT_CMP_PRECISION);
     }
 
@@ -1007,7 +1042,11 @@ mod tests {
     fn test_obb_new() {
         let obb = OBB::new(1.0, 2.0, 3.0, 0.5, 0.5, 0.5);
         assert_vec3_eq(&obb.center, &Vec3::new(1.0, 2.0, 3.0), FLOAT_CMP_PRECISION);
-        assert_vec3_eq(&obb.half_extents, &Vec3::new(0.5, 0.5, 0.5), FLOAT_CMP_PRECISION);
+        assert_vec3_eq(
+            &obb.half_extents,
+            &Vec3::new(0.5, 0.5, 0.5),
+            FLOAT_CMP_PRECISION,
+        );
         assert!(obb.orientation.is_identity());
     }
 
@@ -1033,7 +1072,7 @@ mod tests {
     fn test_ray_new() {
         let ray = Ray::new(0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
         assert_vec3_eq(&ray.origin, &Vec3::ZERO, FLOAT_CMP_PRECISION);
-        
+
         let expected_dir = Vec3::new(0.0, 0.0, 1.0);
         assert_vec3_eq(&ray.direction, &expected_dir, FLOAT_CMP_PRECISION);
     }
@@ -1043,9 +1082,13 @@ mod tests {
         let origin = Vec3::new(0.0, 0.0, 0.0);
         let target = Vec3::new(0.0, 0.0, 10.0);
         let ray = Ray::from_points(&origin, &target);
-        
+
         assert_vec3_eq(&ray.origin, &origin, FLOAT_CMP_PRECISION);
-        assert_vec3_eq(&ray.direction, &Vec3::new(0.0, 0.0, 1.0), FLOAT_CMP_PRECISION);
+        assert_vec3_eq(
+            &ray.direction,
+            &Vec3::new(0.0, 0.0, 1.0),
+            FLOAT_CMP_PRECISION,
+        );
     }
 
     #[test]
@@ -1059,7 +1102,7 @@ mod tests {
     fn test_ray_intersect_aabb() {
         let ray = Ray::new(0.0, 0.0, -5.0, 0.0, 0.0, 1.0);
         let aabb = AABB::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0);
-        
+
         let result = ray.intersect_aabb(&aabb);
         assert!(result.is_some());
         assert_float_eq(result.unwrap(), 4.0, FLOAT_CMP_PRECISION);
@@ -1069,7 +1112,7 @@ mod tests {
     fn test_ray_intersect_aabb_miss() {
         let ray = Ray::new(0.0, 0.0, -5.0, 0.0, 0.0, 1.0);
         let aabb = AABB::new(5.0, 0.0, 0.0, 1.0, 1.0, 1.0);
-        
+
         let result = ray.intersect_aabb(&aabb);
         assert!(result.is_none());
     }
@@ -1078,7 +1121,7 @@ mod tests {
     fn test_ray_intersect_sphere() {
         let ray = Ray::new(0.0, 0.0, -5.0, 0.0, 0.0, 1.0);
         let sphere = Sphere::new(Vec3::new(0.0, 0.0, 0.0), 1.0);
-        
+
         let result = ray.intersect_sphere(&sphere);
         assert!(result.is_some());
         assert_float_eq(result.unwrap(), 4.0, FLOAT_CMP_PRECISION);
@@ -1088,7 +1131,7 @@ mod tests {
     fn test_ray_intersect_sphere_miss() {
         let ray = Ray::new(0.0, 0.0, -5.0, 0.0, 0.0, 1.0);
         let sphere = Sphere::new(Vec3::new(5.0, 0.0, 0.0), 1.0);
-        
+
         let result = ray.intersect_sphere(&sphere);
         assert!(result.is_none());
     }
@@ -1097,7 +1140,7 @@ mod tests {
     fn test_ray_intersect_plane() {
         let ray = Ray::new(0.0, 0.0, -5.0, 0.0, 0.0, 1.0);
         let plane = Plane::new(Vec3::new(0.0, 0.0, 1.0), 0.0);
-        
+
         let result = ray.intersect_plane(&plane);
         assert!(result.is_some());
         assert_float_eq(result.unwrap(), 5.0, FLOAT_CMP_PRECISION);
@@ -1107,7 +1150,7 @@ mod tests {
     fn test_ray_intersect_plane_parallel() {
         let ray = Ray::new(0.0, 0.0, -5.0, 0.0, 0.0, 1.0);
         let plane = Plane::new(Vec3::new(1.0, 0.0, 0.0), 0.0);
-        
+
         let result = ray.intersect_plane(&plane);
         assert!(result.is_none());
     }
@@ -1116,7 +1159,7 @@ mod tests {
     fn test_ray_intersect_obb() {
         let ray = Ray::new(0.0, 0.0, -5.0, 0.0, 0.0, 1.0);
         let obb = OBB::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0);
-        
+
         let result = ray.intersect_obb(&obb);
         assert!(result.is_some());
         assert_float_eq(result.unwrap(), 4.0, FLOAT_CMP_PRECISION);
@@ -1126,7 +1169,7 @@ mod tests {
     fn test_ray_intersect_obb_miss() {
         let ray = Ray::new(0.0, 0.0, -5.0, 0.0, 0.0, 1.0);
         let obb = OBB::new(5.0, 0.0, 0.0, 1.0, 1.0, 1.0);
-        
+
         let result = ray.intersect_obb(&obb);
         assert!(result.is_none());
     }
@@ -1162,7 +1205,11 @@ mod tests {
     fn test_frustum_new() {
         let frustum = Frustum::new();
         for plane in &frustum.planes {
-            assert_vec3_eq(&plane.normal, &Vec3::new(0.0, 1.0, 0.0), FLOAT_CMP_PRECISION);
+            assert_vec3_eq(
+                &plane.normal,
+                &Vec3::new(0.0, 1.0, 0.0),
+                FLOAT_CMP_PRECISION,
+            );
         }
         for vertex in &frustum.vertices {
             assert_vec3_eq(vertex, &Vec3::ZERO, FLOAT_CMP_PRECISION);
@@ -1172,7 +1219,7 @@ mod tests {
     #[test]
     fn test_frustum_contains_aabb() {
         let mut frustum = Frustum::new();
-        
+
         frustum.planes[0] = Plane::new(Vec3::new(-1.0, 0.0, 0.0), -1.0);
         frustum.planes[1] = Plane::new(Vec3::new(1.0, 0.0, 0.0), -1.0);
         frustum.planes[2] = Plane::new(Vec3::new(0.0, -1.0, 0.0), -1.0);
@@ -1190,7 +1237,7 @@ mod tests {
     #[test]
     fn test_frustum_contains_sphere() {
         let mut frustum = Frustum::new();
-        
+
         frustum.planes[0] = Plane::new(Vec3::new(-1.0, 0.0, 0.0), -1.0);
         frustum.planes[1] = Plane::new(Vec3::new(1.0, 0.0, 0.0), -1.0);
         frustum.planes[2] = Plane::new(Vec3::new(0.0, -1.0, 0.0), -1.0);
@@ -1208,36 +1255,54 @@ mod tests {
     #[test]
     fn test_aabb_plane() {
         let aabb = AABB::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0);
-        
+
         let plane_intersect = Plane::new(Vec3::new(0.0, 1.0, 0.0), 0.0);
-        assert_eq!(aabb_plane(&aabb, &plane_intersect), PlaneIntersectResult::Intersect);
-        
+        assert_eq!(
+            aabb_plane(&aabb, &plane_intersect),
+            PlaneIntersectResult::Intersect
+        );
+
         let plane_above = Plane::new(Vec3::new(0.0, 1.0, 0.0), 3.0);
-        assert_eq!(aabb_plane(&aabb, &plane_above), PlaneIntersectResult::InsideBack);
-        
+        assert_eq!(
+            aabb_plane(&aabb, &plane_above),
+            PlaneIntersectResult::InsideBack
+        );
+
         let plane_outside_front = Plane::new(Vec3::new(0.0, 1.0, 0.0), -3.0);
-        assert_eq!(aabb_plane(&aabb, &plane_outside_front), PlaneIntersectResult::OutsideFront);
+        assert_eq!(
+            aabb_plane(&aabb, &plane_outside_front),
+            PlaneIntersectResult::OutsideFront
+        );
     }
 
     #[test]
     fn test_sphere_plane() {
         let sphere = Sphere::new(Vec3::new(0.0, 0.0, 0.0), 1.0);
-        
+
         let plane_intersect = Plane::new(Vec3::new(0.0, 1.0, 0.0), 0.0);
-        assert_eq!(sphere_plane(&sphere, &plane_intersect), PlaneIntersectResult::Intersect);
-        
+        assert_eq!(
+            sphere_plane(&sphere, &plane_intersect),
+            PlaneIntersectResult::Intersect
+        );
+
         let plane_above = Plane::new(Vec3::new(0.0, 1.0, 0.0), 2.0);
-        assert_eq!(sphere_plane(&sphere, &plane_above), PlaneIntersectResult::InsideBack);
-        
+        assert_eq!(
+            sphere_plane(&sphere, &plane_above),
+            PlaneIntersectResult::InsideBack
+        );
+
         let plane_outside_front = Plane::new(Vec3::new(0.0, 1.0, 0.0), -2.0);
-        assert_eq!(sphere_plane(&sphere, &plane_outside_front), PlaneIntersectResult::OutsideFront);
+        assert_eq!(
+            sphere_plane(&sphere, &plane_outside_front),
+            PlaneIntersectResult::OutsideFront
+        );
     }
 
     #[test]
     fn test_aabb_to_bounding_sphere() {
         let aabb = AABB::new(0.0, 0.0, 0.0, 1.0, 2.0, 3.0);
         let sphere = aabb.to_bounding_sphere();
-        
+
         assert_vec3_eq(&sphere.center, &aabb.center, FLOAT_CMP_PRECISION);
         let expected_radius = (1.0_f32.powi(2) + 2.0_f32.powi(2) + 3.0_f32.powi(2)).sqrt();
         assert_float_eq(sphere.radius, expected_radius, FLOAT_CMP_PRECISION);
@@ -1247,7 +1312,7 @@ mod tests {
     fn test_ray_intersect_aabb_from_inside() {
         let ray = Ray::new(0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
         let aabb = AABB::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0);
-        
+
         let result = ray.intersect_aabb(&aabb);
         assert!(result.is_some());
         assert_float_eq(result.unwrap(), 1.0, FLOAT_CMP_PRECISION);
@@ -1257,7 +1322,7 @@ mod tests {
     fn test_ray_intersect_sphere_from_inside() {
         let ray = Ray::new(0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
         let sphere = Sphere::new(Vec3::new(0.0, 0.0, 0.0), 2.0);
-        
+
         let result = ray.intersect_sphere(&sphere);
         assert!(result.is_some());
         assert_float_eq(result.unwrap(), 2.0, FLOAT_CMP_PRECISION);
@@ -1267,7 +1332,7 @@ mod tests {
     fn test_obb_get_boundary() {
         let obb = OBB::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0);
         let (min, max) = obb.get_boundary();
-        
+
         assert_vec3_eq(&min, &Vec3::new(-1.0, -1.0, -1.0), FLOAT_CMP_PRECISION);
         assert_vec3_eq(&max, &Vec3::new(1.0, 1.0, 1.0), FLOAT_CMP_PRECISION);
     }
@@ -1298,9 +1363,18 @@ pub struct Capsule {
 impl Capsule {
     pub fn new(radius: f32, half_height: f32, axis: CapsuleAxis) -> Self {
         let (ec0, ec1) = match axis {
-            CapsuleAxis::X => (Vec3::new(half_height, 0.0, 0.0), Vec3::new(-half_height, 0.0, 0.0)),
-            CapsuleAxis::Y => (Vec3::new(0.0, half_height, 0.0), Vec3::new(0.0, -half_height, 0.0)),
-            CapsuleAxis::Z => (Vec3::new(0.0, 0.0, half_height), Vec3::new(0.0, 0.0, -half_height)),
+            CapsuleAxis::X => (
+                Vec3::new(half_height, 0.0, 0.0),
+                Vec3::new(-half_height, 0.0, 0.0),
+            ),
+            CapsuleAxis::Y => (
+                Vec3::new(0.0, half_height, 0.0),
+                Vec3::new(0.0, -half_height, 0.0),
+            ),
+            CapsuleAxis::Z => (
+                Vec3::new(0.0, 0.0, half_height),
+                Vec3::new(0.0, 0.0, -half_height),
+            ),
         };
         Capsule {
             radius,
@@ -1320,9 +1394,18 @@ impl Capsule {
         let new_half_height = self.half_height * max_scale;
         let new_rot = Quaternion::multiply(&self.rotation, rot);
         let (ec0, ec1) = match self.axis {
-            CapsuleAxis::X => (Vec3::new(new_half_height, 0.0, 0.0), Vec3::new(-new_half_height, 0.0, 0.0)),
-            CapsuleAxis::Y => (Vec3::new(0.0, new_half_height, 0.0), Vec3::new(0.0, -new_half_height, 0.0)),
-            CapsuleAxis::Z => (Vec3::new(0.0, 0.0, new_half_height), Vec3::new(0.0, 0.0, -new_half_height)),
+            CapsuleAxis::X => (
+                Vec3::new(new_half_height, 0.0, 0.0),
+                Vec3::new(-new_half_height, 0.0, 0.0),
+            ),
+            CapsuleAxis::Y => (
+                Vec3::new(0.0, new_half_height, 0.0),
+                Vec3::new(0.0, -new_half_height, 0.0),
+            ),
+            CapsuleAxis::Z => (
+                Vec3::new(0.0, 0.0, new_half_height),
+                Vec3::new(0.0, 0.0, -new_half_height),
+            ),
         };
         Capsule {
             radius: new_radius,
@@ -1356,9 +1439,15 @@ pub struct Triangle {
 impl Triangle {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        ax: f32, ay: f32, az: f32,
-        bx: f32, by: f32, bz: f32,
-        cx: f32, cy: f32, cz: f32,
+        ax: f32,
+        ay: f32,
+        az: f32,
+        bx: f32,
+        by: f32,
+        bz: f32,
+        cx: f32,
+        cy: f32,
+        cz: f32,
     ) -> Self {
         Triangle {
             a: Vec3::new(ax, ay, az),
@@ -1374,9 +1463,15 @@ impl Triangle {
     #[allow(clippy::too_many_arguments)]
     pub fn set(
         &mut self,
-        ax: f32, ay: f32, az: f32,
-        bx: f32, by: f32, bz: f32,
-        cx: f32, cy: f32, cz: f32,
+        ax: f32,
+        ay: f32,
+        az: f32,
+        bx: f32,
+        by: f32,
+        bz: f32,
+        cx: f32,
+        cy: f32,
+        cz: f32,
     ) {
         self.a.set(ax, ay, az);
         self.b.set(bx, by, bz);
@@ -1429,7 +1524,10 @@ pub struct Spline {
 
 impl Spline {
     pub fn new(mode: SplineMode) -> Self {
-        Spline { mode, knots: Vec::new() }
+        Spline {
+            mode,
+            knots: Vec::new(),
+        }
     }
 
     pub fn get_mode(&self) -> SplineMode {
@@ -1493,7 +1591,9 @@ impl Spline {
         if num < 2 {
             return Vec::new();
         }
-        (0..num).map(|i| self.get_point(i as f32 / (num - 1) as f32, index)).collect()
+        (0..num)
+            .map(|i| self.get_point(i as f32 / (num - 1) as f32, index))
+            .collect()
     }
 
     #[allow(dead_code)]
@@ -1507,7 +1607,9 @@ impl Spline {
 
     fn get_point_linear(&self, t: f32, seg_index: u32) -> Vec3 {
         let n = self.knots.len();
-        if n < 2 { return Vec3::ZERO; }
+        if n < 2 {
+            return Vec3::ZERO;
+        }
         let segments = (n - 1) as f32;
         let (v0, v1) = if seg_index == SPLINE_WHOLE_INDEX {
             let s = t * segments;
@@ -1518,14 +1620,22 @@ impl Spline {
             let i = (seg_index as usize).min(n - 2);
             (self.knots[i], self.knots[i + 1])
         };
-        Self::lerp_vec3(&v0, &v1, if seg_index == SPLINE_WHOLE_INDEX {
-            t * segments - (t * segments) as u32 as f32
-        } else { t })
+        Self::lerp_vec3(
+            &v0,
+            &v1,
+            if seg_index == SPLINE_WHOLE_INDEX {
+                t * segments - (t * segments) as u32 as f32
+            } else {
+                t
+            },
+        )
     }
 
     fn get_point_bezier(&self, t: f32, seg_index: u32) -> Vec3 {
         let n = self.knots.len();
-        if n < 4 { return Vec3::ZERO; }
+        if n < 4 {
+            return Vec3::ZERO;
+        }
         let seg_count = n / 4;
         let i = if seg_index == SPLINE_WHOLE_INDEX {
             ((t * seg_count as f32) as usize).min(seg_count - 1) * 4
@@ -1534,15 +1644,29 @@ impl Spline {
         };
         let local_t = if seg_index == SPLINE_WHOLE_INDEX {
             (t * seg_count as f32).fract()
-        } else { t };
-        Self::calc_bezier(&self.knots[i], &self.knots[i+1], &self.knots[i+2], &self.knots[i+3], local_t)
+        } else {
+            t
+        };
+        Self::calc_bezier(
+            &self.knots[i],
+            &self.knots[i + 1],
+            &self.knots[i + 2],
+            &self.knots[i + 3],
+            local_t,
+        )
     }
 
     fn get_point_catmull_rom(&self, t: f32, seg_index: u32) -> Vec3 {
         let n = self.knots.len();
-        if n < 2 { return Vec3::ZERO; }
+        if n < 2 {
+            return Vec3::ZERO;
+        }
         let segments = (n - 1) as f32;
-        let s = if seg_index == SPLINE_WHOLE_INDEX { t * segments } else { t };
+        let s = if seg_index == SPLINE_WHOLE_INDEX {
+            t * segments
+        } else {
+            t
+        };
         let i = (s as usize).clamp(0, n - 2);
         let local_t = s - i as f32;
         let p0 = self.knots[i.saturating_sub(1)];
@@ -1634,8 +1758,18 @@ impl AnimationCurve {
     pub fn constant(value: f32) -> Self {
         AnimationCurve {
             keyframes: vec![
-                Keyframe { time: 0.0, value, in_tangent: 0.0, out_tangent: 0.0 },
-                Keyframe { time: 1.0, value, in_tangent: 0.0, out_tangent: 0.0 },
+                Keyframe {
+                    time: 0.0,
+                    value,
+                    in_tangent: 0.0,
+                    out_tangent: 0.0,
+                },
+                Keyframe {
+                    time: 1.0,
+                    value,
+                    in_tangent: 0.0,
+                    out_tangent: 0.0,
+                },
             ],
             pre_wrap_mode: WrapMode::Clamp,
             post_wrap_mode: WrapMode::Clamp,
@@ -1649,8 +1783,12 @@ impl AnimationCurve {
 
     pub fn evaluate(&self, time: f32) -> f32 {
         let n = self.keyframes.len();
-        if n == 0 { return 0.0; }
-        if n == 1 { return self.keyframes[0].value; }
+        if n == 0 {
+            return 0.0;
+        }
+        if n == 1 {
+            return self.keyframes[0].value;
+        }
 
         let start = self.keyframes[0].time;
         let end = self.keyframes[n - 1].time;
@@ -1676,14 +1814,24 @@ impl AnimationCurve {
         let pos = self.keyframes.partition_point(|k| k.time <= t);
         let right = pos.min(n - 1);
         let left = right.saturating_sub(1);
-        if left == right { return self.keyframes[left].value; }
+        if left == right {
+            return self.keyframes[left].value;
+        }
 
         let lk = &self.keyframes[left];
         let rk = &self.keyframes[right];
         let dx = rk.time - lk.time;
-        if dx < 1e-7 { return lk.value; }
+        if dx < 1e-7 {
+            return lk.value;
+        }
         let s = (t - lk.time) / dx;
-        Self::hermite(lk.value, lk.out_tangent * dx, rk.value, rk.in_tangent * dx, s)
+        Self::hermite(
+            lk.value,
+            lk.out_tangent * dx,
+            rk.value,
+            rk.in_tangent * dx,
+            s,
+        )
     }
 
     fn hermite(p0: f32, m0: f32, p1: f32, m1: f32, t: f32) -> f32 {
@@ -1716,22 +1864,14 @@ mod geometry_extra_tests {
 
     #[test]
     fn test_triangle_normal() {
-        let t = Triangle::new(
-            0.0, 0.0, 0.0,
-            1.0, 0.0, 0.0,
-            0.0, 1.0, 0.0,
-        );
+        let t = Triangle::new(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
         let n = t.normal();
         assert!((n.z - 1.0).abs() < 1e-5);
     }
 
     #[test]
     fn test_triangle_area() {
-        let t = Triangle::new(
-            0.0, 0.0, 0.0,
-            2.0, 0.0, 0.0,
-            0.0, 2.0, 0.0,
-        );
+        let t = Triangle::new(0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 2.0, 0.0);
         assert!((t.area() - 2.0).abs() < 1e-5);
     }
 
@@ -1765,8 +1905,18 @@ mod geometry_extra_tests {
     #[test]
     fn test_animation_curve_add_key_and_evaluate() {
         let mut curve = AnimationCurve::new();
-        curve.add_key(Keyframe { time: 0.0, value: 0.0, in_tangent: 0.0, out_tangent: 1.0 });
-        curve.add_key(Keyframe { time: 1.0, value: 1.0, in_tangent: 1.0, out_tangent: 0.0 });
+        curve.add_key(Keyframe {
+            time: 0.0,
+            value: 0.0,
+            in_tangent: 0.0,
+            out_tangent: 1.0,
+        });
+        curve.add_key(Keyframe {
+            time: 1.0,
+            value: 1.0,
+            in_tangent: 1.0,
+            out_tangent: 0.0,
+        });
         let v = curve.evaluate(0.5);
         assert!(v > 0.0 && v < 1.0);
     }

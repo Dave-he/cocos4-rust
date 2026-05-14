@@ -132,7 +132,13 @@ impl Uri {
             uri.port = Self::default_port_for_scheme(&uri.scheme);
         }
 
-        uri.authority = Self::build_authority(&uri.username, &uri.password, &uri.host, uri.port, Self::default_port_for_scheme(&uri.scheme));
+        uri.authority = Self::build_authority(
+            &uri.username,
+            &uri.password,
+            &uri.host,
+            uri.port,
+            Self::default_port_for_scheme(&uri.scheme),
+        );
         Ok(())
     }
 
@@ -194,19 +200,45 @@ impl Uri {
         uri.path_etc = path_etc.to_string();
     }
 
-    pub fn is_valid(&self) -> bool { self.valid }
-    pub fn is_secure(&self) -> bool { self.secure }
-    pub fn get_scheme(&self) -> &str { &self.scheme }
-    pub fn get_user_name(&self) -> &str { &self.username }
-    pub fn get_password(&self) -> &str { &self.password }
-    pub fn get_host(&self) -> &str { &self.host }
-    pub fn get_host_name(&self) -> &str { &self.host_name }
-    pub fn get_port(&self) -> u16 { self.port }
-    pub fn get_path(&self) -> &str { &self.path }
-    pub fn get_path_etc(&self) -> &str { &self.path_etc }
-    pub fn get_query(&self) -> &str { &self.query }
-    pub fn get_fragment(&self) -> &str { &self.fragment }
-    pub fn get_authority(&self) -> &str { &self.authority }
+    pub fn is_valid(&self) -> bool {
+        self.valid
+    }
+    pub fn is_secure(&self) -> bool {
+        self.secure
+    }
+    pub fn get_scheme(&self) -> &str {
+        &self.scheme
+    }
+    pub fn get_user_name(&self) -> &str {
+        &self.username
+    }
+    pub fn get_password(&self) -> &str {
+        &self.password
+    }
+    pub fn get_host(&self) -> &str {
+        &self.host
+    }
+    pub fn get_host_name(&self) -> &str {
+        &self.host_name
+    }
+    pub fn get_port(&self) -> u16 {
+        self.port
+    }
+    pub fn get_path(&self) -> &str {
+        &self.path
+    }
+    pub fn get_path_etc(&self) -> &str {
+        &self.path_etc
+    }
+    pub fn get_query(&self) -> &str {
+        &self.query
+    }
+    pub fn get_fragment(&self) -> &str {
+        &self.fragment
+    }
+    pub fn get_authority(&self) -> &str {
+        &self.authority
+    }
 
     pub fn get_query_params(&self) -> &[(String, String)] {
         if self.query_params.is_empty() && !self.query.is_empty() {
@@ -216,10 +248,7 @@ impl Uri {
     }
 
     pub fn get_query_params_map(&self) -> HashMap<String, String> {
-        self.get_query_params()
-            .iter()
-            .cloned()
-            .collect()
+        self.get_query_params().iter().cloned().collect()
     }
 
     fn parse_query_params(&self) {

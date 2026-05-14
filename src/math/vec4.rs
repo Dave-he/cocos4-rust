@@ -246,7 +246,7 @@ impl Vec4 {
         let dx = a.y * b.z - a.z * b.y;
         let dy = a.z * b.x - a.x * b.z;
         let dz = a.x * b.y - a.y * b.x;
-        
+
         let dot_val = a.x * b.x + a.y * b.y + a.z * b.z;
         (dx * dx + dy * dy + dz * dz).sqrt().atan2(dot_val)
     }
@@ -382,6 +382,10 @@ impl Neg for Vec4 {
 
 impl std::fmt::Display for Vec4 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Vec4({:.2}, {:.2}, {:.2}, {:.2})", self.x, self.y, self.z, self.w)
+        write!(
+            f,
+            "Vec4({:.2}, {:.2}, {:.2}, {:.2})",
+            self.x, self.y, self.z, self.w
+        )
     }
 }

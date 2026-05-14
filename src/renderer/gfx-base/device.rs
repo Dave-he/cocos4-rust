@@ -4,13 +4,12 @@ Original C++ version Copyright (c) 2019-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
 use super::{
-    API, BufferInfo, BufferViewInfo, CommandBufferInfo, DescriptorSetLayoutInfo, DeviceCaps,
-    Feature, Format, FormatFeature, FramebufferInfo, GfxBuffer, GfxCommandBuffer,
-    GfxDescriptorSet, GfxDescriptorSetLayout, GfxFramebuffer, GfxInputAssembler,
-    GfxPipelineLayout, GfxPipelineState, GfxQueryPool, GfxQueue, GfxRenderPass, GfxSampler,
-    GfxShader, GfxSwapchain, GfxTexture, InputAssemblerInfo, PipelineLayoutInfo,
-    PipelineStateInfo, QueryPoolInfo, QueueInfo, RenderPassInfo, SamplerInfo, ShaderInfo,
-    SwapchainInfo, TextureInfo, TextureViewInfo,
+    BufferInfo, BufferViewInfo, CommandBufferInfo, DescriptorSetLayoutInfo, DeviceCaps, Feature,
+    Format, FormatFeature, FramebufferInfo, GfxBuffer, GfxCommandBuffer, GfxDescriptorSet,
+    GfxDescriptorSetLayout, GfxFramebuffer, GfxInputAssembler, GfxPipelineLayout, GfxPipelineState,
+    GfxQueryPool, GfxQueue, GfxRenderPass, GfxSampler, GfxShader, GfxSwapchain, GfxTexture,
+    InputAssemblerInfo, PipelineLayoutInfo, PipelineStateInfo, QueryPoolInfo, QueueInfo,
+    RenderPassInfo, SamplerInfo, ShaderInfo, SwapchainInfo, TextureInfo, TextureViewInfo, API,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -271,28 +270,32 @@ impl GfxDevice {
         _src_buffer_id: u32,
         _dst_buffer_id: u32,
         _regions: &[super::BufferTextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn copy_buffer_to_texture(
         &mut self,
         _src_buffer_id: u32,
         _dst_texture_id: u32,
         _regions: &[super::BufferTextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn copy_texture_to_buffer(
         &mut self,
         _src_texture_id: u32,
         _dst_buffer_id: u32,
         _regions: &[super::BufferTextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn copy_texture_to_texture(
         &mut self,
         _src_texture_id: u32,
         _dst_texture_id: u32,
         _regions: &[super::TextureCopy],
-    ) {}
+    ) {
+    }
 
     pub fn destroy(&mut self) {
         self.num_draw_calls = 0;
@@ -313,8 +316,8 @@ impl Default for GfxDevice {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::*;
+    use super::*;
 
     #[test]
     fn test_device_new() {
@@ -415,7 +418,11 @@ mod tests {
 
     #[test]
     fn test_device_reset_stats() {
-        let mut device = GfxDevice { num_draw_calls: 100, num_tris: 500, ..Default::default() };
+        let mut device = GfxDevice {
+            num_draw_calls: 100,
+            num_tris: 500,
+            ..Default::default()
+        };
         device.reset_stats();
         assert_eq!(device.get_num_draw_calls(), 0);
         assert_eq!(device.get_num_tris(), 0);
@@ -426,7 +433,11 @@ mod tests {
         let mut device = GfxDevice::default();
         let mut cmd = device.create_command_buffer(CommandBufferInfo::default());
         cmd.begin();
-        cmd.draw(&DrawInfo { index_count: 6, instance_count: 1, ..Default::default() });
+        cmd.draw(&DrawInfo {
+            index_count: 6,
+            instance_count: 1,
+            ..Default::default()
+        });
         cmd.end();
         device.flush_commands(&[&cmd]);
         assert_eq!(device.get_num_draw_calls(), 1);

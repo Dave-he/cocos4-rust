@@ -44,7 +44,11 @@ impl SkinningJointState {
     }
 
     pub fn local_to_parent_matrix(&self) -> Mat4 {
-        Mat4::from_srt(&self.local_rotation, &self.local_position, &self.local_scale)
+        Mat4::from_srt(
+            &self.local_rotation,
+            &self.local_position,
+            &self.local_scale,
+        )
     }
 }
 
@@ -89,7 +93,13 @@ impl SkinningModel {
         self.joints.len()
     }
 
-    pub fn set_joint_pose(&mut self, index: usize, position: Vec3, rotation: Quaternion, scale: Vec3) {
+    pub fn set_joint_pose(
+        &mut self,
+        index: usize,
+        position: Vec3,
+        rotation: Quaternion,
+        scale: Vec3,
+    ) {
         if index < self.joint_states.len() {
             self.joint_states[index].local_position = position;
             self.joint_states[index].local_rotation = rotation;
@@ -104,7 +114,10 @@ impl SkinningModel {
             let world_mat = if parent_idx < 0 {
                 Mat4::multiply_mat4(root_matrix, &local_mat)
             } else {
-                Mat4::multiply_mat4(&self.joint_states[parent_idx as usize].world_matrix, &local_mat)
+                Mat4::multiply_mat4(
+                    &self.joint_states[parent_idx as usize].world_matrix,
+                    &local_mat,
+                )
             };
             self.joint_states[i].world_matrix = world_mat;
         }
@@ -144,10 +157,18 @@ impl SkinningModel {
 }
 
 impl RefCounted for SkinningModel {
-    fn add_ref(&self) { self.ref_count.add_ref(); }
-    fn release(&self) { self.ref_count.release(); }
-    fn get_ref_count(&self) -> u32 { self.ref_count.get_ref_count() }
-    fn is_last_reference(&self) -> bool { self.ref_count.is_last_reference() }
+    fn add_ref(&self) {
+        self.ref_count.add_ref();
+    }
+    fn release(&self) {
+        self.ref_count.release();
+    }
+    fn get_ref_count(&self) -> u32 {
+        self.ref_count.get_ref_count()
+    }
+    fn is_last_reference(&self) -> bool {
+        self.ref_count.is_last_reference()
+    }
 }
 
 #[derive(Debug)]
@@ -210,10 +231,18 @@ impl BakedSkinningModel {
 }
 
 impl RefCounted for BakedSkinningModel {
-    fn add_ref(&self) { self.ref_count.add_ref(); }
-    fn release(&self) { self.ref_count.release(); }
-    fn get_ref_count(&self) -> u32 { self.ref_count.get_ref_count() }
-    fn is_last_reference(&self) -> bool { self.ref_count.is_last_reference() }
+    fn add_ref(&self) {
+        self.ref_count.add_ref();
+    }
+    fn release(&self) {
+        self.ref_count.release();
+    }
+    fn get_ref_count(&self) -> u32 {
+        self.ref_count.get_ref_count()
+    }
+    fn is_last_reference(&self) -> bool {
+        self.ref_count.is_last_reference()
+    }
 }
 
 #[cfg(test)]
@@ -246,7 +275,10 @@ mod tests {
     fn test_skinning_model_set_pose() {
         let mut model = make_model();
         model.set_joint_pose(0, Vec3::new(0.0, 1.0, 0.0), Quaternion::IDENTITY, Vec3::ONE);
-        assert_eq!(model.joint_states[0].local_position, Vec3::new(0.0, 1.0, 0.0));
+        assert_eq!(
+            model.joint_states[0].local_position,
+            Vec3::new(0.0, 1.0, 0.0)
+        );
     }
 
     #[test]

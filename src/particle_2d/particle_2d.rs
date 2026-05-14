@@ -45,12 +45,16 @@ impl Particle2D {
     }
 
     pub fn get_normalized_lifetime(&self) -> f32 {
-        if self.start_life <= 0.0 { return 1.0; }
+        if self.start_life <= 0.0 {
+            return 1.0;
+        }
         1.0 - (self.life / self.start_life).clamp(0.0, 1.0)
     }
 
     pub fn update_gravity(&mut self, gravity: Vec2, dt: f32) {
-        if !self.alive { return; }
+        if !self.alive {
+            return;
+        }
 
         self.velocity.x += gravity.x * dt;
         self.velocity.y += gravity.y * dt;
@@ -72,7 +76,9 @@ impl Particle2D {
     }
 
     pub fn update_radial(&mut self, source_pos: Vec2, dt: f32) {
-        if !self.alive { return; }
+        if !self.alive {
+            return;
+        }
 
         let dx = self.position.x - source_pos.x;
         let dy = self.position.y - source_pos.y;
@@ -84,8 +90,10 @@ impl Particle2D {
         let tangential_x = -radial_y;
         let tangential_y = radial_x;
 
-        self.velocity.x += (radial_x * self.radial_accel + tangential_x * self.tangential_accel) * dt;
-        self.velocity.y += (radial_y * self.radial_accel + tangential_y * self.tangential_accel) * dt;
+        self.velocity.x +=
+            (radial_x * self.radial_accel + tangential_x * self.tangential_accel) * dt;
+        self.velocity.y +=
+            (radial_y * self.radial_accel + tangential_y * self.tangential_accel) * dt;
 
         self.position.x += self.velocity.x * dt;
         self.position.y += self.velocity.y * dt;

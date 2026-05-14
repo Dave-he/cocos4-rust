@@ -165,7 +165,11 @@ mod tests {
     fn test_texture_base_set_wrap_mode() {
         let mut tex = TextureBase::new();
         let hash_before = tex.get_hash();
-        tex.set_wrap_mode(WrapMode::ClampToEdge, WrapMode::ClampToEdge, WrapMode::Repeat);
+        tex.set_wrap_mode(
+            WrapMode::ClampToEdge,
+            WrapMode::ClampToEdge,
+            WrapMode::Repeat,
+        );
         let hash_after = tex.get_hash();
         assert_ne!(hash_before, hash_after);
         assert_eq!(tex.wrap_s, WrapMode::ClampToEdge);

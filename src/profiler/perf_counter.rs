@@ -41,7 +41,11 @@ impl PerfCounter {
 
     pub fn get_fps(&self) -> f64 {
         let avg = self.counter.get_average();
-        if avg > 0.0 { 1000.0 / avg } else { 0.0 }
+        if avg > 0.0 {
+            1000.0 / avg
+        } else {
+            0.0
+        }
     }
 
     pub fn get_average_ms(&self) -> f64 {

@@ -15,19 +15,27 @@ impl SortingLayers {
             layers: Vec::new(),
             next_id: 1,
         };
-        sl.layers.push(SortingLayerInfo { id: 0, name: "Default".to_string() });
+        sl.layers.push(SortingLayerInfo {
+            id: 0,
+            name: "Default".to_string(),
+        });
         sl
     }
 
     pub fn add_layer(&mut self, name: &str) -> u32 {
         let id = self.next_id;
         self.next_id += 1;
-        self.layers.push(SortingLayerInfo { id, name: name.to_string() });
+        self.layers.push(SortingLayerInfo {
+            id,
+            name: name.to_string(),
+        });
         id
     }
 
     pub fn remove_layer(&mut self, id: u32) -> bool {
-        if id == 0 { return false; }
+        if id == 0 {
+            return false;
+        }
         let before = self.layers.len();
         self.layers.retain(|l| l.id != id);
         self.layers.len() < before
@@ -38,7 +46,10 @@ impl SortingLayers {
     }
 
     pub fn get_layer_name(&self, id: u32) -> Option<&str> {
-        self.layers.iter().find(|l| l.id == id).map(|l| l.name.as_str())
+        self.layers
+            .iter()
+            .find(|l| l.id == id)
+            .map(|l| l.name.as_str())
     }
 
     pub fn get_layer_index(&self, id: u32) -> Option<usize> {

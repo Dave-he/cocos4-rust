@@ -181,9 +181,27 @@ mod tests {
     #[test]
     fn test_lod_group_visible_level() {
         let mut group = LODGroup::new();
-        group.insert_lod(0, LODData { screen_usage_percentage: 0.5, models: vec![] });
-        group.insert_lod(1, LODData { screen_usage_percentage: 0.2, models: vec![] });
-        group.insert_lod(2, LODData { screen_usage_percentage: 0.05, models: vec![] });
+        group.insert_lod(
+            0,
+            LODData {
+                screen_usage_percentage: 0.5,
+                models: vec![],
+            },
+        );
+        group.insert_lod(
+            1,
+            LODData {
+                screen_usage_percentage: 0.2,
+                models: vec![],
+            },
+        );
+        group.insert_lod(
+            2,
+            LODData {
+                screen_usage_percentage: 0.05,
+                models: vec![],
+            },
+        );
         assert_eq!(group.get_visible_lod_level(0.3), 1);
         assert_eq!(group.get_visible_lod_level(0.6), 0);
     }

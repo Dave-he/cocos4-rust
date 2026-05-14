@@ -149,7 +149,11 @@ impl Mesh {
     }
 
     pub fn add_attribute(&mut self, attr: VertexAttribute) {
-        let last_offset = self.attributes.last().map(|a| a.offset + a.stride()).unwrap_or(0);
+        let last_offset = self
+            .attributes
+            .last()
+            .map(|a| a.offset + a.stride())
+            .unwrap_or(0);
         let mut attr = attr;
         attr.offset = last_offset;
         self.attributes.push(attr);
@@ -192,11 +196,7 @@ impl Mesh {
             (min.y + max.y) * 0.5,
             (min.z + max.z) * 0.5,
         );
-        let radius = Vec3::new(
-            max.x - center.x,
-            max.y - center.y,
-            max.z - center.z,
-        ).length();
+        let radius = Vec3::new(max.x - center.x, max.y - center.y, max.z - center.z).length();
         self.bounding_sphere = BoundingSphere { center, radius };
     }
 }
@@ -238,10 +238,7 @@ mod tests {
     fn test_mesh_update_bounds() {
         let mut mesh = Mesh::new();
         mesh.add_attribute(VertexAttribute::new("a_position", AttributeType::Float, 3));
-        mesh.vertices = vec![
-            -1.0, -1.0, -1.0,
-             1.0,  1.0,  1.0,
-        ];
+        mesh.vertices = vec![-1.0, -1.0, -1.0, 1.0, 1.0, 1.0];
         mesh.update_bounds();
         assert!((mesh.bounding_sphere.radius - 3.0_f32.sqrt()).abs() < 0.001);
     }

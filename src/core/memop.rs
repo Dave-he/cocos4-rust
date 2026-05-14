@@ -19,7 +19,10 @@ impl<T> Pool<T> {
     {
         let batch = elements_per_batch.max(1);
         let free_pool = (0..batch).map(|_| ctor()).collect();
-        Pool { free_pool, elements_per_batch: batch }
+        Pool {
+            free_pool,
+            elements_per_batch: batch,
+        }
     }
 
     pub fn alloc(&mut self, ctor: impl Fn() -> T) -> T {
@@ -107,11 +110,19 @@ impl<T> RecyclePool<T> {
     }
 
     pub fn get(&self, idx: usize) -> Option<&T> {
-        if idx < self.count { Some(&self.data[idx]) } else { None }
+        if idx < self.count {
+            Some(&self.data[idx])
+        } else {
+            None
+        }
     }
 
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> {
-        if idx < self.count { Some(&mut self.data[idx]) } else { None }
+        if idx < self.count {
+            Some(&mut self.data[idx])
+        } else {
+            None
+        }
     }
 }
 
@@ -127,7 +138,10 @@ pub struct CachedArray<T: Clone + Default> {
 impl<T: Clone + Default> CachedArray<T> {
     pub fn new(capacity: usize) -> Self {
         let cap = capacity.max(1);
-        CachedArray { data: vec![T::default(); cap], size: 0 }
+        CachedArray {
+            data: vec![T::default(); cap],
+            size: 0,
+        }
     }
 
     pub fn push(&mut self, item: T) {
@@ -187,11 +201,19 @@ impl<T: Clone + Default> CachedArray<T> {
     }
 
     pub fn get(&self, idx: usize) -> Option<&T> {
-        if idx < self.size { Some(&self.data[idx]) } else { None }
+        if idx < self.size {
+            Some(&self.data[idx])
+        } else {
+            None
+        }
     }
 
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> {
-        if idx < self.size { Some(&mut self.data[idx]) } else { None }
+        if idx < self.size {
+            Some(&mut self.data[idx])
+        } else {
+            None
+        }
     }
 }
 

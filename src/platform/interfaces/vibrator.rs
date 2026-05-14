@@ -1,4 +1,4 @@
-use super::os_interface::{OSInterface, DefaultOSInterface};
+use super::os_interface::{DefaultOSInterface, OSInterface};
 
 /// Vibrator interface
 pub trait IVibrator: OSInterface {

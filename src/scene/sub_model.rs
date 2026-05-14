@@ -1,4 +1,3 @@
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BatchingSchemes {
     #[default]
@@ -61,7 +60,11 @@ impl SubModel {
         }
     }
 
-    pub fn initialize(&mut self, passes: Vec<crate::renderer::core::pass::Pass>, patches: Vec<String>) {
+    pub fn initialize(
+        &mut self,
+        passes: Vec<crate::renderer::core::pass::Pass>,
+        patches: Vec<String>,
+    ) {
         self.passes = passes;
         self.patches = patches;
     }

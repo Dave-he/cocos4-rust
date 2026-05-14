@@ -17,11 +17,9 @@ pub use log::{Log, LogLevel, LogType};
 
 pub use object_pool::{ObjectPool, Poolable};
 
-pub use timer::{TimerManager, TimerHandle};
+pub use timer::{TimerHandle, TimerManager};
 
-pub use threading::{
-    AutoReleasePool, MessageQueue, ReadWriteLock, ThreadPool, ThreadSafeCounter,
-};
+pub use threading::{AutoReleasePool, MessageQueue, ReadWriteLock, ThreadPool, ThreadSafeCounter};
 
 pub use util::{
     align_to, clear_lowest_bit, get_bit_position, get_bit_position64, get_lowest_bit,

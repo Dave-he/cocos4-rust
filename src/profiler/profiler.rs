@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use crate::profiler::counter::Counter;
 use crate::profiler::perf_counter::PerfCounter;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProfilerStats {
@@ -79,7 +79,8 @@ impl Profiler {
     }
 
     pub fn add_counter(&mut self, id: &str, desc: &str, ave: bool) {
-        self.counters.insert(id.to_string(), Counter::new(id, desc, ave));
+        self.counters
+            .insert(id.to_string(), Counter::new(id, desc, ave));
     }
 
     pub fn sample(&mut self, id: &str, value: f64) {

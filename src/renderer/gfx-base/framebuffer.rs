@@ -22,7 +22,12 @@ pub struct GfxFramebuffer {
 
 impl GfxFramebuffer {
     pub fn new(id: u32, info: FramebufferInfo, width: u32, height: u32) -> Self {
-        GfxFramebuffer { id, info, width, height }
+        GfxFramebuffer {
+            id,
+            info,
+            width,
+            height,
+        }
     }
 
     pub fn get_width(&self) -> u32 {

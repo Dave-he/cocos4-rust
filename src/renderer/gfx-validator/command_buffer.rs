@@ -4,12 +4,12 @@ Wraps GfxCommandBuffer with state machine validation checks.
 ****************************************************************************/
 
 use crate::renderer::gfx_base::{
-    BufferTextureCopy, Color, CommandBufferInfo, CommandBufferType,
-    DispatchInfo, DrawInfo, DynamicStateFlags, Filter, GfxCommandBuffer, MarkerInfo, Rect,
-    StencilFace, TextureBlit, TextureCopy, Viewport,
+    BufferTextureCopy, Color, CommandBufferInfo, CommandBufferType, DispatchInfo, DrawInfo,
+    DynamicStateFlags, Filter, GfxCommandBuffer, MarkerInfo, Rect, StencilFace, TextureBlit,
+    TextureCopy, Viewport,
 };
 
-use super::validation_utils::{CommandBufferStateTracker, ValidationLog, ValidationErrorKind};
+use super::validation_utils::{CommandBufferStateTracker, ValidationErrorKind, ValidationLog};
 
 pub struct CommandBufferValidator {
     pub inner: GfxCommandBuffer,
@@ -44,7 +44,11 @@ impl CommandBufferValidator {
     }
 
     pub fn begin(&mut self) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             self.state_tracker.on_begin();
             self.inner.begin();
         }
@@ -56,7 +60,11 @@ impl CommandBufferValidator {
         subpass: u32,
         framebuffer: Option<u32>,
     ) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             if self.state_tracker.is_inside_render_pass() {
                 self.log.error(
                     ValidationErrorKind::CommandBufferState,
@@ -72,12 +80,17 @@ impl CommandBufferValidator {
                 return;
             }
             self.state_tracker.on_begin();
-            self.inner.begin_with_render_pass(render_pass, subpass, framebuffer);
+            self.inner
+                .begin_with_render_pass(render_pass, subpass, framebuffer);
         }
     }
 
     pub fn end(&mut self) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             if self.state_tracker.is_primary() && self.state_tracker.is_inside_render_pass() {
                 self.log.error(
                     ValidationErrorKind::CommandBufferState,
@@ -99,7 +112,11 @@ impl CommandBufferValidator {
         depth: f32,
         stencil: u32,
     ) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             if !self.state_tracker.is_primary() {
                 self.log.error(
                     ValidationErrorKind::CommandBufferState,
@@ -115,12 +132,23 @@ impl CommandBufferValidator {
                 return;
             }
             self.state_tracker.on_begin_render_pass();
-            self.inner.begin_render_pass(render_pass, framebuffer, render_area, colors, depth, stencil);
+            self.inner.begin_render_pass(
+                render_pass,
+                framebuffer,
+                render_area,
+                colors,
+                depth,
+                stencil,
+            );
         }
     }
 
     pub fn end_render_pass(&mut self) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             if !self.state_tracker.is_primary() {
                 self.log.error(
                     ValidationErrorKind::CommandBufferState,
@@ -141,76 +169,131 @@ impl CommandBufferValidator {
     }
 
     pub fn bind_pipeline_state(&mut self, pipeline_id: u32) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             self.state_tracker.on_bind_pipeline(pipeline_id);
             self.inner.bind_pipeline_state(pipeline_id);
         }
     }
 
-    pub fn bind_descriptor_set(&mut self, set: u32, descriptor_set_id: u32, dynamic_offsets: &[u32]) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
-            self.state_tracker.on_bind_descriptor_set(set, descriptor_set_id);
-            self.inner.bind_descriptor_set(set, descriptor_set_id, dynamic_offsets);
+    pub fn bind_descriptor_set(
+        &mut self,
+        set: u32,
+        descriptor_set_id: u32,
+        dynamic_offsets: &[u32],
+    ) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
+            self.state_tracker
+                .on_bind_descriptor_set(set, descriptor_set_id);
+            self.inner
+                .bind_descriptor_set(set, descriptor_set_id, dynamic_offsets);
         }
     }
 
     pub fn bind_input_assembler(&mut self, ia_id: u32) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             self.state_tracker.on_bind_input_assembler(ia_id);
             self.inner.bind_input_assembler(ia_id);
         }
     }
 
     pub fn set_viewport(&mut self, viewport: &Viewport) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             self.inner.set_viewport(viewport);
         }
     }
 
     pub fn set_scissor(&mut self, rect: &Rect) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             self.inner.set_scissor(rect);
         }
     }
 
     pub fn set_line_width(&mut self, width: f32) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             self.inner.set_line_width(width);
         }
     }
 
     pub fn set_depth_bias(&mut self, constant: f32, clamp: f32, slope: f32) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             self.inner.set_depth_bias(constant, clamp, slope);
         }
     }
 
     pub fn set_blend_constants(&mut self, constants: &Color) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             self.inner.set_blend_constants(constants);
         }
     }
 
     pub fn set_depth_bound(&mut self, min_bounds: f32, max_bounds: f32) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             self.inner.set_depth_bound(min_bounds, max_bounds);
         }
     }
 
     pub fn set_stencil_write_mask(&mut self, face: StencilFace, mask: u32) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             self.inner.set_stencil_write_mask(face, mask);
         }
     }
 
     pub fn set_stencil_compare_mask(&mut self, face: StencilFace, ref_val: u32, mask: u32) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             self.inner.set_stencil_compare_mask(face, ref_val, mask);
         }
     }
 
     pub fn draw(&mut self, info: &DrawInfo) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             if !self.state_tracker.is_inside_render_pass() {
                 self.log.error(
                     ValidationErrorKind::CommandBufferState,
@@ -223,7 +306,11 @@ impl CommandBufferValidator {
     }
 
     pub fn update_buffer(&mut self, buffer_id: u32, data: &[u8], size: u32) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             if !self.state_tracker.is_primary() {
                 self.log.error(
                     ValidationErrorKind::CommandBufferState,
@@ -248,7 +335,11 @@ impl CommandBufferValidator {
         texture_id: u32,
         regions: &[BufferTextureCopy],
     ) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             if !self.state_tracker.is_primary() {
                 self.log.error(
                     ValidationErrorKind::CommandBufferState,
@@ -263,12 +354,17 @@ impl CommandBufferValidator {
                 );
                 return;
             }
-            self.inner.copy_buffers_to_texture(buffers, texture_id, regions);
+            self.inner
+                .copy_buffers_to_texture(buffers, texture_id, regions);
         }
     }
 
     pub fn dispatch(&mut self, info: &DispatchInfo) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             if self.state_tracker.is_inside_render_pass() {
                 self.log.error(
                     ValidationErrorKind::CommandBufferState,
@@ -281,7 +377,11 @@ impl CommandBufferValidator {
     }
 
     pub fn execute(&mut self, cmd_buffers: &[u32]) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             if !self.state_tracker.is_primary() {
                 self.log.error(
                     ValidationErrorKind::CommandBufferState,
@@ -301,8 +401,18 @@ impl CommandBufferValidator {
         texture_barriers: &[u32],
         textures: &[u32],
     ) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
-            self.inner.pipeline_barrier(general_barrier, buffer_barriers, buffers, texture_barriers, textures);
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
+            self.inner.pipeline_barrier(
+                general_barrier,
+                buffer_barriers,
+                buffers,
+                texture_barriers,
+                textures,
+            );
         }
     }
 
@@ -329,7 +439,11 @@ impl CommandBufferValidator {
         regions: &[TextureBlit],
         filter: Filter,
     ) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             if self.state_tracker.is_inside_render_pass() {
                 self.log.error(
                     ValidationErrorKind::CommandBufferState,
@@ -337,17 +451,17 @@ impl CommandBufferValidator {
                 );
                 return;
             }
-            self.inner.blit_texture(src_texture, dst_texture, regions, filter);
+            self.inner
+                .blit_texture(src_texture, dst_texture, regions, filter);
         }
     }
 
-    pub fn copy_texture(
-        &mut self,
-        src_texture: u32,
-        dst_texture: u32,
-        regions: &[TextureCopy],
-    ) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+    pub fn copy_texture(&mut self, src_texture: u32, dst_texture: u32, regions: &[TextureCopy]) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             if self.state_tracker.is_inside_render_pass() {
                 self.log.error(
                     ValidationErrorKind::CommandBufferState,
@@ -359,13 +473,12 @@ impl CommandBufferValidator {
         }
     }
 
-    pub fn resolve_texture(
-        &mut self,
-        src_texture: u32,
-        dst_texture: u32,
-        regions: &[TextureCopy],
-    ) {
-        if self.log.assert_inited(self.state_tracker.is_inited(), "CommandBuffer", self.inner.id) {
+    pub fn resolve_texture(&mut self, src_texture: u32, dst_texture: u32, regions: &[TextureCopy]) {
+        if self.log.assert_inited(
+            self.state_tracker.is_inited(),
+            "CommandBuffer",
+            self.inner.id,
+        ) {
             if self.state_tracker.is_inside_render_pass() {
                 self.log.error(
                     ValidationErrorKind::CommandBufferState,
@@ -373,7 +486,8 @@ impl CommandBufferValidator {
                 );
                 return;
             }
-            self.inner.resolve_texture(src_texture, dst_texture, regions);
+            self.inner
+                .resolve_texture(src_texture, dst_texture, regions);
         }
     }
 
@@ -463,7 +577,11 @@ mod tests {
         validator.state_tracker.on_begin();
         validator.begin();
         validator.begin_render_pass(1, 1, &Rect::default(), &[], 1.0, 0);
-        validator.draw(&DrawInfo { index_count: 6, instance_count: 1, ..Default::default() });
+        validator.draw(&DrawInfo {
+            index_count: 6,
+            instance_count: 1,
+            ..Default::default()
+        });
         assert_eq!(validator.get_num_draw_calls(), 1);
         validator.end_render_pass();
         validator.end();
@@ -474,7 +592,11 @@ mod tests {
         let mut validator = CommandBufferValidator::new(CommandBufferInfo::default());
         validator.state_tracker.on_begin();
         validator.begin();
-        validator.draw(&DrawInfo { index_count: 6, instance_count: 1, ..Default::default() });
+        validator.draw(&DrawInfo {
+            index_count: 6,
+            instance_count: 1,
+            ..Default::default()
+        });
         assert!(validator.get_log().has_errors());
     }
 
@@ -525,7 +647,12 @@ mod tests {
         let mut validator = CommandBufferValidator::new(CommandBufferInfo::default());
         validator.state_tracker.on_begin();
         validator.begin();
-        validator.dispatch(&DispatchInfo { group_count_x: 1, group_count_y: 1, group_count_z: 1, ..Default::default() });
+        validator.dispatch(&DispatchInfo {
+            group_count_x: 1,
+            group_count_y: 1,
+            group_count_z: 1,
+            ..Default::default()
+        });
         assert!(!validator.get_log().has_errors());
         validator.end();
     }
@@ -558,7 +685,11 @@ mod tests {
         validator.set_enabled(false);
         validator.state_tracker.on_begin();
         validator.begin();
-        validator.draw(&DrawInfo { index_count: 6, instance_count: 1, ..Default::default() });
+        validator.draw(&DrawInfo {
+            index_count: 6,
+            instance_count: 1,
+            ..Default::default()
+        });
         assert!(!validator.get_log().has_errors());
         validator.end();
     }

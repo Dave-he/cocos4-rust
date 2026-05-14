@@ -703,7 +703,11 @@ pub struct Extent {
 
 impl Extent {
     pub fn new(width: u32, height: u32, depth: u32) -> Self {
-        Extent { width, height, depth }
+        Extent {
+            width,
+            height,
+            depth,
+        }
     }
 }
 
@@ -727,7 +731,14 @@ pub struct Viewport {
 
 impl Viewport {
     pub fn new(left: i32, top: i32, width: u32, height: u32) -> Self {
-        Viewport { left, top, width, height, min_depth: 0.0, max_depth: 1.0 }
+        Viewport {
+            left,
+            top,
+            width,
+            height,
+            min_depth: 0.0,
+            max_depth: 1.0,
+        }
     }
 }
 
@@ -760,7 +771,11 @@ pub struct TextureSubresLayers {
 
 impl TextureSubresLayers {
     pub fn new(mip_level: u32, base_array_layer: u32, layer_count: u32) -> Self {
-        TextureSubresLayers { mip_level, base_array_layer, layer_count }
+        TextureSubresLayers {
+            mip_level,
+            base_array_layer,
+            layer_count,
+        }
     }
 }
 

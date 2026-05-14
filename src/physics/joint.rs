@@ -206,11 +206,7 @@ impl JointImpl {
         self.config.enable_collision
     }
 
-    pub fn set_d6_motion(
-        &mut self,
-        axis: &str,
-        motion: JointMotionFlag,
-    ) {
+    pub fn set_d6_motion(&mut self, axis: &str, motion: JointMotionFlag) {
         match axis {
             "x" => self.config.d6.x_motion = motion,
             "y" => self.config.d6.y_motion = motion,
@@ -230,10 +226,18 @@ impl JointImpl {
 }
 
 impl RefCounted for JointImpl {
-    fn add_ref(&self) { self.ref_count.add_ref(); }
-    fn release(&self) { self.ref_count.release(); }
-    fn get_ref_count(&self) -> u32 { self.ref_count.get_ref_count() }
-    fn is_last_reference(&self) -> bool { self.ref_count.is_last_reference() }
+    fn add_ref(&self) {
+        self.ref_count.add_ref();
+    }
+    fn release(&self) {
+        self.ref_count.release();
+    }
+    fn get_ref_count(&self) -> u32 {
+        self.ref_count.get_ref_count()
+    }
+    fn is_last_reference(&self) -> bool {
+        self.ref_count.is_last_reference()
+    }
 }
 
 pub trait Joint: RefCounted {
@@ -243,9 +247,15 @@ pub trait Joint: RefCounted {
 }
 
 impl Joint for JointImpl {
-    fn get_type(&self) -> JointType { self.config.joint_type }
-    fn set_enabled(&mut self, enabled: bool) { self.enabled = enabled; }
-    fn is_enabled(&self) -> bool { self.enabled }
+    fn get_type(&self) -> JointType {
+        self.config.joint_type
+    }
+    fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+    fn is_enabled(&self) -> bool {
+        self.enabled
+    }
 }
 
 pub trait IRigidBody: RefCounted {}
@@ -289,7 +299,8 @@ impl JointManager {
     }
 
     pub fn get_broken_joints(&self) -> Vec<u32> {
-        self.joints.values()
+        self.joints
+            .values()
             .filter(|j| j.is_broken())
             .map(|j| j.id)
             .collect()
@@ -360,7 +371,9 @@ mod tests {
             break_force: 1.0,
             ..Default::default()
         });
-        mgr.get_joint_mut(id).unwrap().apply_force(Vec3::new(5.0, 0.0, 0.0));
+        mgr.get_joint_mut(id)
+            .unwrap()
+            .apply_force(Vec3::new(5.0, 0.0, 0.0));
         let broken = mgr.get_broken_joints();
         assert_eq!(broken.len(), 1);
         assert_eq!(broken[0], id);
@@ -368,10 +381,13 @@ mod tests {
 
     #[test]
     fn test_d6_joint_motion() {
-        let mut joint = JointImpl::new(1, JointConfig {
-            joint_type: JointType::D6Joint,
-            ..Default::default()
-        });
+        let mut joint = JointImpl::new(
+            1,
+            JointConfig {
+                joint_type: JointType::D6Joint,
+                ..Default::default()
+            },
+        );
         joint.set_d6_motion("x", JointMotionFlag::Limited);
         assert_eq!(joint.config.d6.x_motion, JointMotionFlag::Limited);
         joint.set_d6_motion("twist", JointMotionFlag::Locked);

@@ -272,10 +272,14 @@ impl Vec2 {
     pub fn transform_mat4(&self, m: &super::Mat4) -> Vec2 {
         let x = self.x;
         let y = self.y;
-        
+
         let w = m.m[3] * x + m.m[7] * y + m.m[15];
-        let inv_w = if w.abs() > FLOAT_CMP_PRECISION { 1.0 / w } else { 1.0 };
-        
+        let inv_w = if w.abs() > FLOAT_CMP_PRECISION {
+            1.0 / w
+        } else {
+            1.0
+        };
+
         Vec2 {
             x: (m.m[0] * x + m.m[4] * y + m.m[12]) * inv_w,
             y: (m.m[1] * x + m.m[5] * y + m.m[13]) * inv_w,

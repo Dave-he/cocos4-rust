@@ -40,7 +40,7 @@ impl EventBus {
                 callback(typed_event);
             }
         });
-        
+
         self.listeners
             .entry(type_id)
             .or_default()

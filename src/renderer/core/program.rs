@@ -3,8 +3,8 @@ Rust port of Cocos Creator Renderer Program System
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use std::collections::HashMap;
 use super::material::MacroRecord;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct IDefineRecord {

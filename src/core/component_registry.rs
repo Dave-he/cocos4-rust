@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use std::any::TypeId;
 use crate::core::scene_graph::{Component, NodePtr};
+use std::any::TypeId;
+use std::collections::HashMap;
 
 pub type ComponentFactory = Box<dyn Fn() -> Box<dyn Component> + Send + Sync>;
 
@@ -116,9 +116,15 @@ mod tests {
     }
 
     impl Component for TestComponentA {
-        fn get_type_id(&self) -> TypeId { TypeId::of::<TestComponentA>() }
-        fn as_any(&self) -> &dyn Any { self }
-        fn as_any_mut(&mut self) -> &mut dyn Any { self }
+        fn get_type_id(&self) -> TypeId {
+            TypeId::of::<TestComponentA>()
+        }
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
     }
 
     #[derive(Default)]
@@ -128,9 +134,15 @@ mod tests {
     }
 
     impl Component for TestComponentB {
-        fn get_type_id(&self) -> TypeId { TypeId::of::<TestComponentB>() }
-        fn as_any(&self) -> &dyn Any { self }
-        fn as_any_mut(&mut self) -> &mut dyn Any { self }
+        fn get_type_id(&self) -> TypeId {
+            TypeId::of::<TestComponentB>()
+        }
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
     }
 
     #[test]

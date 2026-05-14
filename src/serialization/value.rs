@@ -17,7 +17,11 @@ impl SerializedValue {
     }
 
     pub fn as_bool(&self) -> Option<bool> {
-        if let SerializedValue::Bool(v) = self { Some(*v) } else { None }
+        if let SerializedValue::Bool(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
     }
 
     pub fn as_int(&self) -> Option<i64> {
@@ -37,15 +41,27 @@ impl SerializedValue {
     }
 
     pub fn as_str(&self) -> Option<&str> {
-        if let SerializedValue::String(s) = self { Some(s.as_str()) } else { None }
+        if let SerializedValue::String(s) = self {
+            Some(s.as_str())
+        } else {
+            None
+        }
     }
 
     pub fn as_array(&self) -> Option<&Vec<SerializedValue>> {
-        if let SerializedValue::Array(a) = self { Some(a) } else { None }
+        if let SerializedValue::Array(a) = self {
+            Some(a)
+        } else {
+            None
+        }
     }
 
     pub fn as_object(&self) -> Option<&HashMap<String, SerializedValue>> {
-        if let SerializedValue::Object(o) = self { Some(o) } else { None }
+        if let SerializedValue::Object(o) = self {
+            Some(o)
+        } else {
+            None
+        }
     }
 
     pub fn get(&self, key: &str) -> Option<&SerializedValue> {
@@ -94,7 +110,8 @@ impl SerializedValue {
                 format!("[{}]", items.join(","))
             }
             SerializedValue::Object(o) => {
-                let mut pairs: Vec<String> = o.iter()
+                let mut pairs: Vec<String> = o
+                    .iter()
                     .map(|(k, v)| format!("\"{}\":{}", k, v.to_json_string()))
                     .collect();
                 pairs.sort();
@@ -105,31 +122,45 @@ impl SerializedValue {
 }
 
 impl From<bool> for SerializedValue {
-    fn from(v: bool) -> Self { SerializedValue::Bool(v) }
+    fn from(v: bool) -> Self {
+        SerializedValue::Bool(v)
+    }
 }
 
 impl From<i32> for SerializedValue {
-    fn from(v: i32) -> Self { SerializedValue::Int(v as i64) }
+    fn from(v: i32) -> Self {
+        SerializedValue::Int(v as i64)
+    }
 }
 
 impl From<i64> for SerializedValue {
-    fn from(v: i64) -> Self { SerializedValue::Int(v) }
+    fn from(v: i64) -> Self {
+        SerializedValue::Int(v)
+    }
 }
 
 impl From<f32> for SerializedValue {
-    fn from(v: f32) -> Self { SerializedValue::Float(v as f64) }
+    fn from(v: f32) -> Self {
+        SerializedValue::Float(v as f64)
+    }
 }
 
 impl From<f64> for SerializedValue {
-    fn from(v: f64) -> Self { SerializedValue::Float(v) }
+    fn from(v: f64) -> Self {
+        SerializedValue::Float(v)
+    }
 }
 
 impl From<&str> for SerializedValue {
-    fn from(v: &str) -> Self { SerializedValue::String(v.to_string()) }
+    fn from(v: &str) -> Self {
+        SerializedValue::String(v.to_string())
+    }
 }
 
 impl From<String> for SerializedValue {
-    fn from(v: String) -> Self { SerializedValue::String(v) }
+    fn from(v: String) -> Self {
+        SerializedValue::String(v)
+    }
 }
 
 #[cfg(test)]

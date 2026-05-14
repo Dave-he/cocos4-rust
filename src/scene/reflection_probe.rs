@@ -1,5 +1,5 @@
-use crate::math::Vec3;
 use crate::core::geometry::AABB;
+use crate::math::Vec3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ProbeType {

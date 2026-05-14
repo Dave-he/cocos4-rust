@@ -3,8 +3,8 @@ Rust port of Cocos Creator HttpRequest / HttpResponse / HttpClient
 Original C++ version Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use std::sync::{Arc, Mutex};
 use crate::base::{RefCounted, RefCountedImpl};
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HttpRequestType {
@@ -56,38 +56,78 @@ impl HttpRequest {
         }
     }
 
-    pub fn set_request_type(&mut self, type_: HttpRequestType) { self.request_type = type_; }
-    pub fn get_request_type(&self) -> HttpRequestType { self.request_type }
+    pub fn set_request_type(&mut self, type_: HttpRequestType) {
+        self.request_type = type_;
+    }
+    pub fn get_request_type(&self) -> HttpRequestType {
+        self.request_type
+    }
 
-    pub fn set_url(&mut self, url: &str) { self.url = url.to_string(); }
-    pub fn get_url(&self) -> &str { &self.url }
+    pub fn set_url(&mut self, url: &str) {
+        self.url = url.to_string();
+    }
+    pub fn get_url(&self) -> &str {
+        &self.url
+    }
 
-    pub fn set_request_data(&mut self, data: &[u8]) { self.request_data = data.to_vec(); }
-    pub fn get_request_data(&self) -> &[u8] { &self.request_data }
-    pub fn get_request_data_size(&self) -> usize { self.request_data.len() }
+    pub fn set_request_data(&mut self, data: &[u8]) {
+        self.request_data = data.to_vec();
+    }
+    pub fn get_request_data(&self) -> &[u8] {
+        &self.request_data
+    }
+    pub fn get_request_data_size(&self) -> usize {
+        self.request_data.len()
+    }
 
-    pub fn set_tag(&mut self, tag: &str) { self.tag = tag.to_string(); }
-    pub fn get_tag(&self) -> &str { &self.tag }
+    pub fn set_tag(&mut self, tag: &str) {
+        self.tag = tag.to_string();
+    }
+    pub fn get_tag(&self) -> &str {
+        &self.tag
+    }
 
-    pub fn set_headers(&mut self, headers: Vec<String>) { self.headers = headers; }
-    pub fn get_headers(&self) -> &[String] { &self.headers }
+    pub fn set_headers(&mut self, headers: Vec<String>) {
+        self.headers = headers;
+    }
+    pub fn get_headers(&self) -> &[String] {
+        &self.headers
+    }
 
-    pub fn set_timeout(&mut self, timeout: f32) { self.timeout = timeout; }
-    pub fn get_timeout(&self) -> f32 { self.timeout }
+    pub fn set_timeout(&mut self, timeout: f32) {
+        self.timeout = timeout;
+    }
+    pub fn get_timeout(&self) -> f32 {
+        self.timeout
+    }
 
-    pub fn set_response_callback(&mut self, cb: HttpResponseCallback) { self.callback = Some(cb); }
-    pub fn get_response_callback(&self) -> Option<&HttpResponseCallback> { self.callback.as_ref() }
+    pub fn set_response_callback(&mut self, cb: HttpResponseCallback) {
+        self.callback = Some(cb);
+    }
+    pub fn get_response_callback(&self) -> Option<&HttpResponseCallback> {
+        self.callback.as_ref()
+    }
 }
 
 impl RefCounted for HttpRequest {
-    fn add_ref(&self) { self.ref_count.add_ref(); }
-    fn release(&self) { self.ref_count.release(); }
-    fn get_ref_count(&self) -> u32 { self.ref_count.get_ref_count() }
-    fn is_last_reference(&self) -> bool { self.ref_count.is_last_reference() }
+    fn add_ref(&self) {
+        self.ref_count.add_ref();
+    }
+    fn release(&self) {
+        self.ref_count.release();
+    }
+    fn get_ref_count(&self) -> u32 {
+        self.ref_count.get_ref_count()
+    }
+    fn is_last_reference(&self) -> bool {
+        self.ref_count.is_last_reference()
+    }
 }
 
 impl Default for HttpRequest {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 pub struct HttpResponse {
@@ -129,26 +169,58 @@ impl HttpResponse {
         self.request.lock().unwrap()
     }
 
-    pub fn is_succeed(&self) -> bool { self.succeed }
-    pub fn get_response_data(&self) -> &[u8] { &self.response_data }
-    pub fn get_response_header(&self) -> &[u8] { &self.response_header }
-    pub fn get_response_code(&self) -> i64 { self.response_code }
-    pub fn get_error_buffer(&self) -> &str { &self.error_buffer }
-    pub fn get_response_data_string(&self) -> &str { &self.response_data_string }
+    pub fn is_succeed(&self) -> bool {
+        self.succeed
+    }
+    pub fn get_response_data(&self) -> &[u8] {
+        &self.response_data
+    }
+    pub fn get_response_header(&self) -> &[u8] {
+        &self.response_header
+    }
+    pub fn get_response_code(&self) -> i64 {
+        self.response_code
+    }
+    pub fn get_error_buffer(&self) -> &str {
+        &self.error_buffer
+    }
+    pub fn get_response_data_string(&self) -> &str {
+        &self.response_data_string
+    }
 
-    pub fn set_succeed(&mut self, val: bool) { self.succeed = val; }
-    pub fn set_response_data(&mut self, data: Vec<u8>) { self.response_data = data; }
-    pub fn set_response_header(&mut self, data: Vec<u8>) { self.response_header = data; }
-    pub fn set_response_code(&mut self, code: i64) { self.response_code = code; }
-    pub fn set_error_buffer(&mut self, msg: &str) { self.error_buffer = msg.to_string(); }
-    pub fn set_response_data_string(&mut self, s: &str) { self.response_data_string = s.to_string(); }
+    pub fn set_succeed(&mut self, val: bool) {
+        self.succeed = val;
+    }
+    pub fn set_response_data(&mut self, data: Vec<u8>) {
+        self.response_data = data;
+    }
+    pub fn set_response_header(&mut self, data: Vec<u8>) {
+        self.response_header = data;
+    }
+    pub fn set_response_code(&mut self, code: i64) {
+        self.response_code = code;
+    }
+    pub fn set_error_buffer(&mut self, msg: &str) {
+        self.error_buffer = msg.to_string();
+    }
+    pub fn set_response_data_string(&mut self, s: &str) {
+        self.response_data_string = s.to_string();
+    }
 }
 
 impl RefCounted for HttpResponse {
-    fn add_ref(&self) { self.ref_count.add_ref(); }
-    fn release(&self) { self.ref_count.release(); }
-    fn get_ref_count(&self) -> u32 { self.ref_count.get_ref_count() }
-    fn is_last_reference(&self) -> bool { self.ref_count.is_last_reference() }
+    fn add_ref(&self) {
+        self.ref_count.add_ref();
+    }
+    fn release(&self) {
+        self.ref_count.release();
+    }
+    fn get_ref_count(&self) -> u32 {
+        self.ref_count.get_ref_count()
+    }
+    fn is_last_reference(&self) -> bool {
+        self.ref_count.is_last_reference()
+    }
 }
 
 #[derive(Debug)]
@@ -190,13 +262,21 @@ impl HttpCookie {
         }
     }
 
-    pub fn set_cookie_file_name(&mut self, name: &str) { self.cookie_file = name.to_string(); }
-    pub fn get_cookies(&self) -> &[CookiesInfo] { &self.cookies }
+    pub fn set_cookie_file_name(&mut self, name: &str) {
+        self.cookie_file = name.to_string();
+    }
+    pub fn get_cookies(&self) -> &[CookiesInfo] {
+        &self.cookies
+    }
     pub fn get_match_cookie(&self, url: &str) -> Option<&CookiesInfo> {
         self.cookies.iter().find(|c| url.contains(&c.domain))
     }
     pub fn update_or_add_cookie(&mut self, cookie: CookiesInfo) {
-        if let Some(existing) = self.cookies.iter_mut().find(|c| c.name == cookie.name && c.domain == cookie.domain) {
+        if let Some(existing) = self
+            .cookies
+            .iter_mut()
+            .find(|c| c.name == cookie.name && c.domain == cookie.domain)
+        {
             *existing = cookie;
         } else {
             self.cookies.push(cookie);
@@ -204,7 +284,11 @@ impl HttpCookie {
     }
 }
 
-impl Default for HttpCookie { fn default() -> Self { Self::new() } }
+impl Default for HttpCookie {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[derive(Debug)]
 pub struct HttpClient {
@@ -226,22 +310,44 @@ impl HttpClient {
         }
     }
 
-    pub fn enable_cookies(&mut self, file: &str) { self.cookie.set_cookie_file_name(file); }
-    pub fn get_cookie_filename(&self) -> &str { &self.cookie.cookie_file }
+    pub fn enable_cookies(&mut self, file: &str) {
+        self.cookie.set_cookie_file_name(file);
+    }
+    pub fn get_cookie_filename(&self) -> &str {
+        &self.cookie.cookie_file
+    }
 
-    pub fn set_ssl_verification(&mut self, ca_file: &str) { self.ssl_verification = ca_file.to_string(); }
-    pub fn get_ssl_verification(&self) -> &str { &self.ssl_verification }
+    pub fn set_ssl_verification(&mut self, ca_file: &str) {
+        self.ssl_verification = ca_file.to_string();
+    }
+    pub fn get_ssl_verification(&self) -> &str {
+        &self.ssl_verification
+    }
 
-    pub fn set_timeout_for_connect(&mut self, timeout: u32) { self.timeout_for_connect = timeout; }
-    pub fn get_timeout_for_connect(&self) -> u32 { self.timeout_for_connect }
+    pub fn set_timeout_for_connect(&mut self, timeout: u32) {
+        self.timeout_for_connect = timeout;
+    }
+    pub fn get_timeout_for_connect(&self) -> u32 {
+        self.timeout_for_connect
+    }
 
-    pub fn set_timeout_for_read(&mut self, timeout: u32) { self.timeout_for_read = timeout; }
-    pub fn get_timeout_for_read(&self) -> u32 { self.timeout_for_read }
+    pub fn set_timeout_for_read(&mut self, timeout: u32) {
+        self.timeout_for_read = timeout;
+    }
+    pub fn get_timeout_for_read(&self) -> u32 {
+        self.timeout_for_read
+    }
 
-    pub fn set_thread_count(&mut self, count: u32) { self.thread_count = count; }
-    pub fn get_thread_count(&self) -> u32 { self.thread_count }
+    pub fn set_thread_count(&mut self, count: u32) {
+        self.thread_count = count;
+    }
+    pub fn get_thread_count(&self) -> u32 {
+        self.thread_count
+    }
 
-    pub fn get_cookie(&self) -> &HttpCookie { &self.cookie }
+    pub fn get_cookie(&self) -> &HttpCookie {
+        &self.cookie
+    }
 
     pub fn send(&self, _request: &HttpRequest) {
         // Async send placeholder - requires async runtime integration
@@ -252,7 +358,11 @@ impl HttpClient {
     }
 }
 
-impl Default for HttpClient { fn default() -> Self { Self::new() } }
+impl Default for HttpClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -352,7 +462,10 @@ mod tests {
         client.set_thread_count(8);
 
         assert_eq!(client.get_cookie_filename(), "/tmp/cookies.txt");
-        assert_eq!(client.get_ssl_verification(), "/etc/ssl/certs/ca-bundle.crt");
+        assert_eq!(
+            client.get_ssl_verification(),
+            "/etc/ssl/certs/ca-bundle.crt"
+        );
         assert_eq!(client.get_timeout_for_connect(), 30);
         assert_eq!(client.get_timeout_for_read(), 30);
         assert_eq!(client.get_thread_count(), 8);
@@ -363,8 +476,12 @@ mod tests {
         assert_eq!(HttpRequestType::Get, HttpRequestType::Get);
         assert_ne!(HttpRequestType::Get, HttpRequestType::Post);
         let all_types = [
-            HttpRequestType::Get, HttpRequestType::Post, HttpRequestType::Put,
-            HttpRequestType::Delete, HttpRequestType::Head, HttpRequestType::Patch,
+            HttpRequestType::Get,
+            HttpRequestType::Post,
+            HttpRequestType::Put,
+            HttpRequestType::Delete,
+            HttpRequestType::Head,
+            HttpRequestType::Patch,
             HttpRequestType::Unknown,
         ];
         assert_eq!(all_types.len(), 7);

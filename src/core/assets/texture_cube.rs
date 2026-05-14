@@ -4,7 +4,7 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 // SPDX-License-Identifier: MIT
 
-use super::asset_enum::{PixelFormat, WrapMode, Filter};
+use super::asset_enum::{Filter, PixelFormat, WrapMode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MipmapMode {

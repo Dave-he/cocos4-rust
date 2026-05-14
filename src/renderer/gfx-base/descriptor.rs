@@ -89,15 +89,18 @@ impl GfxDescriptorSet {
     }
 
     pub fn bind_buffer(&mut self, binding: u32, buffer_id: u32) {
-        self.bindings.insert(binding, DescriptorBindingValue::Buffer(buffer_id));
+        self.bindings
+            .insert(binding, DescriptorBindingValue::Buffer(buffer_id));
     }
 
     pub fn bind_texture(&mut self, binding: u32, texture_id: u32) {
-        self.bindings.insert(binding, DescriptorBindingValue::Texture(texture_id));
+        self.bindings
+            .insert(binding, DescriptorBindingValue::Texture(texture_id));
     }
 
     pub fn bind_sampler(&mut self, binding: u32, sampler_id: u32) {
-        self.bindings.insert(binding, DescriptorBindingValue::Sampler(sampler_id));
+        self.bindings
+            .insert(binding, DescriptorBindingValue::Sampler(sampler_id));
     }
 
     pub fn update(&mut self) {}
@@ -162,7 +165,10 @@ mod tests {
 
     #[test]
     fn test_descriptor_types() {
-        assert_ne!(DescriptorType::UniformBuffer as u32, DescriptorType::Sampler as u32);
+        assert_ne!(
+            DescriptorType::UniformBuffer as u32,
+            DescriptorType::Sampler as u32
+        );
         assert_eq!(DescriptorType::Unknown as u32, 0);
     }
 }

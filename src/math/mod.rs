@@ -13,10 +13,9 @@ pub use geometry::{Rect, Size};
 pub use mat3::Mat3;
 pub use mat4::Mat4;
 pub use mathf::{
-    lerp as mathf_lerp, clamp as mathf_clamp, clamp01 as mathf_clamp01,
-    smooth_step, smoother_step, ping_pong, repeat as mathf_repeat,
-    remap, move_towards, deg_to_rad, rad_to_deg, approximately, sign,
-    BezierCurve2D, AnimationCurve, catmull_rom, hermite,
+    approximately, catmull_rom, clamp as mathf_clamp, clamp01 as mathf_clamp01, deg_to_rad,
+    hermite, lerp as mathf_lerp, move_towards, ping_pong, rad_to_deg, remap,
+    repeat as mathf_repeat, sign, smooth_step, smoother_step, AnimationCurve, BezierCurve2D,
 };
 pub use quaternion::Quaternion;
 pub use vec2::Vec2;

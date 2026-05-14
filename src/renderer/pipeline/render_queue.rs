@@ -3,7 +3,7 @@ Rust port of Cocos Creator Render Queue
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use super::defines::{RenderPriority, SortingOrder, RenderPassItem};
+use super::defines::{RenderPassItem, RenderPriority, SortingOrder};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RenderQueueSortMode {
@@ -86,10 +86,18 @@ impl RenderQueue {
     pub fn sort(&mut self) {
         match self.sort_order {
             SortingOrder::FrontToBack => {
-                self.items.sort_by(|a, b| a.depth.partial_cmp(&b.depth).unwrap_or(std::cmp::Ordering::Equal));
+                self.items.sort_by(|a, b| {
+                    a.depth
+                        .partial_cmp(&b.depth)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
             }
             SortingOrder::BackToFront => {
-                self.items.sort_by(|a, b| b.depth.partial_cmp(&a.depth).unwrap_or(std::cmp::Ordering::Equal));
+                self.items.sort_by(|a, b| {
+                    b.depth
+                        .partial_cmp(&a.depth)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
             }
             SortingOrder::ByPriority => {
                 self.items.sort_by_key(|i| i.priority);

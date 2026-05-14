@@ -3,8 +3,12 @@ use std::collections::VecDeque;
 pub trait Command: Send + Sync {
     fn execute(&mut self);
     fn undo(&mut self);
-    fn description(&self) -> &str { "" }
-    fn is_mergeable_with(&self, _other: &dyn Command) -> bool { false }
+    fn description(&self) -> &str {
+        ""
+    }
+    fn is_mergeable_with(&self, _other: &dyn Command) -> bool {
+        false
+    }
 }
 
 pub struct CommandBuffer {
@@ -140,9 +144,15 @@ impl LambdaCommand {
 }
 
 impl Command for LambdaCommand {
-    fn execute(&mut self) { (self.execute_fn)(); }
-    fn undo(&mut self) { (self.undo_fn)(); }
-    fn description(&self) -> &str { &self.desc }
+    fn execute(&mut self) {
+        (self.execute_fn)();
+    }
+    fn undo(&mut self) {
+        (self.undo_fn)();
+    }
+    fn description(&self) -> &str {
+        &self.desc
+    }
 }
 
 #[cfg(test)]
@@ -156,12 +166,20 @@ mod tests {
     }
 
     impl Command for IncrementCommand {
-        fn execute(&mut self) { *self.counter.lock().unwrap() += self.delta; }
-        fn undo(&mut self) { *self.counter.lock().unwrap() -= self.delta; }
-        fn description(&self) -> &str { "increment" }
+        fn execute(&mut self) {
+            *self.counter.lock().unwrap() += self.delta;
+        }
+        fn undo(&mut self) {
+            *self.counter.lock().unwrap() -= self.delta;
+        }
+        fn description(&self) -> &str {
+            "increment"
+        }
     }
 
-    fn make_buf() -> CommandBuffer { CommandBuffer::new(10) }
+    fn make_buf() -> CommandBuffer {
+        CommandBuffer::new(10)
+    }
 
     #[test]
     fn test_command_buffer_new() {
@@ -175,7 +193,10 @@ mod tests {
     fn test_execute_command() {
         let counter = Arc::new(Mutex::new(0));
         let mut buf = make_buf();
-        buf.execute(IncrementCommand { counter: Arc::clone(&counter), delta: 5 });
+        buf.execute(IncrementCommand {
+            counter: Arc::clone(&counter),
+            delta: 5,
+        });
         assert_eq!(*counter.lock().unwrap(), 5);
         assert!(buf.can_undo());
         assert_eq!(buf.get_command_count(), 1);
@@ -185,7 +206,10 @@ mod tests {
     fn test_undo() {
         let counter = Arc::new(Mutex::new(0));
         let mut buf = make_buf();
-        buf.execute(IncrementCommand { counter: Arc::clone(&counter), delta: 10 });
+        buf.execute(IncrementCommand {
+            counter: Arc::clone(&counter),
+            delta: 10,
+        });
         let ok = buf.undo();
         assert!(ok);
         assert_eq!(*counter.lock().unwrap(), 0);
@@ -197,7 +221,10 @@ mod tests {
     fn test_redo() {
         let counter = Arc::new(Mutex::new(0));
         let mut buf = make_buf();
-        buf.execute(IncrementCommand { counter: Arc::clone(&counter), delta: 3 });
+        buf.execute(IncrementCommand {
+            counter: Arc::clone(&counter),
+            delta: 3,
+        });
         buf.undo();
         let ok = buf.redo();
         assert!(ok);
@@ -209,10 +236,16 @@ mod tests {
     fn test_new_command_clears_redo() {
         let counter = Arc::new(Mutex::new(0));
         let mut buf = make_buf();
-        buf.execute(IncrementCommand { counter: Arc::clone(&counter), delta: 1 });
+        buf.execute(IncrementCommand {
+            counter: Arc::clone(&counter),
+            delta: 1,
+        });
         buf.undo();
         assert!(buf.can_redo());
-        buf.execute(IncrementCommand { counter: Arc::clone(&counter), delta: 2 });
+        buf.execute(IncrementCommand {
+            counter: Arc::clone(&counter),
+            delta: 2,
+        });
         assert!(!buf.can_redo());
     }
 
@@ -233,7 +266,10 @@ mod tests {
         let counter = Arc::new(Mutex::new(0));
         let mut buf = CommandBuffer::new(3);
         for i in 0..5 {
-            buf.execute(IncrementCommand { counter: Arc::clone(&counter), delta: i });
+            buf.execute(IncrementCommand {
+                counter: Arc::clone(&counter),
+                delta: i,
+            });
         }
         assert_eq!(buf.undo_count(), 3);
     }
@@ -242,7 +278,10 @@ mod tests {
     fn test_clear() {
         let counter = Arc::new(Mutex::new(0));
         let mut buf = make_buf();
-        buf.execute(IncrementCommand { counter: Arc::clone(&counter), delta: 1 });
+        buf.execute(IncrementCommand {
+            counter: Arc::clone(&counter),
+            delta: 1,
+        });
         buf.undo();
         buf.clear();
         assert!(!buf.can_undo());
@@ -256,8 +295,12 @@ mod tests {
         let s_undo = Arc::clone(&state);
         let cmd = LambdaCommand::new(
             "set_10",
-            move || { *s_exec.lock().unwrap() = 10; },
-            move || { *s_undo.lock().unwrap() = 0; },
+            move || {
+                *s_exec.lock().unwrap() = 10;
+            },
+            move || {
+                *s_undo.lock().unwrap() = 0;
+            },
         );
         let mut buf = make_buf();
         buf.execute(cmd);
@@ -272,8 +315,14 @@ mod tests {
     fn test_history_descriptions() {
         let counter = Arc::new(Mutex::new(0));
         let mut buf = make_buf();
-        buf.execute(IncrementCommand { counter: Arc::clone(&counter), delta: 1 });
-        buf.execute(IncrementCommand { counter: Arc::clone(&counter), delta: 2 });
+        buf.execute(IncrementCommand {
+            counter: Arc::clone(&counter),
+            delta: 1,
+        });
+        buf.execute(IncrementCommand {
+            counter: Arc::clone(&counter),
+            delta: 2,
+        });
         let descs = buf.get_history_descriptions();
         assert_eq!(descs.len(), 2);
         assert!(descs.iter().all(|&d| d == "increment"));
@@ -284,12 +333,19 @@ mod tests {
         let counter = Arc::new(Mutex::new(0));
         let mut buf = make_buf();
         for i in 1..=5 {
-            buf.execute(IncrementCommand { counter: Arc::clone(&counter), delta: i });
+            buf.execute(IncrementCommand {
+                counter: Arc::clone(&counter),
+                delta: i,
+            });
         }
         assert_eq!(*counter.lock().unwrap(), 15);
-        for _ in 0..3 { buf.undo(); }
+        for _ in 0..3 {
+            buf.undo();
+        }
         assert_eq!(*counter.lock().unwrap(), 3);
-        for _ in 0..2 { buf.redo(); }
+        for _ in 0..2 {
+            buf.redo();
+        }
         assert_eq!(*counter.lock().unwrap(), 10);
     }
 
@@ -298,7 +354,10 @@ mod tests {
         let counter = Arc::new(Mutex::new(0));
         let mut buf = make_buf();
         for i in 0..8 {
-            buf.execute(IncrementCommand { counter: Arc::clone(&counter), delta: i });
+            buf.execute(IncrementCommand {
+                counter: Arc::clone(&counter),
+                delta: i,
+            });
         }
         assert_eq!(buf.undo_count(), 8);
         buf.set_max_history(4);

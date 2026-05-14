@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use crate::math::Vec3;
 use crate::core::geometry::AABB;
+use crate::math::Vec3;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BodyId(pub u64);
@@ -92,12 +92,20 @@ impl PhysicsBody {
     pub fn get_aabb(&self) -> AABB {
         match self.shape {
             ColliderShape::AABB => AABB::new(
-                self.position.x, self.position.y, self.position.z,
-                self.half_extents.x, self.half_extents.y, self.half_extents.z,
+                self.position.x,
+                self.position.y,
+                self.position.z,
+                self.half_extents.x,
+                self.half_extents.y,
+                self.half_extents.z,
             ),
             ColliderShape::Sphere | ColliderShape::Capsule => AABB::new(
-                self.position.x, self.position.y, self.position.z,
-                self.radius, self.radius, self.radius,
+                self.position.x,
+                self.position.y,
+                self.position.z,
+                self.radius,
+                self.radius,
+                self.radius,
             ),
         }
     }
@@ -171,11 +179,20 @@ fn aabb_vs_aabb(a: &AABB, b: &AABB) -> Option<(Vec3, f32)> {
     }
 
     let (normal, penetration) = if overlap_x <= overlap_y && overlap_x <= overlap_z {
-        (Vec3::new(if dx < 0.0 { -1.0 } else { 1.0 }, 0.0, 0.0), overlap_x)
+        (
+            Vec3::new(if dx < 0.0 { -1.0 } else { 1.0 }, 0.0, 0.0),
+            overlap_x,
+        )
     } else if overlap_y <= overlap_z {
-        (Vec3::new(0.0, if dy < 0.0 { -1.0 } else { 1.0 }, 0.0), overlap_y)
+        (
+            Vec3::new(0.0, if dy < 0.0 { -1.0 } else { 1.0 }, 0.0),
+            overlap_y,
+        )
     } else {
-        (Vec3::new(0.0, 0.0, if dz < 0.0 { -1.0 } else { 1.0 }), overlap_z)
+        (
+            Vec3::new(0.0, 0.0, if dz < 0.0 { -1.0 } else { 1.0 }),
+            overlap_z,
+        )
     };
 
     let _contact = Vec3::new(
@@ -320,12 +337,12 @@ impl PhysicsSimulator {
                         let ab = body_b.get_aabb();
                         aabb_vs_aabb(&aa, &ab)
                     }
-                    (ColliderShape::Sphere, ColliderShape::Sphere) => {
-                        sphere_vs_sphere(
-                            body_a.position, body_a.get_radius(),
-                            body_b.position, body_b.get_radius(),
-                        )
-                    }
+                    (ColliderShape::Sphere, ColliderShape::Sphere) => sphere_vs_sphere(
+                        body_a.position,
+                        body_a.get_radius(),
+                        body_b.position,
+                        body_b.get_radius(),
+                    ),
                     _ => {
                         let aa = body_a.get_aabb();
                         let ab = body_b.get_aabb();
@@ -361,27 +378,37 @@ impl PhysicsSimulator {
             let b = self.bodies.get(&id_b);
             match (a, b) {
                 (Some(a), Some(b)) => (
-                    a.mass, b.mass,
+                    a.mass,
+                    b.mass,
                     (a.restitution + b.restitution) * 0.5,
-                    a.velocity, b.velocity,
-                    a.body_type, b.body_type,
+                    a.velocity,
+                    b.velocity,
+                    a.body_type,
+                    b.body_type,
                 ),
                 _ => return,
             }
         };
 
-        let inv_mass_a = if type_a == BodyType::Dynamic && mass_a > 0.0 { 1.0 / mass_a } else { 0.0 };
-        let inv_mass_b = if type_b == BodyType::Dynamic && mass_b > 0.0 { 1.0 / mass_b } else { 0.0 };
+        let inv_mass_a = if type_a == BodyType::Dynamic && mass_a > 0.0 {
+            1.0 / mass_a
+        } else {
+            0.0
+        };
+        let inv_mass_b = if type_b == BodyType::Dynamic && mass_b > 0.0 {
+            1.0 / mass_b
+        } else {
+            0.0
+        };
         let inv_mass_total = inv_mass_a + inv_mass_b;
 
         if inv_mass_total < 1e-6 {
             return;
         }
 
-        let rel_vel = Vec3::new(
-            vb.x - va.x, vb.y - va.y, vb.z - va.z,
-        );
-        let rel_vel_along_normal = rel_vel.x * normal.x + rel_vel.y * normal.y + rel_vel.z * normal.z;
+        let rel_vel = Vec3::new(vb.x - va.x, vb.y - va.y, vb.z - va.z);
+        let rel_vel_along_normal =
+            rel_vel.x * normal.x + rel_vel.y * normal.y + rel_vel.z * normal.z;
 
         if rel_vel_along_normal > 0.0 {
             return;
@@ -558,7 +585,9 @@ mod tests {
         sim.set_gravity(Vec3::ZERO);
         let count = Arc::new(Mutex::new(0u32));
         let c = Arc::clone(&count);
-        sim.on_collision(move |_| { *c.lock().unwrap() += 1; });
+        sim.on_collision(move |_| {
+            *c.lock().unwrap() += 1;
+        });
         let _a = sim.create_aabb_body(Vec3::ZERO, Vec3::new(1.0, 1.0, 1.0));
         let _b = sim.create_aabb_body(Vec3::new(1.5, 0.0, 0.0), Vec3::new(1.0, 1.0, 1.0));
         sim.step(0.0);
@@ -571,7 +600,9 @@ mod tests {
         sim.set_gravity(Vec3::ZERO);
         let triggered = Arc::new(Mutex::new(false));
         let t = Arc::clone(&triggered);
-        sim.on_trigger(move |_| { *t.lock().unwrap() = true; });
+        sim.on_trigger(move |_| {
+            *t.lock().unwrap() = true;
+        });
         let a = sim.create_aabb_body(Vec3::ZERO, Vec3::new(1.0, 1.0, 1.0));
         let _b = sim.create_aabb_body(Vec3::new(1.5, 0.0, 0.0), Vec3::new(1.0, 1.0, 1.0));
         sim.get_body_mut(a).unwrap().is_trigger = true;
@@ -596,7 +627,9 @@ mod tests {
         let mut sim = PhysicsSimulator::new();
         sim.set_gravity(Vec3::ZERO);
         let id = sim.create_sphere_body(Vec3::ZERO, 0.5);
-        sim.get_body_mut(id).unwrap().apply_force(Vec3::new(10.0, 0.0, 0.0));
+        sim.get_body_mut(id)
+            .unwrap()
+            .apply_force(Vec3::new(10.0, 0.0, 0.0));
         sim.step(1.0);
         let body = sim.get_body(id).unwrap();
         assert!(body.position.x > 0.0);
@@ -607,7 +640,9 @@ mod tests {
         let mut sim = PhysicsSimulator::new();
         sim.set_gravity(Vec3::ZERO);
         let id = sim.create_sphere_body(Vec3::ZERO, 0.5);
-        sim.get_body_mut(id).unwrap().apply_impulse(Vec3::new(5.0, 0.0, 0.0));
+        sim.get_body_mut(id)
+            .unwrap()
+            .apply_impulse(Vec3::new(5.0, 0.0, 0.0));
         let body = sim.get_body(id).unwrap();
         assert!(body.velocity.x > 0.0);
     }
@@ -617,7 +652,11 @@ mod tests {
         let mut sim = PhysicsSimulator::new();
         let mut body_a = PhysicsBody::new_aabb(BodyId(1), Vec3::ZERO, Vec3::new(0.5, 0.5, 0.5));
         body_a.layer = 1;
-        let mut body_b = PhysicsBody::new_aabb(BodyId(2), Vec3::new(5.0, 0.0, 0.0), Vec3::new(0.5, 0.5, 0.5));
+        let mut body_b = PhysicsBody::new_aabb(
+            BodyId(2),
+            Vec3::new(5.0, 0.0, 0.0),
+            Vec3::new(0.5, 0.5, 0.5),
+        );
         body_b.layer = 2;
         sim.add_body(body_a);
         sim.add_body(body_b);

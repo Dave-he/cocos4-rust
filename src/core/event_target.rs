@@ -31,7 +31,11 @@ impl<E: Clone + PartialEq + 'static> EventTarget<E> {
         self.on_with_priority(callback, 0)
     }
 
-    pub fn on_with_priority<F: Fn(&E) + Send + Sync + 'static>(&mut self, callback: F, priority: i32) -> EventKey {
+    pub fn on_with_priority<F: Fn(&E) + Send + Sync + 'static>(
+        &mut self,
+        callback: F,
+        priority: i32,
+    ) -> EventKey {
         let id = next_listener_id();
         self.listeners.push(Listener {
             id,
@@ -140,7 +144,9 @@ mod tests {
         let mut et: EventTarget<TestEvent> = EventTarget::new();
         let count = Arc::new(Mutex::new(0u32));
         let c = Arc::clone(&count);
-        et.on(move |_| { *c.lock().unwrap() += 1; });
+        et.on(move |_| {
+            *c.lock().unwrap() += 1;
+        });
         et.emit(&TestEvent::Click);
         assert_eq!(*count.lock().unwrap(), 1);
         et.emit(&TestEvent::Click);
@@ -152,7 +158,9 @@ mod tests {
         let mut et: EventTarget<TestEvent> = EventTarget::new();
         let count = Arc::new(Mutex::new(0u32));
         let c = Arc::clone(&count);
-        et.once(move |_| { *c.lock().unwrap() += 1; });
+        et.once(move |_| {
+            *c.lock().unwrap() += 1;
+        });
         et.emit(&TestEvent::Click);
         et.emit(&TestEvent::Click);
         assert_eq!(*count.lock().unwrap(), 1);
@@ -164,7 +172,9 @@ mod tests {
         let mut et: EventTarget<TestEvent> = EventTarget::new();
         let count = Arc::new(Mutex::new(0u32));
         let c = Arc::clone(&count);
-        let key = et.on(move |_| { *c.lock().unwrap() += 1; });
+        let key = et.on(move |_| {
+            *c.lock().unwrap() += 1;
+        });
         et.emit(&TestEvent::Click);
         et.off(key);
         et.emit(&TestEvent::Click);
@@ -186,13 +196,28 @@ mod tests {
         let order = Arc::new(Mutex::new(Vec::<i32>::new()));
 
         let o1 = Arc::clone(&order);
-        et.on_with_priority(move |_| { o1.lock().unwrap().push(1); }, 1);
+        et.on_with_priority(
+            move |_| {
+                o1.lock().unwrap().push(1);
+            },
+            1,
+        );
 
         let o2 = Arc::clone(&order);
-        et.on_with_priority(move |_| { o2.lock().unwrap().push(10); }, 10);
+        et.on_with_priority(
+            move |_| {
+                o2.lock().unwrap().push(10);
+            },
+            10,
+        );
 
         let o3 = Arc::clone(&order);
-        et.on_with_priority(move |_| { o3.lock().unwrap().push(5); }, 5);
+        et.on_with_priority(
+            move |_| {
+                o3.lock().unwrap().push(5);
+            },
+            5,
+        );
 
         et.emit(&TestEvent::Click);
         let o = order.lock().unwrap();
@@ -219,7 +244,9 @@ mod tests {
         let count = Arc::new(Mutex::new(0u32));
         for _ in 0..5 {
             let c = Arc::clone(&count);
-            et.on(move |_| { *c.lock().unwrap() += 1; });
+            et.on(move |_| {
+                *c.lock().unwrap() += 1;
+            });
         }
         et.emit(&TestEvent::Click);
         assert_eq!(*count.lock().unwrap(), 5);

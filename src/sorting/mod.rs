@@ -1,6 +1,6 @@
-pub mod sorting_layers;
 #[allow(clippy::module_inception)]
 pub mod sorting;
+pub mod sorting_layers;
 
-pub use sorting_layers::{SortingLayers, SortingLayerInfo};
 pub use sorting::Sorting;
+pub use sorting_layers::{SortingLayerInfo, SortingLayers};

@@ -3,8 +3,8 @@ Rust port of Cocos Creator Physics Rigid Body
 Original C++ version Copyright (c) 2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use crate::math::Vec3;
 use crate::core::scene_graph::NodeWeakPtr;
+use crate::math::Vec3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RigidBodyType {
@@ -311,11 +311,8 @@ mod tests {
 
     #[test]
     fn test_collision_contact() {
-        let contact = CollisionContact::new(
-            Vec3::new(1.0, 0.0, 0.0),
-            Vec3::new(0.0, 1.0, 0.0),
-            0.01,
-        );
+        let contact =
+            CollisionContact::new(Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), 0.01);
         assert_eq!(contact.point, Vec3::new(1.0, 0.0, 0.0));
         assert!((contact.separation - 0.01).abs() < 1e-6);
         assert_eq!(contact.impulse, Vec3::ZERO);

@@ -3,8 +3,8 @@ Rust port of Cocos Creator MorphModel
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use crate::base::RefCounted;
 use crate::_3d::baked_skinning::Mesh;
+use crate::base::RefCounted;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MorphTarget {

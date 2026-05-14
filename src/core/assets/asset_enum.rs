@@ -85,7 +85,10 @@ impl PixelFormat {
     pub fn bytes_per_pixel(&self) -> u32 {
         match self {
             PixelFormat::A8 | PixelFormat::I8 => 1,
-            PixelFormat::Ai8 | PixelFormat::Rgb565 | PixelFormat::Rgb5A1 | PixelFormat::Rgba4444 => 2,
+            PixelFormat::Ai8
+            | PixelFormat::Rgb565
+            | PixelFormat::Rgb5A1
+            | PixelFormat::Rgba4444 => 2,
             PixelFormat::Rgb888 => 3,
             PixelFormat::Rgba8888 => 4,
             PixelFormat::Rgb32F => 12,

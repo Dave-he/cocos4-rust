@@ -65,10 +65,13 @@ mod tests {
 
     #[test]
     fn test_query_pool_new() {
-        let pool = GfxQueryPool::new(1, QueryPoolInfo {
-            max_queries: 8,
-            ..Default::default()
-        });
+        let pool = GfxQueryPool::new(
+            1,
+            QueryPoolInfo {
+                max_queries: 8,
+                ..Default::default()
+            },
+        );
         assert_eq!(pool.id, 1);
         assert_eq!(pool.results.len(), 8);
         assert_eq!(pool.get_result(0), 0);
@@ -84,7 +87,13 @@ mod tests {
 
     #[test]
     fn test_query_pool_out_of_bounds() {
-        let pool = GfxQueryPool::new(1, QueryPoolInfo { max_queries: 2, ..Default::default() });
+        let pool = GfxQueryPool::new(
+            1,
+            QueryPoolInfo {
+                max_queries: 2,
+                ..Default::default()
+            },
+        );
         assert_eq!(pool.get_result(100), 0);
     }
 

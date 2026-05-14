@@ -19,7 +19,8 @@ impl TweenSystem {
                 t.update(dt);
             }
         }
-        self.tweens.retain(|t| t.get_state() != TweenState::Finished);
+        self.tweens
+            .retain(|t| t.get_state() != TweenState::Finished);
     }
 
     pub fn stop_all(&mut self) {
@@ -59,8 +60,8 @@ impl Default for TweenSystem {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tween::tween::tween;
     use crate::tween::easing::EasingMethod;
+    use crate::tween::tween::tween;
     use std::sync::{Arc, Mutex};
 
     #[test]
@@ -123,7 +124,9 @@ mod tests {
             let c = Arc::clone(&count);
             let t = tween()
                 .to_single(0.1, "x", 0.0, 1.0, EasingMethod::Linear)
-                .on_complete(move || { *c.lock().unwrap() += 1; })
+                .on_complete(move || {
+                    *c.lock().unwrap() += 1;
+                })
                 .start();
             sys.add(t);
         }

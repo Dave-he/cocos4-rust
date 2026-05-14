@@ -4,8 +4,8 @@ Original C++ version Copyright (c) 2019-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
 use super::{
-    BufferTextureCopy, Color, CommandBufferType, DispatchInfo, DrawInfo, DynamicStateFlags,
-    Filter, MarkerInfo, QueueType, Rect, StencilFace, TextureBlit, TextureCopy, Viewport,
+    BufferTextureCopy, Color, CommandBufferType, DispatchInfo, DrawInfo, DynamicStateFlags, Filter,
+    MarkerInfo, QueueType, Rect, StencilFace, TextureBlit, TextureCopy, Viewport,
 };
 
 #[derive(Debug, Clone)]
@@ -204,12 +204,7 @@ impl GfxCommandBuffer {
         assert_eq!(self.state, CommandBufferState::Recording);
     }
 
-    pub fn copy_texture(
-        &mut self,
-        _src_texture: u32,
-        _dst_texture: u32,
-        _regions: &[TextureCopy],
-    ) {
+    pub fn copy_texture(&mut self, _src_texture: u32, _dst_texture: u32, _regions: &[TextureCopy]) {
         assert_eq!(self.state, CommandBufferState::Recording);
     }
 
@@ -336,8 +331,16 @@ mod tests {
     fn test_command_buffer_draw() {
         let mut cmd = GfxCommandBuffer::new(1, CommandBufferInfo::default());
         cmd.begin();
-        cmd.draw(&DrawInfo { index_count: 6, instance_count: 1, ..Default::default() });
-        cmd.draw(&DrawInfo { index_count: 12, instance_count: 2, ..Default::default() });
+        cmd.draw(&DrawInfo {
+            index_count: 6,
+            instance_count: 1,
+            ..Default::default()
+        });
+        cmd.draw(&DrawInfo {
+            index_count: 12,
+            instance_count: 2,
+            ..Default::default()
+        });
         assert_eq!(cmd.num_draw_calls, 2);
         assert_eq!(cmd.num_instances, 3);
         assert_eq!(cmd.num_tris, 2 + 8);
@@ -347,7 +350,11 @@ mod tests {
     fn test_command_buffer_vertex_draw() {
         let mut cmd = GfxCommandBuffer::new(1, CommandBufferInfo::default());
         cmd.begin();
-        cmd.draw(&DrawInfo { vertex_count: 3, instance_count: 1, ..Default::default() });
+        cmd.draw(&DrawInfo {
+            vertex_count: 3,
+            instance_count: 1,
+            ..Default::default()
+        });
         assert_eq!(cmd.num_tris, 1);
     }
 
@@ -371,10 +378,13 @@ mod tests {
 
     #[test]
     fn test_command_buffer_type() {
-        let cmd = GfxCommandBuffer::new(1, CommandBufferInfo {
-            buffer_type: CommandBufferType::Secondary,
-            ..Default::default()
-        });
+        let cmd = GfxCommandBuffer::new(
+            1,
+            CommandBufferInfo {
+                buffer_type: CommandBufferType::Secondary,
+                ..Default::default()
+            },
+        );
         assert_eq!(cmd.get_type(), CommandBufferType::Secondary);
     }
 }

@@ -1,4 +1,4 @@
-use super::os_interface::{OSInterface, DefaultOSInterface};
+use super::os_interface::{DefaultOSInterface, OSInterface};
 
 /// Battery interface
 pub trait IBattery: OSInterface {
@@ -15,7 +15,10 @@ pub struct DefaultBattery {
 
 impl DefaultBattery {
     pub fn new(level: f32) -> Self {
-        DefaultBattery { level, _base: DefaultOSInterface }
+        DefaultBattery {
+            level,
+            _base: DefaultOSInterface,
+        }
     }
 }
 

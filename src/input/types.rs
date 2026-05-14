@@ -196,7 +196,10 @@ pub struct EventKeyboard {
 
 impl EventKeyboard {
     pub fn new(key_code: KeyCode, event_type: InputEventType) -> Self {
-        EventKeyboard { key_code, event_type }
+        EventKeyboard {
+            key_code,
+            event_type,
+        }
     }
 }
 
@@ -239,7 +242,10 @@ pub struct EventTouch {
 
 impl EventTouch {
     pub fn new(event_type: InputEventType) -> Self {
-        EventTouch { touches: Vec::new(), event_type }
+        EventTouch {
+            touches: Vec::new(),
+            event_type,
+        }
     }
 
     pub fn with_touch(mut self, touch: Touch) -> Self {

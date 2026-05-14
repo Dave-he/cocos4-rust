@@ -120,8 +120,14 @@ impl ParticleSystem2D {
         let angle_rad = self.rand_range(self.angle, self.angle_var).to_radians();
         let speed = self.rand_range(self.speed, self.speed_var).max(0.0);
         let life = self.rand_range(self.life, self.life_var).max(0.01);
-        let size = self.rand_range(self.start_size, self.start_size_var).max(0.0);
-        let end_size = if self.end_size < 0.0 { size } else { self.rand_range(self.end_size, self.end_size_var).max(0.0) };
+        let size = self
+            .rand_range(self.start_size, self.start_size_var)
+            .max(0.0);
+        let end_size = if self.end_size < 0.0 {
+            size
+        } else {
+            self.rand_range(self.end_size, self.end_size_var).max(0.0)
+        };
 
         let mut p = Particle2D::new();
         p.alive = true;
@@ -148,7 +154,9 @@ impl ParticleSystem2D {
     }
 
     pub fn update(&mut self, dt: f32) {
-        if !self.playing { return; }
+        if !self.playing {
+            return;
+        }
 
         self.elapsed += dt;
         if self.duration >= 0.0 && self.elapsed >= self.duration {
@@ -168,7 +176,9 @@ impl ParticleSystem2D {
         let source = self.source_pos;
         let mode = self.emitter_mode;
         for p in self.particles.iter_mut() {
-            if !p.alive { continue; }
+            if !p.alive {
+                continue;
+            }
             match mode {
                 EmitterMode2D::Gravity => p.update_gravity(gravity, dt),
                 EmitterMode2D::Radius => p.update_radial(source, dt),

@@ -40,8 +40,7 @@ impl ForwardFlow {
         self.base.destroy();
     }
 
-    pub fn render(&mut self, _camera_id: u64) {
-    }
+    pub fn render(&mut self, _camera_id: u64) {}
 }
 
 impl Default for ForwardFlow {
@@ -52,8 +51,8 @@ impl Default for ForwardFlow {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::super::render_flow::RenderFlowInfo;
+    use super::*;
 
     #[test]
     fn test_forward_flow_new() {

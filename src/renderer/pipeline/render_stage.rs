@@ -3,8 +3,8 @@ Rust port of Cocos Creator Render Stage
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use super::render_queue::RenderQueue;
 use super::defines::RenderPassStage;
+use super::render_queue::RenderQueue;
 
 #[derive(Debug)]
 pub struct RenderStageInfo {

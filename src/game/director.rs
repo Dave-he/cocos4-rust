@@ -1,7 +1,7 @@
-use std::sync::{Arc, Mutex};
 use crate::base::scheduler::Scheduler;
-use crate::core::scene_graph::{Scene, NodePtr};
+use crate::core::scene_graph::{NodePtr, Scene};
 use crate::tween::tween_system::TweenSystem;
+use std::sync::{Arc, Mutex};
 
 #[allow(clippy::only_used_in_recursion)]
 fn update_node_components(node: &NodePtr, dt: f32) {
@@ -46,7 +46,9 @@ struct DirectorListeners {
 
 impl DirectorListeners {
     fn new() -> Self {
-        Self { callbacks: Vec::new() }
+        Self {
+            callbacks: Vec::new(),
+        }
     }
 
     fn on(&mut self, event: DirectorEvent, cb: EventCallback) {

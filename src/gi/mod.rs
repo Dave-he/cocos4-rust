@@ -11,7 +11,10 @@ pub mod polynomial_solver;
 pub mod sh;
 
 pub use auto_placement::{AutoPlacement, PlaceMethod, PlacementInfo};
-pub use delaunay::{Vertex, Tetrahedron, CircumSphere, Delaunay};
-pub use light_probe::{LightProbesData, LightProbes, LightProbeInfo};
+pub use delaunay::{CircumSphere, Delaunay, Tetrahedron, Vertex};
+pub use light_probe::{LightProbeInfo, LightProbes, LightProbesData};
 pub use polynomial_solver::PolynomialSolver;
-pub use sh::{SH_BASIS_COUNT, evaluate_basis, evaluate, project, convolve_cosine, reduce_ringing, shader_evaluate, update_ubo_data, LightProbeSampler};
+pub use sh::{
+    convolve_cosine, evaluate, evaluate_basis, project, reduce_ringing, shader_evaluate,
+    update_ubo_data, LightProbeSampler, SH_BASIS_COUNT,
+};

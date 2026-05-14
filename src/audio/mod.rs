@@ -1,7 +1,7 @@
 /****************************************************************************
- Rust port of Cocos Creator Audio System
- Original C++ version Copyright (c) 2023 Xiamen Yaji Software Co., Ltd.
- ****************************************************************************/
+Rust port of Cocos Creator Audio System
+Original C++ version Copyright (c) 2023 Xiamen Yaji Software Co., Ltd.
+****************************************************************************/
 
 pub mod decoder;
 pub mod utils;
@@ -279,7 +279,9 @@ impl AudioManager {
         let id = self.alloc_id();
         let mut player = AudioPlayer::new(id);
         player.source.set_clip(clip);
-        player.source.set_volume(volume.unwrap_or(self.effect_volume));
+        player
+            .source
+            .set_volume(volume.unwrap_or(self.effect_volume));
         player.source.audio_type = AudioType::Effect;
         player.play();
         self.players.insert(id, player);
@@ -313,7 +315,8 @@ impl AudioManager {
     }
 
     pub fn stop_all_effects(&mut self) {
-        let ids: Vec<u32> = self.players
+        let ids: Vec<u32> = self
+            .players
             .values()
             .filter(|p| p.source.audio_type == AudioType::Effect)
             .map(|p| p.id)
@@ -356,7 +359,11 @@ impl AudioManager {
         self.music_volume = volume.clamp(0.0, 1.0);
         for player in self.players.values_mut() {
             if player.source.audio_type == AudioType::Music {
-                player.source.set_volume(if self.music_mute { 0.0 } else { self.music_volume });
+                player.source.set_volume(if self.music_mute {
+                    0.0
+                } else {
+                    self.music_volume
+                });
             }
         }
     }
@@ -369,7 +376,11 @@ impl AudioManager {
         self.effect_volume = volume.clamp(0.0, 1.0);
         for player in self.players.values_mut() {
             if player.source.audio_type == AudioType::Effect {
-                player.source.set_volume(if self.effect_mute { 0.0 } else { self.effect_volume });
+                player.source.set_volume(if self.effect_mute {
+                    0.0
+                } else {
+                    self.effect_volume
+                });
             }
         }
     }
@@ -416,9 +427,7 @@ impl AudioManager {
         let mut finished: Vec<u32> = Vec::new();
         for player in self.players.values_mut() {
             player.update(dt);
-            if player.source.get_state() == AudioState::Stopped
-                && !player.source.loop_audio
-            {
+            if player.source.get_state() == AudioState::Stopped && !player.source.loop_audio {
                 finished.push(player.id);
             }
         }

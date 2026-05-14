@@ -152,7 +152,11 @@ impl Color {
             return (0.0, 0.0, l);
         }
         let d = max - min;
-        let s = if l > 0.5 { d / (2.0 - max - min) } else { d / (max + min) };
+        let s = if l > 0.5 {
+            d / (2.0 - max - min)
+        } else {
+            d / (max + min)
+        };
         let h = if (max - r).abs() < 1e-6 {
             (g - b) / d + if g < b { 6.0 } else { 0.0 }
         } else if (max - g).abs() < 1e-6 {
@@ -168,15 +172,29 @@ impl Color {
             let v = (l * 255.0) as u8;
             return Color::new(v, v, v, a);
         }
-        let q = if l < 0.5 { l * (1.0 + s) } else { l + s - l * s };
+        let q = if l < 0.5 {
+            l * (1.0 + s)
+        } else {
+            l + s - l * s
+        };
         let p = 2.0 * l - q;
         let hue = h / 360.0;
         let hue_to_rgb = |mut t: f32| -> f32 {
-            if t < 0.0 { t += 1.0; }
-            if t > 1.0 { t -= 1.0; }
-            if t < 1.0 / 6.0 { return p + (q - p) * 6.0 * t; }
-            if t < 1.0 / 2.0 { return q; }
-            if t < 2.0 / 3.0 { return p + (q - p) * (2.0 / 3.0 - t) * 6.0; }
+            if t < 0.0 {
+                t += 1.0;
+            }
+            if t > 1.0 {
+                t -= 1.0;
+            }
+            if t < 1.0 / 6.0 {
+                return p + (q - p) * 6.0 * t;
+            }
+            if t < 1.0 / 2.0 {
+                return q;
+            }
+            if t < 2.0 / 3.0 {
+                return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
+            }
             p
         };
         Color::new(
@@ -301,7 +319,11 @@ impl Default for Color {
 
 impl std::fmt::Display for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Color(r:{}, g:{}, b:{}, a:{})", self.r, self.g, self.b, self.a)
+        write!(
+            f,
+            "Color(r:{}, g:{}, b:{}, a:{})",
+            self.r, self.g, self.b, self.a
+        )
     }
 }
 

@@ -1,9 +1,9 @@
-use std::sync::{Arc, Mutex};
-use crate::math::{Vec3, Quaternion};
 use crate::core::scene_graph::NodePtr;
+use crate::math::{Quaternion, Vec3};
 use crate::tween::easing::EasingMethod;
+use crate::tween::tween::{tween, Tween};
 use crate::tween::tween_system::TweenSystem;
-use crate::tween::tween::{Tween, tween};
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeTweenProp {
@@ -96,7 +96,10 @@ impl NodeTweenBuilder {
             match step {
                 NodeTweenStep::MoveTo(target, duration) => {
                     let n = Arc::clone(&node);
-                    let from = n.lock().map(|node| node.get_position()).unwrap_or(Vec3::ZERO);
+                    let from = n
+                        .lock()
+                        .map(|node| node.get_position())
+                        .unwrap_or(Vec3::ZERO);
                     let n2 = Arc::clone(&node);
                     let fx = from.x;
                     let fy = from.y;
@@ -112,7 +115,8 @@ impl NodeTweenBuilder {
                     });
                     let elapsed2 = Arc::clone(&elapsed);
                     let n3 = Arc::clone(&n2);
-                    t = t.to_single(duration, "__move__", 0.0, 1.0, easing)
+                    t = t
+                        .to_single(duration, "__move__", 0.0, 1.0, easing)
                         .call(move || {
                             let progress = {
                                 let e = elapsed2.lock().unwrap();
@@ -128,7 +132,10 @@ impl NodeTweenBuilder {
                 }
                 NodeTweenStep::MoveBy(delta, duration) => {
                     let n = Arc::clone(&node);
-                    let from = n.lock().map(|node| node.get_position()).unwrap_or(Vec3::ZERO);
+                    let from = n
+                        .lock()
+                        .map(|node| node.get_position())
+                        .unwrap_or(Vec3::ZERO);
                     let target = Vec3::new(from.x + delta.x, from.y + delta.y, from.z + delta.z);
                     let n2 = Arc::clone(&n);
                     let fx = from.x;
@@ -139,11 +146,10 @@ impl NodeTweenBuilder {
                     let tz = target.z;
                     let progress = Arc::new(Mutex::new(0.0f32));
                     let p = Arc::clone(&progress);
-                    t = t.to_single(duration, "__moveby__", 0.0, 1.0, easing)
+                    t = t
+                        .to_single(duration, "__moveby__", 0.0, 1.0, easing)
                         .call(move || {
-                            let prog = {
-                                *p.lock().unwrap()
-                            };
+                            let prog = { *p.lock().unwrap() };
                             let x = fx + (tx - fx) * prog;
                             let y = fy + (ty - fy) * prog;
                             let z = fz + (tz - fz) * prog;
@@ -158,7 +164,8 @@ impl NodeTweenBuilder {
                     let n2 = Arc::clone(&n);
                     let fs = from;
                     let ts = target;
-                    t = t.to_single(duration, "__scale__", 0.0, 1.0, easing)
+                    t = t
+                        .to_single(duration, "__scale__", 0.0, 1.0, easing)
                         .call(move || {
                             if let Ok(mut node) = n2.lock() {
                                 node.set_scale(ts);
@@ -171,7 +178,8 @@ impl NodeTweenBuilder {
                     let from = n.lock().map(|node| node.get_scale()).unwrap_or(Vec3::ONE);
                     let n2 = Arc::clone(&n);
                     let target = Vec3::new(from.x * factor, from.y * factor, from.z * factor);
-                    t = t.to_single(duration, "__scaleby__", 0.0, 1.0, easing)
+                    t = t
+                        .to_single(duration, "__scaleby__", 0.0, 1.0, easing)
                         .call(move || {
                             if let Ok(mut node) = n2.lock() {
                                 node.set_scale(target);
@@ -180,7 +188,8 @@ impl NodeTweenBuilder {
                 }
                 NodeTweenStep::RotateTo(target, duration) => {
                     let n = Arc::clone(&node);
-                    t = t.to_single(duration, "__rotate__", 0.0, 1.0, easing)
+                    t = t
+                        .to_single(duration, "__rotate__", 0.0, 1.0, easing)
                         .call(move || {
                             if let Ok(mut node) = n.lock() {
                                 node.set_rotation(target);
@@ -214,9 +223,9 @@ pub fn node_tween(node: NodePtr) -> NodeTweenBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::{Arc, Mutex};
     use crate::core::scene_graph::BaseNode;
     use crate::tween::tween_system::TweenSystem;
+    use std::sync::{Arc, Mutex};
 
     fn make_node(name: &str) -> NodePtr {
         Arc::new(Mutex::new(BaseNode::new(name)))
@@ -242,10 +251,7 @@ mod tests {
     #[test]
     fn test_delay_step() {
         let node = make_node("D");
-        let mut t = node_tween(Arc::clone(&node))
-            .delay(0.5)
-            .build()
-            .start();
+        let mut t = node_tween(Arc::clone(&node)).delay(0.5).build().start();
         t.update(0.3);
         assert_eq!(t.get_state(), crate::tween::tween::TweenState::Running);
         t.update(0.3);
@@ -258,7 +264,9 @@ mod tests {
         let called = Arc::new(Mutex::new(false));
         let c = Arc::clone(&called);
         let mut t = node_tween(Arc::clone(&node))
-            .call(move || { *c.lock().unwrap() = true; })
+            .call(move || {
+                *c.lock().unwrap() = true;
+            })
             .build()
             .start();
         t.update(0.0);
@@ -272,9 +280,13 @@ mod tests {
         let c1 = Arc::clone(&count);
         let c2 = Arc::clone(&count);
         let mut t = node_tween(Arc::clone(&node))
-            .call(move || { *c1.lock().unwrap() += 1; })
+            .call(move || {
+                *c1.lock().unwrap() += 1;
+            })
             .delay(0.01)
-            .call(move || { *c2.lock().unwrap() += 1; })
+            .call(move || {
+                *c2.lock().unwrap() += 1;
+            })
             .build()
             .start();
         t.update(1.0);
@@ -285,9 +297,7 @@ mod tests {
     fn test_start_adds_to_tween_system() {
         let node = make_node("Sys");
         let mut ts = TweenSystem::new();
-        node_tween(Arc::clone(&node))
-            .delay(10.0)
-            .start(&mut ts);
+        node_tween(Arc::clone(&node)).delay(10.0).start(&mut ts);
         assert_eq!(ts.count(), 1);
     }
 
@@ -314,9 +324,7 @@ mod tests {
     fn test_rotate_to_step() {
         let node = make_node("R");
         let rot = Quaternion::IDENTITY;
-        let t = node_tween(Arc::clone(&node))
-            .rotate_to(rot, 0.5)
-            .build();
+        let t = node_tween(Arc::clone(&node)).rotate_to(rot, 0.5).build();
         assert_eq!(t.get_state(), crate::tween::tween::TweenState::Idle);
     }
 }

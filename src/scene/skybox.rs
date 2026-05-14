@@ -143,10 +143,7 @@ impl Skybox {
             let c = self.rotation_angle.cos();
             let s = self.rotation_angle.sin();
             self.rotation_matrix = Mat4::new(
-                c,  0.0, -s, 0.0,
-                0.0, 1.0, 0.0, 0.0,
-                s,  0.0, c,  0.0,
-                0.0, 0.0, 0.0, 1.0,
+                c, 0.0, -s, 0.0, 0.0, 1.0, 0.0, 0.0, s, 0.0, c, 0.0, 0.0, 0.0, 0.0, 1.0,
             );
         } else {
             self.rotation_matrix = Mat4::IDENTITY;

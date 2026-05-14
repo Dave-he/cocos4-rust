@@ -12,8 +12,8 @@ pub mod reflection_probe;
 pub mod render_scene;
 pub mod render_window;
 pub mod shadow;
-pub mod skybox;
 pub mod skin;
+pub mod skybox;
 pub mod sub_model;
 
 pub use ambient::*;
@@ -30,6 +30,6 @@ pub use reflection_probe::*;
 pub use render_scene::*;
 pub use render_window::*;
 pub use shadow::*;
-pub use skybox::*;
 pub use skin::*;
+pub use skybox::*;
 pub use sub_model::*;

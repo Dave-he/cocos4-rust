@@ -3,12 +3,14 @@ Rust port of Cocos Creator PassNodeBuilder
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use crate::renderer::gfx_base::Viewport;
-use super::pass::{Handle, PassNode, PassBarrierPair, RenderTargetAttachment, RenderTargetAttachmentDesc};
 use super::blackboard::FrameGraphBlackboard;
+use super::pass::{
+    Handle, PassBarrierPair, PassNode, RenderTargetAttachment, RenderTargetAttachmentDesc,
+};
 use super::ResourceNode;
 use super::VirtualResource;
 use super::VirtualResourceKind;
+use crate::renderer::gfx_base::Viewport;
 
 pub struct PassNodeBuilder<'a> {
     pass_node: &'a mut PassNode,
@@ -34,7 +36,8 @@ impl<'a> PassNodeBuilder<'a> {
 
     pub fn create_texture(&mut self, name: &str) -> Handle {
         let res_id = self.virtual_resources.len() as u32;
-        self.virtual_resources.push(VirtualResource::new_texture(res_id, name, false));
+        self.virtual_resources
+            .push(VirtualResource::new_texture(res_id, name, false));
         let node_id = self.resource_nodes.len() as u32;
         self.resource_nodes.push(ResourceNode::new(node_id, name));
         Handle::new(node_id as u16)
@@ -42,7 +45,8 @@ impl<'a> PassNodeBuilder<'a> {
 
     pub fn create_buffer(&mut self, name: &str) -> Handle {
         let res_id = self.virtual_resources.len() as u32;
-        self.virtual_resources.push(VirtualResource::new_buffer(res_id, name, false));
+        self.virtual_resources
+            .push(VirtualResource::new_buffer(res_id, name, false));
         let node_id = self.resource_nodes.len() as u32;
         self.resource_nodes.push(ResourceNode::new(node_id, name));
         Handle::new(node_id as u16)
@@ -68,7 +72,14 @@ impl<'a> PassNodeBuilder<'a> {
         self.pass_node.write(handle)
     }
 
-    pub fn write_attachment(&mut self, handle: Handle, level: u8, face_id: u8, array_position: u8, desc: RenderTargetAttachmentDesc) {
+    pub fn write_attachment(
+        &mut self,
+        handle: Handle,
+        level: u8,
+        face_id: u8,
+        array_position: u8,
+        desc: RenderTargetAttachmentDesc,
+    ) {
         let attachment = RenderTargetAttachment {
             texture_handle: handle,
             desc,
@@ -139,7 +150,12 @@ mod tests {
         let mut resource_nodes = Vec::new();
         let mut virtual_resources = Vec::new();
         let mut blackboard = FrameGraphBlackboard::default_board();
-        let mut builder = PassNodeBuilder::new(&mut pass_node, &mut resource_nodes, &mut virtual_resources, &mut blackboard);
+        let mut builder = PassNodeBuilder::new(
+            &mut pass_node,
+            &mut resource_nodes,
+            &mut virtual_resources,
+            &mut blackboard,
+        );
         let h = builder.create_texture("color");
         assert!(h.is_valid());
         assert_eq!(resource_nodes.len(), 1);
@@ -152,7 +168,12 @@ mod tests {
         let mut resource_nodes = Vec::new();
         let mut virtual_resources = Vec::new();
         let mut blackboard = FrameGraphBlackboard::default_board();
-        let mut builder = PassNodeBuilder::new(&mut pass_node, &mut resource_nodes, &mut virtual_resources, &mut blackboard);
+        let mut builder = PassNodeBuilder::new(
+            &mut pass_node,
+            &mut resource_nodes,
+            &mut virtual_resources,
+            &mut blackboard,
+        );
         let h = builder.create_texture("depth");
         builder.read(h);
         builder.write(h);
@@ -166,7 +187,12 @@ mod tests {
         let mut resource_nodes = Vec::new();
         let mut virtual_resources = Vec::new();
         let mut blackboard = FrameGraphBlackboard::default_board();
-        let mut builder = PassNodeBuilder::new(&mut pass_node, &mut resource_nodes, &mut virtual_resources, &mut blackboard);
+        let mut builder = PassNodeBuilder::new(
+            &mut pass_node,
+            &mut resource_nodes,
+            &mut virtual_resources,
+            &mut blackboard,
+        );
         let h = builder.create_texture("output");
         builder.write_to_blackboard("output_color".to_string(), h);
         let read_h = builder.read_from_blackboard("output_color");
@@ -180,7 +206,12 @@ mod tests {
         let mut resource_nodes = Vec::new();
         let mut virtual_resources = Vec::new();
         let mut blackboard = FrameGraphBlackboard::default_board();
-        let mut builder = PassNodeBuilder::new(&mut pass_node, &mut resource_nodes, &mut virtual_resources, &mut blackboard);
+        let mut builder = PassNodeBuilder::new(
+            &mut pass_node,
+            &mut resource_nodes,
+            &mut virtual_resources,
+            &mut blackboard,
+        );
         builder.side_effect();
         assert!(pass_node.has_side_effect());
     }
@@ -191,7 +222,12 @@ mod tests {
         let mut resource_nodes = Vec::new();
         let mut virtual_resources = Vec::new();
         let mut blackboard = FrameGraphBlackboard::default_board();
-        let mut builder = PassNodeBuilder::new(&mut pass_node, &mut resource_nodes, &mut virtual_resources, &mut blackboard);
+        let mut builder = PassNodeBuilder::new(
+            &mut pass_node,
+            &mut resource_nodes,
+            &mut virtual_resources,
+            &mut blackboard,
+        );
         let h = builder.import_external("backbuffer", VirtualResourceKind::Texture);
         assert!(h.is_valid());
         assert_eq!(virtual_resources.len(), 1);

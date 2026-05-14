@@ -306,7 +306,11 @@ impl Scheduler {
     }
 
     pub fn unschedule_update(&mut self, priority: i32) {
-        if let Some(entry) = self.update_handlers.iter_mut().find(|h| h.priority == priority) {
+        if let Some(entry) = self
+            .update_handlers
+            .iter_mut()
+            .find(|h| h.priority == priority)
+        {
             if self.update_locked {
                 entry.marked_for_removal = true;
             } else {
@@ -359,14 +363,7 @@ mod tests {
         let mut scheduler = Scheduler::new();
         let key = "test".to_string();
 
-        scheduler.schedule(
-            Arc::new(|_| {}),
-            1.0,
-            5,
-            0.0,
-            false,
-            key.clone(),
-        );
+        scheduler.schedule(Arc::new(|_| {}), 1.0, 5, 0.0, false, key.clone());
         assert!(scheduler.is_scheduled(&key));
 
         scheduler.unschedule(&key);

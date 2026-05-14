@@ -65,7 +65,8 @@ impl GridLayout {
             self.constraint_count as usize
         } else {
             let usable_w = container.x - self.pad_left - self.pad_right;
-            let col = ((usable_w + self.spacing.x) / (self.cell_size.x + self.spacing.x)).floor() as usize;
+            let col = ((usable_w + self.spacing.x) / (self.cell_size.x + self.spacing.x)).floor()
+                as usize;
             col.max(1)
         };
         let _rows = count.div_ceil(cols);
@@ -93,14 +94,22 @@ impl GridLayout {
         if items.is_empty() {
             return Vec2::ZERO;
         }
-        let max_x = items.iter().map(|i| i.position.x + i.size.x).fold(0.0f32, f32::max);
-        let max_y = items.iter().map(|i| i.position.y + i.size.y).fold(0.0f32, f32::max);
+        let max_x = items
+            .iter()
+            .map(|i| i.position.x + i.size.x)
+            .fold(0.0f32, f32::max);
+        let max_y = items
+            .iter()
+            .map(|i| i.position.y + i.size.y)
+            .fold(0.0f32, f32::max);
         Vec2::new(max_x + self.pad_right, max_y + self.pad_bottom)
     }
 }
 
 impl Default for GridLayout {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -154,7 +163,10 @@ impl FlowLayout {
         for size in item_sizes {
             match self.axis {
                 FlowAxis::Horizontal => {
-                    if self.wrap == FlowWrap::Wrap && cursor_x + size.x > self.pad_left + available_w && cursor_x > self.pad_left {
+                    if self.wrap == FlowWrap::Wrap
+                        && cursor_x + size.x > self.pad_left + available_w
+                        && cursor_x > self.pad_left
+                    {
                         cursor_x = self.pad_left;
                         cursor_y += row_max_h + self.spacing.y;
                         row_max_h = 0.0;
@@ -164,7 +176,10 @@ impl FlowLayout {
                     row_max_h = row_max_h.max(size.y);
                 }
                 FlowAxis::Vertical => {
-                    if self.wrap == FlowWrap::Wrap && cursor_y + size.y > self.pad_top + available_h && cursor_y > self.pad_top {
+                    if self.wrap == FlowWrap::Wrap
+                        && cursor_y + size.y > self.pad_top + available_h
+                        && cursor_y > self.pad_top
+                    {
                         cursor_y = self.pad_top;
                         cursor_x += col_max_w + self.spacing.x;
                         col_max_w = 0.0;
@@ -180,14 +195,18 @@ impl FlowLayout {
 }
 
 impl Default for FlowLayout {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn v(x: f32, y: f32) -> Vec2 { Vec2::new(x, y) }
+    fn v(x: f32, y: f32) -> Vec2 {
+        Vec2::new(x, y)
+    }
 
     #[test]
     fn test_grid_layout_empty() {

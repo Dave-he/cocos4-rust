@@ -33,7 +33,12 @@ pub struct LayoutPadding {
 
 impl Default for LayoutPadding {
     fn default() -> Self {
-        LayoutPadding { top: 0.0, bottom: 0.0, left: 0.0, right: 0.0 }
+        LayoutPadding {
+            top: 0.0,
+            bottom: 0.0,
+            left: 0.0,
+            right: 0.0,
+        }
     }
 }
 
@@ -111,7 +116,8 @@ impl Layout {
     fn layout_grid(&self, count: usize) -> Vec<ChildLayout> {
         let mut result = Vec::new();
         let cols = ((self.content_size.x - self.padding.left - self.padding.right)
-            / (self.cell_size.x + self.spacing_x)).max(1.0) as usize;
+            / (self.cell_size.x + self.spacing_x))
+            .max(1.0) as usize;
         for i in 0..count {
             let col = i % cols;
             let row = i / cols;
@@ -128,14 +134,16 @@ impl Layout {
     pub fn get_container_size(&self, child_count: usize) -> Vec2 {
         match self.layout_type {
             LayoutType::Horizontal => Vec2::new(
-                self.padding.left + self.padding.right
+                self.padding.left
+                    + self.padding.right
                     + child_count as f32 * self.cell_size.x
                     + (child_count.saturating_sub(1)) as f32 * self.spacing_x,
                 self.padding.top + self.padding.bottom + self.cell_size.y,
             ),
             LayoutType::Vertical => Vec2::new(
                 self.padding.left + self.padding.right + self.cell_size.x,
-                self.padding.top + self.padding.bottom
+                self.padding.top
+                    + self.padding.bottom
                     + child_count as f32 * self.cell_size.y
                     + (child_count.saturating_sub(1)) as f32 * self.spacing_y,
             ),
@@ -203,7 +211,11 @@ mod tests {
     fn test_layout_padding() {
         let mut l = Layout::new();
         l.layout_type = LayoutType::Horizontal;
-        l.padding = LayoutPadding { left: 10.0, top: 5.0, ..Default::default() };
+        l.padding = LayoutPadding {
+            left: 10.0,
+            top: 5.0,
+            ..Default::default()
+        };
         l.cell_size = Vec2::new(30.0, 30.0);
         let result = l.update_layout(1);
         assert!((result[0].position.x - 10.0).abs() < 1e-4);

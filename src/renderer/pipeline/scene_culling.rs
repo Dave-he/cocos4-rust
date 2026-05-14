@@ -1,8 +1,10 @@
+use crate::core::geometry::{
+    aabb_plane, sphere_plane, Frustum, PlaneIntersectResult, Sphere, AABB,
+};
+use crate::math::Vec3;
+use crate::scene::lights::{PointLight, SphereLight, SpotLight};
 use crate::scene::Camera;
 use crate::scene::Model;
-use crate::scene::lights::{SpotLight, PointLight, SphereLight};
-use crate::core::geometry::{Frustum, Sphere, AABB, aabb_plane, sphere_plane, PlaneIntersectResult};
-use crate::math::Vec3;
 
 #[derive(Debug, Default)]
 pub struct SceneCulling {
@@ -145,8 +147,8 @@ impl SceneCulling {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::scene::Model;
     use crate::core::geometry::AABB;
+    use crate::scene::Model;
 
     fn make_camera() -> Camera {
         let mut cam = Camera::new();

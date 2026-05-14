@@ -56,7 +56,10 @@ mod tests {
 
     #[test]
     fn test_access_flags() {
-        assert_ne!(AccessFlagBit::None as u32, AccessFlagBit::IndexBuffer as u32);
+        assert_ne!(
+            AccessFlagBit::None as u32,
+            AccessFlagBit::IndexBuffer as u32
+        );
         assert_eq!(AccessFlagBit::None as u32, 0);
     }
 }

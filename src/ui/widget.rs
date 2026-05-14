@@ -75,7 +75,10 @@ impl Widget {
             x = self.left;
         } else if self.align_flags.contains(WidgetAlignFlag::RIGHT) {
             x = parent_size.x - node_size.x - self.right;
-        } else if self.align_flags.contains(WidgetAlignFlag::HORIZONTAL_CENTER) {
+        } else if self
+            .align_flags
+            .contains(WidgetAlignFlag::HORIZONTAL_CENTER)
+        {
             x = (parent_size.x - node_size.x) / 2.0 + self.horizontal_center;
         }
 
@@ -97,8 +100,16 @@ impl Widget {
             && self.align_flags.contains(WidgetAlignFlag::BOTTOM);
 
         if stretch_h || stretch_v {
-            let w = if stretch_h { parent_size.x - self.left - self.right } else { 0.0 };
-            let h = if stretch_v { parent_size.y - self.top - self.bottom } else { 0.0 };
+            let w = if stretch_h {
+                parent_size.x - self.left - self.right
+            } else {
+                0.0
+            };
+            let h = if stretch_v {
+                parent_size.y - self.top - self.bottom
+            } else {
+                0.0
+            };
             Some(Vec2::new(w, h))
         } else {
             None
