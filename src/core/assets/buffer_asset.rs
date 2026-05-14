@@ -7,6 +7,7 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 use super::asset::AssetBase;
 
 #[derive(Debug)]
+#[allow(clippy::derivable_impls)]
 pub struct BufferAsset {
     pub base: AssetBase,
     buffer: Option<Vec<u8>>,
@@ -34,6 +35,7 @@ impl BufferAsset {
 }
 
 impl Default for BufferAsset {
+    #[allow(clippy::derivable_impls)]
     fn default() -> Self {
         BufferAsset {
             base: AssetBase::default(),

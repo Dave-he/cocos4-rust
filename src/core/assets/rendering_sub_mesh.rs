@@ -44,15 +44,13 @@ impl RenderingSubMesh {
 
     pub fn set_draw_info(
         &mut self,
-        first_vertex: u32,
-        vertex_count: u32,
-        first_index: u32,
-        index_count: u32,
+        _first_vertex: u32,
+        _vertex_count: u32,
+        _first_index: u32,
+        _index_count: u32,
     ) {
         if let Some(info) = self.geometric_info.as_mut() {
-            if let Some(indices) = &mut info.indices {
-                // Update draw range info
-            }
+            if let Some(_indices) = &mut info.indices {}
         }
     }
 }

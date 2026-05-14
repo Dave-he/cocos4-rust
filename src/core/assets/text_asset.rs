@@ -26,6 +26,7 @@ impl TextAsset {
 }
 
 impl Default for TextAsset {
+    #[allow(clippy::derivable_impls)]
     fn default() -> Self {
         TextAsset {
             base: AssetBase::default(),

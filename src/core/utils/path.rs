@@ -42,10 +42,11 @@ pub fn basename(path: &str, ext_name: &str) -> String {
         Some(i) => cleaned[i + 1..].to_string(),
         None => cleaned,
     };
-    if !ext_name.is_empty() && ext_name.len() < base.len() {
-        if base[base.len() - ext_name.len()..].eq_ignore_ascii_case(ext_name) {
-            return base[..base.len() - ext_name.len()].to_string();
-        }
+    if !ext_name.is_empty()
+        && ext_name.len() < base.len()
+        && base[base.len() - ext_name.len()..].eq_ignore_ascii_case(ext_name)
+    {
+        return base[..base.len() - ext_name.len()].to_string();
     }
     base
 }

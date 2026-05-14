@@ -25,6 +25,7 @@ pub struct Uri {
 }
 
 impl Default for Uri {
+    #[allow(clippy::derivable_impls)]
     fn default() -> Self {
         Uri {
             valid: false,

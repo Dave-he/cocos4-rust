@@ -50,6 +50,7 @@ impl LightProbesData {
     pub fn update_probes(&mut self, points: &[Vec3]) {
         self.probes
             .resize_with(points.len(), || Vertex::new(Vec3::ZERO));
+        #[allow(clippy::needless_range_loop)]
         for i in 0..points.len() {
             self.probes[i].position = points[i];
         }

@@ -114,19 +114,19 @@ impl WebSocket {
     pub fn init(
         &mut self,
         url: &str,
-        protocols: Option<&[String]>,
-        ca_file_path: Option<&str>,
+        _protocols: Option<&[String]>,
+        _ca_file_path: Option<&str>,
     ) -> bool {
         self.url = url.to_string();
         *self.state.lock().unwrap() = WebSocketState::Connecting;
         true
     }
 
-    pub fn send_text(&self, message: &str) {
+    pub fn send_text(&self, _message: &str) {
         // Placeholder - requires async WebSocket library
     }
 
-    pub fn send_binary(&self, data: &[u8]) {
+    pub fn send_binary(&self, _data: &[u8]) {
         // Placeholder - requires async WebSocket library
     }
 
@@ -138,7 +138,7 @@ impl WebSocket {
         *self.state.lock().unwrap() = WebSocketState::Closing;
     }
 
-    pub fn close_async_with_code(&self, code: i32, reason: &str) {
+    pub fn close_async_with_code(&self, _code: i32, _reason: &str) {
         *self.state.lock().unwrap() = WebSocketState::Closing;
     }
 
@@ -253,8 +253,11 @@ impl Default for DownloadTask {
 
 #[derive(Debug, Clone)]
 pub struct DownloaderHints {
+    #[allow(dead_code)]
     count_of_max_processing_tasks: u32,
+    #[allow(dead_code)]
     timeout_in_seconds: u32,
+    #[allow(dead_code)]
     temp_file_name_suffix: String,
 }
 
@@ -345,6 +348,7 @@ impl Downloader {
 
 #[derive(Debug, Clone)]
 pub struct SIOClient {
+    #[allow(dead_code)]
     url: String,
     tag: String,
     instance_id: u32,

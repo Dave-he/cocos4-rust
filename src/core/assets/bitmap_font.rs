@@ -29,6 +29,7 @@ pub struct BitmapFontData {
 }
 
 #[derive(Debug)]
+#[allow(clippy::derivable_impls)]
 pub struct BitmapFont {
     pub base: AssetBase,
     pub font_data: BitmapFontData,
@@ -57,6 +58,7 @@ impl BitmapFont {
 }
 
 impl Default for BitmapFont {
+    #[allow(clippy::derivable_impls)]
     fn default() -> Self {
         BitmapFont {
             base: AssetBase::default(),

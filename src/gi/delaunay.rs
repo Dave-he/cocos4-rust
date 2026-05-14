@@ -45,6 +45,7 @@ impl Edge {
         }
     }
 
+    #[allow(dead_code)]
     fn set(&mut self, tet: i32, i: i32, v0: i32, v1: i32) {
         self.tetrahedron = tet;
         self.index = i;
@@ -334,6 +335,7 @@ impl Delaunay {
         center
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn add_triangle(&mut self, index: usize, tet: i32, i: i32, v0: i32, v1: i32, v2: i32, v3: i32) {
         if index < self.triangles.len() {
             self.triangles[index].set(tet, i, v0, v1, v2, v3);
@@ -494,7 +496,11 @@ impl Delaunay {
 
         for info in &outer_face_data {
             for idx in &info.normal_probe_indices {
-                self.probes[*idx as usize].normal = self.probes[*idx as usize].normal + info.normal;
+                #[allow(clippy::assign_op_pattern)]
+                {
+                    self.probes[*idx as usize].normal =
+                        self.probes[*idx as usize].normal + info.normal;
+                }
             }
             let v0 = info.vertex0;
             let v1 = if info.negative > 0.0 {

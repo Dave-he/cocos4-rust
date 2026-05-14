@@ -42,6 +42,7 @@ pub fn project(samples: &[Vec3], values: &[Vec3]) -> Vec<Vec3> {
     let weight = 4.0 * PI / samples.len() as f32;
     let mut coefficients = vec![Vec3::new(0.0, 0.0, 0.0); SH_BASIS_COUNT];
     for (sample, value) in samples.iter().zip(values.iter()) {
+        #[allow(clippy::needless_range_loop)]
         for i in 0..SH_BASIS_COUNT {
             let basis = evaluate_basis(i, sample);
             coefficients[i].x += value.x * basis * weight;
@@ -74,6 +75,7 @@ pub fn reduce_ringing(coefficients: &mut [Vec3], lambda: f32) {
         l0_factor, l1_factor, l1_factor, l1_factor, l2_factor, l2_factor, l2_factor, l2_factor,
         l2_factor,
     ];
+    #[allow(clippy::assign_op_pattern)]
     for i in 0..SH_BASIS_COUNT {
         coefficients[i] = coefficients[i] * scales[i];
     }
@@ -84,6 +86,7 @@ pub fn shader_evaluate(normal: &Vec3, coefficients: &[Vec3]) -> Vec3 {
 }
 
 pub fn update_ubo_data(data: &mut [f32], offset: usize, coefficients: &[Vec3]) {
+    #[allow(clippy::needless_range_loop)]
     for i in 0..SH_BASIS_COUNT.min(coefficients.len()) {
         let idx = offset + i * 3;
         if idx + 2 < data.len() {
@@ -106,7 +109,8 @@ impl LightProbeSampler {
 
     pub fn uniform_sample_sphere_all(sample_count: u32) -> Vec<Vec3> {
         let mut samples = Vec::with_capacity(sample_count as usize);
-        let golden_ratio = 0.618033988749895;
+        #[allow(clippy::excessive_precision)]
+        let golden_ratio = 0.618033988749895_f32;
         for i in 0..sample_count {
             let u1 = (i as f32 + 0.5) / sample_count as f32;
             let u2 = ((i as f32 + 0.5) * golden_ratio) % 1.0;

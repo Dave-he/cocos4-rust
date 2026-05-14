@@ -322,6 +322,7 @@ impl ResourceEntry {
 pub struct ResourcePoolEntry {
     resource_id: u32,
     age: i64,
+    #[allow(dead_code)]
     descriptor_hash: u64,
 }
 

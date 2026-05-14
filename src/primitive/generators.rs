@@ -3,9 +3,8 @@ Rust port of Cocos Creator Primitive Geometry Generators
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use super::define::{CustomAttribute, IGeometry, IGeometryOptions};
+use super::define::{IGeometry, IGeometryOptions};
 use crate::math::Vec3;
-use crate::renderer::gfx_base::shader::Attribute;
 use crate::renderer::gfx_base::PrimitiveMode;
 
 const PI: f32 = std::f32::consts::PI;
@@ -167,8 +166,8 @@ fn generate_plane(
     half_h: f32,
     depth: f32,
     normal: Vec3,
-    azimuth: f32,
-    polar: f32,
+    _azimuth: f32,
+    _polar: f32,
 ) {
     for iy in 0..=seg_h {
         for ix in 0..=seg_w {

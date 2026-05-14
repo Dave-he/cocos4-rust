@@ -225,16 +225,24 @@ impl RefCounted for HttpResponse {
 
 #[derive(Debug)]
 pub struct CookiesInfo {
+    #[allow(dead_code)]
     domain: String,
+    #[allow(dead_code)]
     tail_match: bool,
+    #[allow(dead_code)]
     path: String,
+    #[allow(dead_code)]
     secure: bool,
+    #[allow(dead_code)]
     name: String,
+    #[allow(dead_code)]
     value: String,
+    #[allow(dead_code)]
     expires: String,
 }
 
 impl Default for CookiesInfo {
+    #[allow(clippy::derivable_impls)]
     fn default() -> CookiesInfo {
         CookiesInfo {
             domain: String::new(),

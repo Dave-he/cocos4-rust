@@ -104,6 +104,7 @@ impl LogicPass {
 }
 
 pub struct Subpass {
+    #[allow(dead_code)]
     desc: u32,
     logic_passes: Vec<LogicPass>,
     barrier_id: u32,
@@ -162,6 +163,7 @@ impl Attachment {
 pub struct DevicePass {
     subpasses: Vec<Subpass>,
     attachments: Vec<Attachment>,
+    #[allow(dead_code)]
     used_render_target_slot_mask: u16,
     resource_table: DevicePassResourceTable,
     viewport: Viewport,
