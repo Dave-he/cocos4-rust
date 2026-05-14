@@ -42,7 +42,7 @@ impl RenderTexture {
     pub fn initialize(&mut self, info: &IRenderTextureCreateInfo) {
         self.width = info.width;
         self.height = info.height;
-        if let Some(name) = &info.name {
+        if info.name.is_some() {
             self.format = PixelFormat::Rgba8888;
         }
     }

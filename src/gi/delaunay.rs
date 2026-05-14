@@ -4,6 +4,8 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 // SPDX-License-Identifier: MIT
 
+#![allow(dead_code)]
+
 use crate::math::{Mat3, Vec3};
 use crate::gi::sh::SH_BASIS_COUNT;
 

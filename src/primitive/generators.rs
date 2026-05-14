@@ -5,8 +5,7 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 
 use crate::math::Vec3;
 use crate::renderer::gfx_base::PrimitiveMode;
-use crate::renderer::gfx_base::shader::Attribute;
-use super::define::{IGeometry, IGeometryOptions, CustomAttribute};
+use super::define::{IGeometry, IGeometryOptions};
 
 const PI: f32 = std::f32::consts::PI;
 const PI_2: f32 = 2.0 * PI;
@@ -108,7 +107,7 @@ fn generate_plane(
     indices: &mut Vec<u32>,
     offset: u32, seg_w: u32, seg_h: u32,
     half_w: f32, half_h: f32, depth: f32,
-    normal: Vec3, azimuth: f32, polar: f32,
+    normal: Vec3, _azimuth: f32, _polar: f32,
 ) {
     for iy in 0..=seg_h {
         for ix in 0..=seg_w {

@@ -3,6 +3,8 @@ Rust port of Cocos Creator HttpRequest / HttpResponse / HttpClient
 Original C++ version Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
+#![allow(dead_code)]
+
 use std::sync::{Arc, Mutex};
 use crate::base::{RefCounted, RefCountedImpl};
 
