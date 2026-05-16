@@ -3,6 +3,8 @@ Rust port of Cocos Creator WebSocket / Downloader / SocketIO
 Original C++ version Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
+#![allow(dead_code)]
+
 use crate::base::{RefCounted, RefCountedImpl};
 use std::sync::{Arc, Mutex};
 
@@ -111,12 +113,7 @@ impl WebSocket {
         }
     }
 
-    pub fn init(
-        &mut self,
-        url: &str,
-        _protocols: Option<&[String]>,
-        _ca_file_path: Option<&str>,
-    ) -> bool {
+pub fn init(&mut self, url: &str, _protocols: Option<&[String]>, _ca_file_path: Option<&str>) -> bool {
         self.url = url.to_string();
         *self.state.lock().unwrap() = WebSocketState::Connecting;
         true

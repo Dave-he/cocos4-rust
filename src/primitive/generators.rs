@@ -159,7 +159,7 @@ fn generate_plane(
     normals: &mut Vec<f32>,
     uvs: &mut Vec<f32>,
     indices: &mut Vec<u32>,
-    offset: u32,
+offset: u32,
     seg_w: u32,
     seg_h: u32,
     half_w: f32,

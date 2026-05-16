@@ -2,6 +2,9 @@
 Rust port of Cocos Creator DevicePass + DevicePassResourceTable
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
+// SPDX-License-Identifier: MIT
+
+#![allow(dead_code)]
 
 use super::callback_pass::Executable;
 use super::pass::Handle;

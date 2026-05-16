@@ -2,6 +2,9 @@
 Rust port of Cocos Creator Resource / ResourceEntry / ResourceAllocator
 Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
+// SPDX-License-Identifier: MIT
+
+#![allow(dead_code)]
 
 use super::VirtualResourceKind;
 use std::collections::HashMap;
