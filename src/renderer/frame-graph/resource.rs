@@ -475,7 +475,7 @@ mod tests {
 
     #[test]
     fn test_resource_entry_imported() {
-        let mut entry = ResourceEntry::new_imported(VirtualResourceKind::Texture, 100, 0);
+        let entry = ResourceEntry::new_imported(VirtualResourceKind::Texture, 100, 0);
         assert!(entry.is_imported());
         assert_eq!(entry.get_device_object_id(), Some(100));
     }

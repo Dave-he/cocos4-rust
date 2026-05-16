@@ -1,3 +1,7 @@
+pub mod disk_storage;
+
+pub use disk_storage::*;
+
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 

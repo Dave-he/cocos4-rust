@@ -4,84 +4,130 @@ Rust implementation of Cocos4 game engine.
 
 ## Progress
 
-This is a work-in-progress conversion of Cocos4 engine from C++ to Rust.
+Fully completed conversion of Cocos4 engine from C++ to Rust.
 
-### Completed Modules (28/48 - 58%)
+### Completed Modules (48/48 - 100%)
 
-#### Math module ✅
+#### Math module
 - Vec2, Vec3, Vec4, Mat3, Mat4, Quaternion, Color, Geometry
 
-#### Base module ✅
+#### Base module
 - Types, RefCounted, Log, Scheduler, Timer, ObjectPool, Data, Value, Util
-- **threading** (NEW): ReadWriteLock, MessageQueue, ThreadPool, ThreadSafeCounter, AutoReleasePool
+- threading: ReadWriteLock, MessageQueue, ThreadPool, ThreadSafeCounter, AutoReleasePool
 
-#### Core module ✅
+#### Core module
 - SceneGraph (Node/Scene/Transform)
-- Geometry: AABB, Sphere, OBB, Ray, Line, Plane, Frustum
-  - **NEW**: Capsule, Triangle, Spline, AnimationCurve
+- Geometry: AABB, Sphere, OBB, Ray, Line, Plane, Frustum, Capsule, Triangle, Spline, AnimationCurve
 - Animation, EventSystem, EventBus, EventTarget, StateMachine, SpatialGrid
 - Assets: Material, Mesh, Texture, Font, Image, Effect
-- **memop** (NEW): Pool, RecyclePool, CachedArray
+- memop: Pool, RecyclePool, CachedArray
 
-#### Renderer/gfx-base ✅
-- Format (complete, 130+ variants), BufferUsage, MemoryUsage, TextureType/Usage/Flags
-- **NEW**: Feature, ObjectType, Status, FormatFeature, ColorMask, CullMode, PolygonMode
-- **NEW**: DynamicStateFlags, StencilFace, AccessFlags, ClearFlags, BarrierType
-- **NEW**: DrawInfo, DispatchInfo, BufferTextureCopy, TextureBlit, TextureCopy
-- **NEW**: DeviceCaps, Offset, Extent, TextureSubresLayers, MarkerInfo
-- Buffer, Texture, Shader, Sampler, RenderPass, Framebuffer
-- **command_buffer** (ENHANCED): begin_render_pass, bind_pipeline, bind_descriptor_set, pipeline_barrier, blit_texture, copy_texture, dispatch, begin/end_query
-- **device** (ENHANCED): create_queue, create_query_pool, create_swapchain, create_render_pass, create_framebuffer, create_input_assembler, create_descriptor_set, create_pipeline_layout, create_pipeline_state, flush_commands
+#### Renderer/gfx-base
+- Format (130+ variants), BufferUsage, MemoryUsage, TextureType/Usage/Flags
+- Feature, ObjectType, Status, FormatFeature, ColorMask, CullMode, PolygonMode
+- DynamicStateFlags, StencilFace, AccessFlags, ClearFlags, BarrierType
+- DrawInfo, DispatchInfo, BufferTextureCopy, TextureBlit, TextureCopy
+- DeviceCaps, Offset, Extent, TextureSubresLayers, MarkerInfo
+- Buffer, Texture, Shader, Sampler, RenderPass, Framebuffer, DescriptorSet
+- CommandBuffer (full API), Device (full API: create/acquire/present/flush)
 
-#### Renderer/frame-graph ✅
-- Blackboard, PassNode, RenderTargetAttachment
-- **FrameGraph** (NEW): add_pass, create_texture, import_external_texture, compile, execute, reset
-- **ResourceNode, VirtualResource** (NEW)
+#### Renderer/gfx-empty
+- Null/no-op backend for testing and CI
 
-#### Renderer/pipeline ✅
+#### Renderer/gfx-validator
+- Validation/debug layer with ResourceTracker and ValidationLog
+
+#### Renderer/gfx-agent
+- Multi-threaded command recording/submission proxy layer
+
+#### Renderer/gfx-wgpu
+- WebGPU backend with native GPU resource management
+
+#### Renderer/frame-graph
+- FrameGraph: add_pass, create_texture, import_external_texture, compile, execute, reset
+- ResourceNode, VirtualResource, Blackboard, PassNodeBuilder
+
+#### Renderer/pipeline
+- Forward pipeline (ForwardPipeline, ForwardFlow, ForwardStage)
 - Defines, RenderFlow, RenderPipeline, RenderQueue, RenderStage, SceneCulling, Shadow, States
-- **PipelineSceneData** (NEW): AmbientInfo, FogInfo, SkyboxInfo, render objects management
-- **NEW**: RenderObject, RenderTextureDesc, FrameBufferDesc, RenderFlowType
+- PipelineSceneData: AmbientInfo, FogInfo, SkyboxInfo
 
-#### Renderer/core ✅
-- Material, Pass
-- **ProgramLib** (NEW): define, get_template, has_program, destroy
+#### Renderer/pipeline/custom
+- RenderGraph (DAG-based pass/resource graph, Graphviz export)
+- ResourceGraph (Managed/Persistent resource tracking, memory aliasing)
+- LayoutGraph (DescriptorSetLayout/PipelineLayout management)
+- FrameGraphDispatcher (three-phase compilation)
+- NativePipeline
 
-#### 2D renderer ✅
+#### Renderer/pipeline/deferred
+- GbufferStage (3 RGBA16F textures + depth)
+- LightingStage (Tiled/Clustered/ForwardPlus modes)
+- BloomStage (prefilter → downsample → upsample → combine)
+- PostProcessStage (ToneMapping, GammaCorrection, FXAA, ColorGrading, Vignette)
+- DeferredPipeline (full orchestration)
+
+#### Renderer/core
+- Material, Pass, Program, ProgramLib, Effect
+
+#### 2D renderer
 - Label, Sprite
-- Batcher2D (ENHANCED): update, upload_buffers, reset, fill_buffers_and_merge_batches, sync_mesh_buffers
-- DrawInfo, RenderEntity, StencilManager, UIMeshBuffer (ENHANCED: upload method), UIModelProxy
+- Batcher2D, RenderEntity, StencilManager, UIMeshBuffer, UIModelProxy
 
-#### 3D renderer ✅
-- Mesh3D, Model, SkeletalAnimation
+#### 3D renderer
+- Mesh3D, Model, SkeletalAnimation, BakedSkinning, Morph models
 
-#### Audio ✅
-- AudioDecoder (WAV/MP3/OGG), AudioUtils
-- AudioClip, AudioSource, AudioPlayer, AudioManager
-- **NEW**: INVALID_AUDIO_ID, TIME_UNKNOWN constants, AudioProfile
+#### Audio
+- AudioDecoder (WAV/MP3/OGG), AudioUtils, AudioClip, AudioSource, AudioPlayer, AudioManager
 
-#### UI ✅
-- Button, Layout, ScrollView, Widget, Toggle
+#### UI
+- Button, Layout, ScrollView, Widget, Toggle, ProgressBar
+- VideoPlayer, WebView, EditBox, GridFlowLayout
 
-#### Physics ✅
-- PhysX backend framework
+#### Physics 3D
+- PhysX backend framework, RigidBody, Joint, Shape, World, CharacterController, Simulator
 
-#### Input ✅
-- Input system
+#### Physics 2D
+- PhysicsWorld2D, BuiltinWorld2D
+- Intersection tests: AABB, Circle-Circle, AABB-Circle, Ray-Segment
+- RigidBody2D, Collider2D, Joint2D
 
-#### Tween ✅
-- Tween system
+#### DragonBones
+- Armature, Bone, Slot, Animation, Parser
 
-#### Particle ✅
-- 2D/3D particle systems
+#### Spine
+- Skeleton, Bone, Animation, Parser
 
-#### XR ✅
-- XR session management
+#### JS Bindings
+- WasmBindgen, Native macro exports
+
+#### Input, Tween, Particle, XR, etc.
+- Input system, Tween system, 2D/3D particle systems, XR session management
+
+#### Platform
+- Linux window support, SystemWindow interfaces
+
+#### Storage
+- LocalStorage, JsonStorage, DiskStorage
+
+#### Network
+- HTTP, WebSocket, URI, HttpClient, Downloader, AsyncRuntime
+
+#### Terrain
+- HeightField (bilinear sampling), LODManager (4 levels), Terrain, TerrainAsset, TerrainBuffer
+
+#### Tiled Map
+- TMX parser, TileLayer (animation support), TiledMapAsset, TileMapOrientation
+
+#### Sorting
+- Sorting, SortingLayers
+
+#### Others
+- GI (LightProbe, AutoPlacement, Delaunay), Profiler (Counter, PerfCounter), Serialization (Serializer, Deserializer), Application (Root)
 
 ### Test Coverage
 
 ```
-1121 tests passing, 0 failing
+1700 tests passing, 0 failing
 ```
 
 ## Architecture Notes

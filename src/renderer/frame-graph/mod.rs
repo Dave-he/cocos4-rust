@@ -631,7 +631,7 @@ mod tests {
     fn test_frame_graph_culling() {
         let mut fg = FrameGraph::new();
         let color = fg.create_texture("color");
-        let unused = fg.create_texture("unused");
+        let _unused = fg.create_texture("unused");
         fg.add_pass(0, "ForwardPass", |node| {
             node.write(color);
         });

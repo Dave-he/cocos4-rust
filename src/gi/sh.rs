@@ -162,7 +162,7 @@ mod tests {
     #[test]
     fn test_project_and_evaluate() {
         let samples = LightProbeSampler::uniform_sample_sphere_all(64);
-        let values: Vec<Vec3> = samples.iter().map(|s| Vec3::new(1.0, 1.0, 1.0)).collect();
+        let values: Vec<Vec3> = samples.iter().map(|_s| Vec3::new(1.0, 1.0, 1.0)).collect();
         let coeffs = project(&samples, &values);
         let result = evaluate(&Vec3::new(0.0, 0.0, 1.0), &coeffs);
         assert!(result.x > 0.0);

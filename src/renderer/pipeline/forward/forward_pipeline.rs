@@ -5,6 +5,10 @@ Original C++ version Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
 // SPDX-License-Identifier: MIT
 
 use super::super::render_pipeline::{RenderPipeline, RenderPipelineInfo};
+use super::forward_flow::ForwardFlow;
+use super::forward_stage::ForwardStage;
+use crate::renderer::gfx_base::CommandBufferInfo;
+use crate::renderer::gfx_empty::EmptyCommandBuffer;
 
 #[derive(Debug)]
 pub struct ForwardPipeline {
@@ -42,12 +46,51 @@ impl ForwardPipeline {
     }
 
     pub fn activate(&mut self) -> bool {
+        if self.base.flows.is_empty() {
+            let mut flow = ForwardFlow::new();
+            let mut stage = ForwardStage::new();
+            stage.activate();
+            flow.base.add_stage(stage.base);
+            self.base.add_flow(flow.base);
+        }
         self.base.activate();
         true
     }
 
     pub fn render(&mut self, cameras: &[u64]) {
-        for _camera_id in cameras {}
+let mut command_buffer = EmptyCommandBuffer::new(CommandBufferInfo::default());
+        command_buffer.begin();
+
+        let flow_count = self.base.flows.len();
+        let mut stage_count = 0usize;
+        let mut queue_count = 0usize;
+
+        for camera_id in cameras {
+            for flow in &mut self.base.flows {
+                if !flow.enabled {
+                    continue;
+                }
+                for stage in &mut flow.stages {
+                    if !stage.enabled {
+                        continue;
+                    }
+                    let mut forward_stage = ForwardStage::new();
+                    forward_stage.base = std::mem::take(stage);
+                    forward_stage.render(*camera_id);
+                    queue_count += forward_stage.base.opaque_queue.len();
+                    queue_count += forward_stage.base.transparent_queue.len();
+                    forward_stage.record_to_command_buffer(&mut command_buffer);
+                    *stage = forward_stage.base;
+                    stage_count += 1;
+                }
+            }
+        }
+
+        command_buffer.end();
+        self.base.render_data.last_rendered_camera_count = cameras.len();
+        self.base.render_data.last_rendered_flow_count = flow_count;
+        self.base.render_data.last_rendered_stage_count = stage_count;
+        self.base.render_data.last_render_queue_count = queue_count;
     }
 
     pub fn get_valid_lights(&self) -> &[u64] {

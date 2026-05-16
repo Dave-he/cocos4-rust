@@ -14,6 +14,8 @@ pub mod gfx_base;
 pub mod gfx_empty;
 #[path = "gfx-validator/mod.rs"]
 pub mod gfx_validator;
+#[path = "gfx-wgpu/mod.rs"]
+pub mod gfx_wgpu;
 pub mod pipeline;
 
 pub use self::core::*;
@@ -22,4 +24,5 @@ pub use self::gfx_agent::*;
 pub use self::gfx_base::*;
 pub use self::gfx_empty::*;
 pub use self::gfx_validator::*;
+pub use self::gfx_wgpu::*;
 pub use self::pipeline::*;

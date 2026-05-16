@@ -142,7 +142,6 @@ impl<'a> PassNodeBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::renderer::gfx_base::Viewport;
 
     #[test]
     fn test_pass_node_builder_create_texture() {

@@ -48,6 +48,10 @@ pub struct PipelineRenderData {
     pub output_depth_id: u64,
     pub sampler_id: u64,
     pub bloom: Option<BloomRenderData>,
+    pub last_rendered_camera_count: usize,
+    pub last_rendered_flow_count: usize,
+    pub last_rendered_stage_count: usize,
+    pub last_render_queue_count: usize,
 }
 
 #[derive(Debug)]
