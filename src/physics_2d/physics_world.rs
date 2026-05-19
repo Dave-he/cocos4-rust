@@ -8,7 +8,9 @@ pub struct PhysicsWorld2D {
     pub gravity: Vec2,
     pub allow_sleep: bool,
     pub auto_clear_forces: bool,
+    #[allow(dead_code)]
     base_velocity_iterations: u32,
+    #[allow(dead_code)]
     base_position_iterations: u32,
     rigid_bodies: Vec<RigidBody2D>,
     colliders: Vec<Collider2D>,
@@ -146,7 +148,8 @@ impl PhysicsWorld2D {
             .collect()
     }
 
-    pub fn raycast(&self, origin: Vec2, direction: Vec2, max_distance: f32) -> RayCastResult2D {
+    #[allow(dead_code)]
+    pub fn raycast(&self, _origin: Vec2, _direction: Vec2, _max_distance: f32) -> RayCastResult2D {
         RayCastResult2D::default()
     }
 

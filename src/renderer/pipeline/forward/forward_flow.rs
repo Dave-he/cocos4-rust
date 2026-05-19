@@ -58,7 +58,6 @@ impl Default for ForwardFlow {
 
 #[cfg(test)]
 mod tests {
-use super::super::super::render_flow::RenderFlowInfo;
     use super::*;
 
     #[test]

@@ -15,7 +15,8 @@ pub struct BuiltinWorld2D {
     next_collider_id: u32,
     next_joint_id: u32,
     step_count: u64,
-    allow_sleep: bool,
+    #[allow(dead_code)]
+    _allow_sleep: bool,
 }
 
 impl BuiltinWorld2D {
@@ -30,7 +31,7 @@ impl BuiltinWorld2D {
             next_collider_id: 0,
             next_joint_id: 0,
             step_count: 0,
-            allow_sleep: true,
+            _allow_sleep: true,
         }
     }
 

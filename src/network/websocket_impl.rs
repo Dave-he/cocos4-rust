@@ -1,12 +1,13 @@
 pub struct WebSocketImpl {
-    url: String,
+    #[allow(dead_code)]
+    _url: String,
     connected: bool,
     protocols: Vec<String>,
 }
 
 impl WebSocketImpl {
     pub fn new(url: &str) -> Self {
-        Self { url: url.to_string(), connected: false, protocols: Vec::new() }
+        Self { _url: url.to_string(), connected: false, protocols: Vec::new() }
     }
 
     pub fn connect(&mut self) -> bool {

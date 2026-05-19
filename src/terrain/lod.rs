@@ -46,7 +46,8 @@ impl LODData {
 pub struct LODManager {
     pub lod_levels: Vec<LODData>,
     pub active_level: usize,
-    max_distance: f32,
+    #[allow(dead_code)]
+    _max_distance: f32,
 }
 
 impl LODManager {
@@ -61,7 +62,7 @@ impl LODManager {
             };
             lod_levels.push(LODData::new(level));
         }
-        Self { lod_levels, active_level: 0, max_distance: 100.0 }
+        Self { lod_levels, active_level: 0, _max_distance: 100.0 }
     }
 
     pub fn update(&mut self, distance: f32) {

@@ -445,7 +445,7 @@ mod tests {
     fn test_device_validator_resource_leak_on_destroy() {
         let mut validator = DeviceValidator::default();
         validator.initialize();
-let buf = validator.create_buffer(BufferInfo {
+        let _buf = validator.create_buffer(BufferInfo {
             size: 64,
             ..Default::default()
         });
@@ -473,7 +473,7 @@ let buf = validator.create_buffer(BufferInfo {
         let mut validator = DeviceValidator::default();
         validator.set_enabled(false);
         validator.initialize();
-let buf = validator.create_buffer(BufferInfo {
+        let _buf = validator.create_buffer(BufferInfo {
             size: 0,
             ..Default::default()
         });

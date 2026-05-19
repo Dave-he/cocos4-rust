@@ -239,6 +239,8 @@ impl Default for RenderGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::renderer::pipeline::PassKind;
+    use crate::renderer::pipeline::ResourceKind;
 
     fn create_test_pass(name: &str, kind: PassKind) -> PassDesc {
         PassDesc {

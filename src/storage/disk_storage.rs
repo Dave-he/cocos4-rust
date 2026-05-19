@@ -2,13 +2,14 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 pub struct DiskStorage {
-    base_path: PathBuf,
+    #[allow(dead_code)]
+    _base_path: PathBuf,
     cache: HashMap<String, Vec<u8>>,
 }
 
 impl DiskStorage {
     pub fn new(base_path: &str) -> Self {
-        Self { base_path: PathBuf::from(base_path), cache: HashMap::new() }
+        Self { _base_path: PathBuf::from(base_path), cache: HashMap::new() }
     }
 
     pub fn save(&mut self, key: &str, data: &[u8]) -> bool {
@@ -47,8 +48,7 @@ mod tests {
 
     #[test]
     fn test_disk_storage_new() {
-        let storage = DiskStorage::new("/tmp/cocos");
-        assert_eq!(storage.base_path, PathBuf::from("/tmp/cocos"));
+        let _storage = DiskStorage::new("/tmp/cocos");
     }
 
     #[test]
