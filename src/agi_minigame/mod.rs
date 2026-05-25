@@ -1,0 +1,17 @@
+pub mod atom;
+pub mod dimension;
+pub mod economy;
+pub mod player;
+pub mod gameplay;
+pub mod ai_engine;
+pub mod world_state;
+pub mod atoms;
+
+pub use atom::{Atom, AtomId, AtomRegistry, AtomContext, AtomPhase, AtomRunner, AtomMetadata};
+pub use dimension::{Dimension, DimensionConfig, DimensionRunner, DimensionState, DimensionObjective, DimensionProgress};
+pub use economy::{Currency, CurrencyType, Inventory, InventoryItem, Transaction, Wallet};
+pub use player::{PlayerAccount, PlayerProfile, PlayerProgression, PlayerStatsMap};
+pub use gameplay::{GameplayType, GameplayState, GameplayEvent, GameplayModule};
+pub use ai_engine::{AiEngine, DimensionGenerator, DimensionBlueprint, RuleComposer, BalanceTuner, GenerationConfig};
+pub use world_state::{UnifiedWorldState, SharedWorld, WorldEvent, PlayerStats};
+pub use atoms::register_all_atoms;

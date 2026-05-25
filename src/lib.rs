@@ -1,5 +1,6 @@
 #![allow(ambiguous_glob_reexports)]
 
+pub mod agi_minigame;
 pub mod application;
 pub mod audio;
 pub mod base;
