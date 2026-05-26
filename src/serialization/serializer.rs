@@ -185,4 +185,45 @@ mod tests {
         let pos = st.get("position").unwrap();
         assert!((pos.get("x").unwrap().as_f64().unwrap() - 10.0).abs() < 1e-9);
     }
+
+    #[test]
+    fn test_serializer_primitives_equivalent_case() {
+        let mut s = Serializer::new();
+        s.write_null("none");
+        s.write_bool("flag", true);
+        s.write_int("lives", 3);
+        s.write_float("speed", 2.5);
+        s.write_str("name", "hero");
+
+        let json = s.to_json();
+        let restored = Serializer::from_json(&json).unwrap().finish();
+
+        assert!(restored.get("none").unwrap().is_null());
+        assert_eq!(restored.get("flag").unwrap().as_bool(), Some(true));
+        assert_eq!(restored.get("lives").unwrap().as_int(), Some(3));
+        assert_eq!(restored.get("speed").unwrap().as_f64(), Some(2.5));
+        assert_eq!(restored.get("name").unwrap().as_str(), Some("hero"));
+    }
+
+    #[test]
+    fn test_serializer_dictionary_equivalent_case() {
+        let mut dictionary = HashMap::new();
+        dictionary.insert("hp".to_string(), SerializedValue::from(120i64));
+        dictionary.insert("mana".to_string(), SerializedValue::from(45i64));
+
+        let mut nested = HashMap::new();
+        nested.insert("stats".to_string(), SerializedValue::Object(dictionary));
+        nested.insert("title".to_string(), SerializedValue::from("mage"));
+
+        let mut s = Serializer::new();
+        s.write_object("player", nested);
+        let json = s.to_json();
+        let restored = Serializer::from_json(&json).unwrap().finish();
+
+        let player = restored.get("player").unwrap();
+        let stats = player.get("stats").unwrap();
+        assert_eq!(player.get("title").unwrap().as_str(), Some("mage"));
+        assert_eq!(stats.get("hp").unwrap().as_int(), Some(120));
+        assert_eq!(stats.get("mana").unwrap().as_int(), Some(45));
+    }
 }

@@ -225,4 +225,17 @@ mod tests {
         b.simulate_release();
         assert_eq!(*count.lock().unwrap(), 3);
     }
+
+    #[test]
+    fn test_button_disabled_interaction_preserves_scale_equivalent_case() {
+        let mut b = Button::new();
+        b.transition = ButtonTransition::Scale;
+        b.normal_scale = 1.5;
+        b.set_enabled(false);
+        b.simulate_hover();
+        b.simulate_press();
+        b.simulate_release();
+        assert_eq!(b.get_state(), ButtonState::Disabled);
+        assert!((b.get_current_scale() - 1.5).abs() < 1e-5);
+    }
 }

@@ -199,4 +199,16 @@ mod tests {
         assert_eq!(buf.index_data[0], 0);
         assert_eq!(buf.index_data[2], 2);
     }
+
+    #[test]
+    fn test_mesh_buffer_request_equivalent_case() {
+        let mut buf = UIMeshBufferImpl::new(Vec::new(), 20);
+        buf.initialize(8, 12);
+        assert!(buf.request_mesh_render_data(4, 6));
+        assert_eq!(buf.get_vertex_offset(), 20);
+        assert_eq!(buf.get_index_offset(), 6);
+        assert!(!buf.request_mesh_render_data(5, 7));
+        assert_eq!(buf.get_vertex_offset(), 20);
+        assert_eq!(buf.get_index_offset(), 6);
+    }
 }

@@ -177,4 +177,15 @@ mod tests {
         let size = w.compute_size(Vec2::new(200.0, 200.0));
         assert!(size.is_none());
     }
+
+    #[test]
+    fn test_widget_stretch_equivalent_case() {
+        let mut w = Widget::new();
+        w.align_flags = WidgetAlignFlag::LEFT | WidgetAlignFlag::RIGHT;
+        w.left = 0.0;
+        w.right = 0.0;
+        let size = w.compute_size(Vec2::new(960.0, 640.0)).unwrap();
+        assert!((size.x - 960.0).abs() < 1e-4);
+        assert!((size.y - 0.0).abs() < 1e-4);
+    }
 }
