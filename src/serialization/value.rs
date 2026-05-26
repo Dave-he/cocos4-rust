@@ -104,7 +104,7 @@ impl SerializedValue {
                     v.to_string()
                 }
             }
-            SerializedValue::String(s) => format!("\"{}\"", s.replace('"', "\\\"")),
+            SerializedValue::String(s) => format!("\"{}\"", escape_json_string(s)),
             SerializedValue::Array(a) => {
                 let items: Vec<String> = a.iter().map(|v| v.to_json_string()).collect();
                 format!("[{}]", items.join(","))
@@ -112,13 +112,22 @@ impl SerializedValue {
             SerializedValue::Object(o) => {
                 let mut pairs: Vec<String> = o
                     .iter()
-                    .map(|(k, v)| format!("\"{}\":{}", k, v.to_json_string()))
+                    .map(|(k, v)| format!("\"{}\":{}", escape_json_string(k), v.to_json_string()))
                     .collect();
                 pairs.sort();
                 format!("{{{}}}", pairs.join(","))
             }
         }
     }
+}
+
+fn escape_json_string(input: &str) -> String {
+    input
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('\t', "\\t")
 }
 
 impl From<bool> for SerializedValue {
@@ -228,5 +237,14 @@ mod tests {
         assert_eq!(SerializedValue::from(1i64).type_name(), "int");
         assert_eq!(SerializedValue::from(1.0f64).type_name(), "float");
         assert_eq!(SerializedValue::from("s").type_name(), "string");
+    }
+
+    #[test]
+    fn test_string_escape_json() {
+        let value = SerializedValue::from("line\nnext\t\"quoted\"\\path");
+        assert_eq!(
+            value.to_json_string(),
+            "\"line\\nnext\\t\\\"quoted\\\"\\\\path\""
+        );
     }
 }

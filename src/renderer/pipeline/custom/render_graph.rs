@@ -1,4 +1,4 @@
-use super::types::{PassDesc, ResourceDesc, SubpassDesc};
+use super::types::{PassDesc, PassKind, ResourceDesc, ResourceKind, SubpassDesc};
 
 #[derive(Debug, Clone)]
 pub struct RenderGraphNode {

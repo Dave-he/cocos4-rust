@@ -381,7 +381,7 @@ mod tests {
     fn test_cancel_pending() {
         let mut loader = make_loader();
         loader.set_max_concurrent(0);
-        let h = loader.load("pending.png", |_| {}, |_| {});
+        let h = loader.load("later.asset", |_| {}, |_| {});
         assert_eq!(loader.get_pending_count(), 1);
         loader.cancel(h);
         assert_eq!(loader.get_pending_count(), 0);
@@ -390,9 +390,10 @@ mod tests {
     #[test]
     fn test_get_data() {
         let mut loader = make_loader();
-        let h = loader.load("res/data.bin", |_| {}, |_| {});
+        let h = loader.load("abc.bin", |_| {}, |_| {});
         loader.pump();
-        assert!(loader.get_data(h).is_some());
+        let data = loader.get_data(h).unwrap();
+        assert_eq!(data, b"data:abc.bin");
     }
 
     #[test]
@@ -401,7 +402,7 @@ mod tests {
         let progress = Arc::new(Mutex::new(0.0f32));
         let p = Arc::clone(&progress);
         let h = loader.load_with_progress(
-            "file.png",
+            "with_progress.asset",
             |_| {},
             |_| {},
             move |v| {
@@ -409,33 +410,54 @@ mod tests {
             },
         );
         loader.pump();
-        assert!((loader.get_progress(h) - 1.0).abs() < 1e-6);
-        assert!(*progress.lock().unwrap() >= 1.0);
+        assert_eq!(loader.get_status(h), Some(LoadStatus::Success));
+        assert!((*progress.lock().unwrap() - 1.0).abs() < 1e-6);
     }
 
     #[test]
     fn test_multiple_providers() {
         let mut loader = ResourceLoader::new();
-        loader.register_provider("http://", |url| Ok(format!("remote:{}", url).into_bytes()));
-        loader.register_provider("file://", |url| Ok(format!("local:{}", url).into_bytes()));
-        let result = Arc::new(Mutex::new(String::new()));
-        let r = Arc::clone(&result);
-        let _h = loader.load(
-            "http://example.com/img.png",
-            move |data| {
-                *r.lock().unwrap() = String::from_utf8_lossy(data).to_string();
-            },
-            |_| {},
-        );
+        loader.register_provider("tex://", |url| Ok(format!("tex:{}", url).into_bytes()));
+        loader.register_provider("audio://", |url| Ok(format!("audio:{}", url).into_bytes()));
+        let h1 = loader.load("tex://hero.png", |_| {}, |_| {});
+        let h2 = loader.load("audio://bgm.mp3", |_| {}, |_| {});
         loader.pump();
-        assert!(result.lock().unwrap().starts_with("remote:"));
+        assert_eq!(loader.get_data(h1).unwrap(), b"tex:tex://hero.png");
+        assert_eq!(loader.get_data(h2).unwrap(), b"audio:audio://bgm.mp3");
     }
 
     #[test]
     fn test_unique_handles() {
         let mut loader = make_loader();
-        let h1 = loader.load("a.png", |_| {}, |_| {});
-        let h2 = loader.load("b.png", |_| {}, |_| {});
+        let h1 = loader.load("a.asset", |_| {}, |_| {});
+        let h2 = loader.load("b.asset", |_| {}, |_| {});
         assert_ne!(h1, h2);
+    }
+
+    #[test]
+    fn test_get_error_exact_message_equivalent_case() {
+        let mut loader = make_loader();
+        let h = loader.load("boom.fail", |_| {}, |_| {});
+        loader.pump();
+        assert_eq!(loader.get_error(h), Some("not found: boom.fail"));
+    }
+
+    #[test]
+    fn test_cancel_only_affects_pending_equivalent_case() {
+        let mut loader = make_loader();
+        let h = loader.load("ready.asset", |_| {}, |_| {});
+        loader.pump();
+        loader.cancel(h);
+        assert_eq!(loader.get_status(h), Some(LoadStatus::Success));
+    }
+
+    #[test]
+    fn test_provider_prefix_priority_equivalent_case() {
+        let mut loader = ResourceLoader::new();
+        loader.register_provider("", |url| Ok(format!("fallback:{url}").into_bytes()));
+        loader.register_provider("tex://", |url| Ok(format!("texture:{url}").into_bytes()));
+        let h = loader.load("tex://hero.png", |_| {}, |_| {});
+        loader.pump();
+        assert_eq!(loader.get_data(h).unwrap(), b"fallback:tex://hero.png");
     }
 }

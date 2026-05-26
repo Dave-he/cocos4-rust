@@ -222,6 +222,23 @@ mod tests {
         }
     }
 
+    struct BinaryAsset {
+        uuid: String,
+        name: String,
+    }
+
+    impl Asset for BinaryAsset {
+        fn get_uuid(&self) -> &str {
+            &self.uuid
+        }
+        fn get_name(&self) -> &str {
+            &self.name
+        }
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+    }
+
     fn make_manager() -> AssetManager {
         let mut am = AssetManager::new();
         let loader = |uuid: &str| -> Option<Box<dyn Asset>> {
@@ -333,5 +350,39 @@ mod tests {
         let ok = am.load::<TextAsset>("auto-uuid");
         assert!(ok);
         assert!(am.is_loaded("auto-uuid"));
+    }
+
+    #[test]
+    fn test_get_wrong_type_returns_none_equivalent_case() {
+        let mut am = make_manager();
+        am.add_asset::<TextAsset>("uuid-10", "typed");
+        am.load::<TextAsset>("uuid-10");
+        assert!(am.get::<BinaryAsset>("uuid-10").is_none());
+    }
+
+    #[test]
+    fn test_release_unknown_is_idempotent_equivalent_case() {
+        let mut am = make_manager();
+        am.release("missing");
+        am.retain("missing");
+        assert_eq!(am.get_ref_count("missing"), 0);
+    }
+
+    #[test]
+    fn test_failed_reload_updates_counters_equivalent_case() {
+        let mut am = AssetManager::new();
+        am.add_asset::<TextAsset>("uuid-11", "retry");
+        assert!(!am.load::<TextAsset>("uuid-11"));
+        assert_eq!(am.get_total_failed(), 1);
+        am.register_loader::<TextAsset, _>(|uuid| {
+            Some(Box::new(TextAsset {
+                uuid: uuid.to_string(),
+                name: uuid.to_string(),
+                content: "recovered".to_string(),
+            }))
+        });
+        assert!(am.load::<TextAsset>("uuid-11"));
+        assert_eq!(am.get_load_state("uuid-11"), Some(LoadState::Loaded));
+        assert_eq!(am.get_total_loaded(), 1);
     }
 }

@@ -117,4 +117,22 @@ mod tests {
         assert!(aabb.min.x < 5.0);
         assert!(aabb.max.x > 5.0);
     }
+
+    #[test]
+    fn test_collider_material_and_sensor_equivalent_case() {
+        let mut collider = Collider2D::new(1);
+        collider.material.density = 2.5;
+        collider.material.friction = 0.3;
+        collider.material.restitution = 0.8;
+        collider.is_trigger = true;
+        collider.group = 0b0010;
+        collider.mask = 0b0100;
+
+        assert!((collider.material.density - 2.5).abs() < 1e-6);
+        assert!((collider.material.friction - 0.3).abs() < 1e-6);
+        assert!((collider.material.restitution - 0.8).abs() < 1e-6);
+        assert!(collider.is_trigger);
+        assert_eq!(collider.group, 0b0010);
+        assert_eq!(collider.mask, 0b0100);
+    }
 }

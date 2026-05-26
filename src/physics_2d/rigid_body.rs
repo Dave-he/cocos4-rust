@@ -36,11 +36,24 @@ impl RigidBody2D {
         self.body_type = body_type;
     }
 
+    pub fn sleep(&mut self) {
+        self.awake = false;
+    }
+
+    pub fn wake_up(&mut self) {
+        self.awake = true;
+    }
+
+    pub fn is_awake(&self) -> bool {
+        self.awake
+    }
+
     pub fn apply_force(&mut self, force: [f32; 2]) {
         if self.body_type != RigidBodyType2D::Dynamic { return; }
         if self.mass > 0.0 {
             self.linear_velocity[0] += force[0] / self.mass;
             self.linear_velocity[1] += force[1] / self.mass;
+            self.awake = true;
         }
     }
 
@@ -49,6 +62,7 @@ impl RigidBody2D {
         if self.mass > 0.0 {
             self.linear_velocity[0] += impulse[0] / self.mass;
             self.linear_velocity[1] += impulse[1] / self.mass;
+            self.awake = true;
         }
     }
 
@@ -100,5 +114,15 @@ mod tests {
         let mut body = RigidBody2D::new(1);
         body.apply_impulse([0.0, 20.0]);
         assert!((body.linear_velocity[1] - 20.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_sleep_wake_equivalent_case() {
+        let mut body = RigidBody2D::new(1);
+        assert!(body.is_awake());
+        body.sleep();
+        assert!(!body.is_awake());
+        body.wake_up();
+        assert!(body.is_awake());
     }
 }

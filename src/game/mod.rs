@@ -4,5 +4,5 @@ pub mod game;
 pub mod scene_manager;
 
 pub use director::{Director, DirectorEvent};
-pub use game::{Game, GameConfig, GameEvent};
+pub use game::{Game, GameBootstrapContract, GameBootstrapError, GameConfig, GameEvent};
 pub use scene_manager::{SceneManager, SceneState};

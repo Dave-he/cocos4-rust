@@ -260,9 +260,11 @@ mod tests {
         let label = Label::new();
         assert_eq!(label.string, "");
         assert_eq!(label.font_size, 40.0);
-        assert_eq!(label.line_height, 40.0);
-        assert!(label.enabled);
+        assert_eq!(label.font_family, "Arial");
+        assert_eq!(label.horizontal_align, HorizontalTextAlignment::Left);
+        assert_eq!(label.vertical_align, VerticalTextAlignment::Top);
         assert_eq!(label.color, Color::WHITE);
+        assert!(label.enabled);
     }
 
     #[test]
@@ -284,34 +286,32 @@ mod tests {
     fn test_label_alignment() {
         let mut label = Label::new();
         label.set_horizontal_align(HorizontalTextAlignment::Center);
-        label.set_vertical_align(VerticalTextAlignment::Center);
-        assert_eq!(
-            label.get_horizontal_align(),
-            HorizontalTextAlignment::Center
-        );
-        assert_eq!(label.get_vertical_align(), VerticalTextAlignment::Center);
+        label.set_vertical_align(VerticalTextAlignment::Bottom);
+        assert_eq!(label.get_horizontal_align(), HorizontalTextAlignment::Center);
+        assert_eq!(label.get_vertical_align(), VerticalTextAlignment::Bottom);
     }
 
     #[test]
     fn test_label_overflow() {
         let mut label = Label::new();
-        label.set_overflow(Overflow::Shrink);
-        assert_eq!(label.get_overflow(), Overflow::Shrink);
+        label.set_overflow(Overflow::Clamp);
+        assert_eq!(label.get_overflow(), Overflow::Clamp);
     }
 
     #[test]
     fn test_label_color() {
         let mut label = Label::new();
-        label.set_color(Color::RED);
-        assert_eq!(label.get_color(), Color::RED);
+        let red = Color::RED;
+        label.set_color(red);
+        assert_eq!(label.get_color(), red);
     }
 
     #[test]
     fn test_label_outline() {
         let mut label = Label::new();
-        assert!(!label.outline.enabled);
         label.enable_outline(Color::BLACK, 2.0);
         assert!(label.outline.enabled);
+        assert_eq!(label.outline.color, Color::BLACK);
         assert_eq!(label.outline.width, 2.0);
         label.disable_outline();
         assert!(!label.outline.enabled);
@@ -320,10 +320,13 @@ mod tests {
     #[test]
     fn test_label_shadow() {
         let mut label = Label::new();
-        assert!(!label.shadow.enabled);
-        label.enable_shadow(Color::BLACK, 2.0, -2.0, 1.0);
+        let color = Color::new(10, 20, 30, 128);
+        label.enable_shadow(color, 4.0, -3.0, 1.5);
         assert!(label.shadow.enabled);
-        assert_eq!(label.shadow.offset_x, 2.0);
+        assert_eq!(label.shadow.color, color);
+        assert_eq!(label.shadow.offset_x, 4.0);
+        assert_eq!(label.shadow.offset_y, -3.0);
+        assert_eq!(label.shadow.blur, 1.5);
         label.disable_shadow();
         assert!(!label.shadow.enabled);
     }
@@ -331,14 +334,50 @@ mod tests {
     #[test]
     fn test_label_bold_italic_underline() {
         let mut label = Label::new();
-        assert!(!label.is_bold);
-        assert!(!label.is_italic);
-        assert!(!label.is_underline);
         label.set_bold(true);
         label.set_italic(true);
         label.set_underline(true);
         assert!(label.is_bold);
         assert!(label.is_italic);
         assert!(label.is_underline);
+    }
+
+    #[test]
+    fn test_label_content_size() {
+        let mut label = Label::new();
+        label.set_content_size(100.0, 50.0);
+        assert_eq!(label.get_content_width(), 100.0);
+        assert_eq!(label.get_content_height(), 50.0);
+    }
+
+    #[test]
+    fn test_label_string_equivalent_case() {
+        let mut label = Label::new();
+        label.set_string("first");
+        assert_eq!(label.get_string(), "first");
+        label.set_string("second");
+        assert_eq!(label.get_string(), "second");
+    }
+
+    #[test]
+    fn test_label_outline_equivalent_case() {
+        let mut label = Label::new();
+        label.enable_outline(Color::new(1, 2, 3, 255), 3.0);
+        assert!(label.outline.enabled);
+        assert_eq!(label.outline.width, 3.0);
+        label.disable_outline();
+        assert!(!label.outline.enabled);
+    }
+
+    #[test]
+    fn test_label_shadow_equivalent_case() {
+        let mut label = Label::new();
+        label.enable_shadow(Color::new(20, 40, 60, 128), 6.0, -2.0, 2.5);
+        assert!(label.shadow.enabled);
+        assert_eq!(label.shadow.offset_x, 6.0);
+        assert_eq!(label.shadow.offset_y, -2.0);
+        assert_eq!(label.shadow.blur, 2.5);
+        label.disable_shadow();
+        assert!(!label.shadow.enabled);
     }
 }

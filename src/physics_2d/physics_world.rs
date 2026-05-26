@@ -3,6 +3,7 @@ use super::types::{AABB2D, ContactPoint2D, RayCastResult2D};
 use super::collider::Collider2D;
 use super::rigid_body::RigidBody2D;
 use super::joint::Joint2D;
+use super::builtin::intersection;
 
 pub struct PhysicsWorld2D {
     pub gravity: Vec2,
@@ -101,7 +102,7 @@ impl PhysicsWorld2D {
 
     fn update_physics(&mut self, dt: f32) {
         for body in &mut self.rigid_bodies {
-            if body.body_type != super::types::RigidBodyType2D::Dynamic {
+            if body.body_type != super::types::RigidBodyType2D::Dynamic || !body.is_awake() {
                 continue;
             }
             body.linear_velocity[0] += self.gravity.x * body.gravity_scale * dt;
@@ -146,8 +147,51 @@ impl PhysicsWorld2D {
             .collect()
     }
 
+    pub fn test_point(&self, point: Vec2, group_mask: Option<u32>) -> Vec<u32> {
+        self.colliders
+            .iter()
+            .filter(|c| {
+                c.enabled
+                    && group_mask.map(|mask| (c.group & mask) != 0).unwrap_or(true)
+                    && intersection::point_in_aabb(&point, &c.get_aabb([0.0, 0.0]).min, &c.get_aabb([0.0, 0.0]).max)
+            })
+            .map(|c| c.id)
+            .collect()
+    }
+
     pub fn raycast(&self, origin: Vec2, direction: Vec2, max_distance: f32) -> RayCastResult2D {
-        RayCastResult2D::default()
+        let mut closest = RayCastResult2D::default();
+        let mut best_fraction = f32::INFINITY;
+        let dir_len = (direction.x * direction.x + direction.y * direction.y).sqrt();
+        if dir_len <= f32::EPSILON || max_distance <= 0.0 {
+            return closest;
+        }
+        let dir = Vec2::new(direction.x / dir_len, direction.y / dir_len);
+
+        for collider in &self.colliders {
+            if !collider.enabled {
+                continue;
+            }
+            let aabb = collider.get_aabb([0.0, 0.0]);
+            let edges = [
+                (Vec2::new(aabb.min.x, aabb.min.y), Vec2::new(aabb.max.x, aabb.min.y), Vec2::new(0.0, -1.0)),
+                (Vec2::new(aabb.max.x, aabb.min.y), Vec2::new(aabb.max.x, aabb.max.y), Vec2::new(1.0, 0.0)),
+                (Vec2::new(aabb.max.x, aabb.max.y), Vec2::new(aabb.min.x, aabb.max.y), Vec2::new(0.0, 1.0)),
+                (Vec2::new(aabb.min.x, aabb.max.y), Vec2::new(aabb.min.x, aabb.min.y), Vec2::new(-1.0, 0.0)),
+            ];
+            for (start, end, normal) in edges {
+                if let Some((t, point)) = intersection::ray_segment_intersection(&origin, &dir, &start, &end) {
+                    if t <= max_distance && t < best_fraction {
+                        best_fraction = t;
+                        closest.hit = true;
+                        closest.point = point;
+                        closest.normal = normal;
+                        closest.fraction = t / max_distance;
+                    }
+                }
+            }
+        }
+        closest
     }
 
     pub fn get_contact_count(&self) -> usize {
@@ -271,5 +315,36 @@ mod tests {
         assert_eq!(world.get_body_count(), 0);
         assert_eq!(world.get_collider_count(), 0);
         assert_eq!(world.get_step_count(), 0);
+    }
+
+    #[test]
+    fn test_raycast_equivalent_case() {
+        let mut world = PhysicsWorld2D::new();
+        let mut collider = Collider2D::new(0);
+        collider.set_as_box(2.0, 2.0);
+        world.create_collider(collider);
+        let hit = world.raycast(Vec2::new(-5.0, 0.0), Vec2::new(1.0, 0.0), 10.0);
+        assert!(hit.hit);
+        assert!(hit.point.x <= -1.0 + 1e-4);
+        assert!(hit.fraction >= 0.0 && hit.fraction <= 1.0);
+    }
+
+    #[test]
+    fn test_test_point_with_group_mask_equivalent_case() {
+        let mut world = PhysicsWorld2D::new();
+        let mut a = Collider2D::new(0);
+        a.set_as_box(2.0, 2.0);
+        a.group = 0b0001;
+        let mut b = Collider2D::new(0);
+        b.set_as_box(2.0, 2.0);
+        b.group = 0b0010;
+        world.create_collider(a);
+        world.create_collider(b);
+
+        let all_hits = world.test_point(Vec2::new(0.0, 0.0), None);
+        let filtered_hits = world.test_point(Vec2::new(0.0, 0.0), Some(0b0010));
+
+        assert_eq!(all_hits.len(), 2);
+        assert_eq!(filtered_hits.len(), 1);
     }
 }
