@@ -101,14 +101,14 @@ impl GameplayState {
         }
     }
 
-    pub fn get_int(&self, key: &str) -> Option<i64> {
+    pub fn get_int(&self, key: &str) -> Option<i32> {
         match self.data.get(key) {
-            Some(Value::Int(n)) => Some(*n),
+            Some(Value::Integer(n)) => Some(*n),
             _ => None,
         }
     }
 
-    pub fn get_float(&self, key: &str) -> Option<f64> {
+    pub fn get_float(&self, key: &str) -> Option<f32> {
         match self.data.get(key) {
             Some(Value::Float(n)) => Some(*n),
             _ => None,
@@ -188,7 +188,7 @@ mod tests {
     #[test]
     fn test_gameplay_state_data() {
         let mut state = GameplayState::new();
-        state.set("level", Value::Int(5));
+        state.set("level", Value::Integer(5));
         state.set("name", Value::String("test".to_string()));
         assert_eq!(state.get_int("level"), Some(5));
         assert_eq!(state.get_str("name"), Some("test"));

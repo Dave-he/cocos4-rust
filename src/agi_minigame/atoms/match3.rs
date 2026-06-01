@@ -331,7 +331,7 @@ impl Match3Atom {
 
                 for &(r, c) in &m.cells {
                     if let Some(row) = self.board.get_mut(r) {
-                        if let Some(cell) = row.get_mut(c) {
+                        if let Some(Some(cell)) = row.get_mut(c) {
                             cell.is_matched = true;
                         }
                     }
@@ -454,31 +454,31 @@ impl Atom for Match3Atom {
 
     fn save_state(&self) -> ValueMap {
         let mut map = ValueMap::new();
-        map.insert("score".to_string(), Value::Int(self.score as i64));
-        map.insert("combo".to_string(), Value::Int(self.combo as i64));
-        map.insert("max_combo".to_string(), Value::Int(self.max_combo as i64));
-        map.insert("moves".to_string(), Value::Int(self.moves as i64));
-        map.insert("chain_count".to_string(), Value::Int(self.chain_count as i64));
-        map.insert("total_eliminated".to_string(), Value::Int(self.total_eliminated as i64));
+        map.insert("score".to_string(), Value::Integer(self.score as i32));
+        map.insert("combo".to_string(), Value::Integer(self.combo as i32));
+        map.insert("max_combo".to_string(), Value::Integer(self.max_combo as i32));
+        map.insert("moves".to_string(), Value::Integer(self.moves as i32));
+        map.insert("chain_count".to_string(), Value::Integer(self.chain_count as i32));
+        map.insert("total_eliminated".to_string(), Value::Integer(self.total_eliminated as i32));
         map
     }
 
     fn load_state(&mut self, state: &ValueMap) {
-        if let Some(Value::Int(n)) = state.get("score") { self.score = *n as u64; }
-        if let Some(Value::Int(n)) = state.get("combo") { self.combo = *n as u32; }
-        if let Some(Value::Int(n)) = state.get("max_combo") { self.max_combo = *n as u32; }
-        if let Some(Value::Int(n)) = state.get("moves") { self.moves = *n as u32; }
-        if let Some(Value::Int(n)) = state.get("chain_count") { self.chain_count = *n as u32; }
-        if let Some(Value::Int(n)) = state.get("total_eliminated") { self.total_eliminated = *n as u64; }
+        if let Some(Value::Integer(n)) = state.get("score") { self.score = *n as u64; }
+        if let Some(Value::Integer(n)) = state.get("combo") { self.combo = *n as u32; }
+        if let Some(Value::Integer(n)) = state.get("max_combo") { self.max_combo = *n as u32; }
+        if let Some(Value::Integer(n)) = state.get("moves") { self.moves = *n as u32; }
+        if let Some(Value::Integer(n)) = state.get("chain_count") { self.chain_count = *n as u32; }
+        if let Some(Value::Integer(n)) = state.get("total_eliminated") { self.total_eliminated = *n as u64; }
     }
 
     fn handle_event(&mut self, event: &str, data: &ValueMap, _ctx: &mut AtomContext) {
         match event {
             "swap" => {
-                let r1 = data.get("r1").and_then(|v| if let Value::Int(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
-                let c1 = data.get("c1").and_then(|v| if let Value::Int(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
-                let r2 = data.get("r2").and_then(|v| if let Value::Int(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
-                let c2 = data.get("c2").and_then(|v| if let Value::Int(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
+                let r1 = data.get("r1").and_then(|v| if let Value::Integer(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
+                let c1 = data.get("c1").and_then(|v| if let Value::Integer(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
+                let r2 = data.get("r2").and_then(|v| if let Value::Integer(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
+                let c2 = data.get("c2").and_then(|v| if let Value::Integer(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
                 self.swap(r1, c1, r2, c2);
             }
             _ => {}
@@ -578,7 +578,9 @@ mod tests {
     fn test_gem_type() {
         assert_eq!(GemType::from_index(0), GemType::Red);
         assert_eq!(GemType::Red.to_index(), 0);
-        assert_eq!(GemType::from_index(7), GemType::White);
+        // 7 % 6 = 1, which is Blue — verifies the modulo wrap.
+        assert_eq!(GemType::from_index(7), GemType::Blue);
+        assert_eq!(GemType::White.to_index(), 5);
     }
 
     #[test]

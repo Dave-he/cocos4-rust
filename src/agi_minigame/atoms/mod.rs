@@ -12,7 +12,15 @@ pub use turn_combat::TurnCombatAtom;
 pub use parkour::ParkourAtom;
 pub use synthesis::SynthesisAtom;
 
-use crate::agi_minigame::atom::{AtomRegistry, AtomMetadata};
+use crate::agi_minigame::atom::{AtomRegistry, AtomMetadata, AtomFactory};
+
+fn factory<A, F>(f: F) -> AtomFactory
+where
+    A: crate::agi_minigame::atom::Atom + 'static,
+    F: Fn() -> A + 'static,
+{
+    Box::new(move || Box::new(f()))
+}
 
 pub fn register_all_atoms(registry: &mut AtomRegistry) {
     registry.register(
@@ -25,7 +33,7 @@ pub fn register_all_atoms(registry: &mut AtomRegistry) {
             description: "交换、匹配、消除、连锁、得分、道具".to_string(),
             tags: vec!["puzzle".to_string(), "casual".to_string(), "match3".to_string()],
         },
-        || Box::new(Match3Atom::new(8, 8, 30)),
+        factory(|| Match3Atom::new(8, 8, 30)),
     );
 
     registry.register(
@@ -38,7 +46,7 @@ pub fn register_all_atoms(registry: &mut AtomRegistry) {
             description: "放置、路径、怪物波次、攻击、升级、防御".to_string(),
             tags: vec!["strategy".to_string(), "tower_defense".to_string()],
         },
-        || Box::new(TowerDefenseAtom::new(10, 10, 100.0, 200)),
+        factory(|| TowerDefenseAtom::new(10, 10, 100.0, 200)),
     );
 
     registry.register(
@@ -51,7 +59,7 @@ pub fn register_all_atoms(registry: &mut AtomRegistry) {
             description: "抽卡、出牌、费用、效果、结算、卡组".to_string(),
             tags: vec!["card".to_string(), "strategy".to_string()],
         },
-        || Box::new(CardAtom::new(10, 10)),
+        factory(|| CardAtom::new(10, 10)),
     );
 
     registry.register(
@@ -64,7 +72,7 @@ pub fn register_all_atoms(registry: &mut AtomRegistry) {
             description: "行动条、普攻、技能、Buff、属性、站位".to_string(),
             tags: vec!["rpg".to_string(), "combat".to_string()],
         },
-        || Box::new(TurnCombatAtom::new()),
+        factory(|| TurnCombatAtom::new()),
     );
 
     registry.register(
@@ -77,7 +85,7 @@ pub fn register_all_atoms(registry: &mut AtomRegistry) {
             description: "前进、跳跃、滑行、障碍物、收集、冲刺".to_string(),
             tags: vec!["action".to_string(), "runner".to_string()],
         },
-        || Box::new(ParkourAtom::new(3, 5.0, 3)),
+        factory(|| ParkourAtom::new(3, 5.0, 3)),
     );
 
     registry.register(
@@ -90,6 +98,6 @@ pub fn register_all_atoms(registry: &mut AtomRegistry) {
             description: "合并、升级、产出、配方、解锁".to_string(),
             tags: vec!["casual".to_string(), "crafting".to_string()],
         },
-        || Box::new(SynthesisAtom::new()),
+        factory(|| SynthesisAtom::new()),
     );
 }

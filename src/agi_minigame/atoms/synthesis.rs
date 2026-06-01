@@ -330,18 +330,18 @@ impl Atom for SynthesisAtom {
 
     fn save_state(&self) -> ValueMap {
         let mut map = ValueMap::new();
-        map.insert("score".to_string(), Value::Int(self.score as i64));
-        map.insert("items_crafted".to_string(), Value::Int(self.items_crafted as i64));
-        map.insert("highest_tier".to_string(), Value::Int(self.highest_tier as i64));
-        map.insert("discoveries".to_string(), Value::Int(self.discoveries as i64));
+        map.insert("score".to_string(), Value::Integer(self.score as i32));
+        map.insert("items_crafted".to_string(), Value::Integer(self.items_crafted as i32));
+        map.insert("highest_tier".to_string(), Value::Integer(self.highest_tier as i32));
+        map.insert("discoveries".to_string(), Value::Integer(self.discoveries as i32));
         map
     }
 
     fn load_state(&mut self, state: &ValueMap) {
-        if let Some(Value::Int(n)) = state.get("score") { self.score = *n as u64; }
-        if let Some(Value::Int(n)) = state.get("items_crafted") { self.items_crafted = *n as u32; }
-        if let Some(Value::Int(n)) = state.get("highest_tier") { self.highest_tier = *n as u32; }
-        if let Some(Value::Int(n)) = state.get("discoveries") { self.discoveries = *n as u32; }
+        if let Some(Value::Integer(n)) = state.get("score") { self.score = *n as u64; }
+        if let Some(Value::Integer(n)) = state.get("items_crafted") { self.items_crafted = *n as u32; }
+        if let Some(Value::Integer(n)) = state.get("highest_tier") { self.highest_tier = *n as u32; }
+        if let Some(Value::Integer(n)) = state.get("discoveries") { self.discoveries = *n as u32; }
     }
 
     fn handle_event(&mut self, event: &str, data: &ValueMap, _ctx: &mut AtomContext) {
@@ -358,7 +358,7 @@ impl Atom for SynthesisAtom {
             }
             "add_item" => {
                 if let Some(Value::String(id)) = data.get("item_id") {
-                    let count = data.get("count").and_then(|v| if let Value::Int(n) = v { Some(*n as u32) } else { None }).unwrap_or(1);
+                    let count = data.get("count").and_then(|v| if let Value::Integer(n) = v { Some(*n as u32) } else { None }).unwrap_or(1);
                     self.add_to_inventory(id, count);
                 }
             }

@@ -412,18 +412,18 @@ impl Atom for TowerDefenseAtom {
 
     fn save_state(&self) -> ValueMap {
         let mut map = ValueMap::new();
-        map.insert("base_hp".to_string(), Value::Float(self.base_hp as f64));
-        map.insert("gold".to_string(), Value::Int(self.gold as i64));
-        map.insert("score".to_string(), Value::Int(self.score as i64));
-        map.insert("current_wave".to_string(), Value::Int(self.current_wave as i64));
+        map.insert("base_hp".to_string(), Value::Float(self.base_hp as f32));
+        map.insert("gold".to_string(), Value::Integer(self.gold as i32));
+        map.insert("score".to_string(), Value::Integer(self.score as i32));
+        map.insert("current_wave".to_string(), Value::Integer(self.current_wave as i32));
         map
     }
 
     fn load_state(&mut self, state: &ValueMap) {
         if let Some(Value::Float(n)) = state.get("base_hp") { self.base_hp = *n as f32; }
-        if let Some(Value::Int(n)) = state.get("gold") { self.gold = *n as u32; }
-        if let Some(Value::Int(n)) = state.get("score") { self.score = *n as u64; }
-        if let Some(Value::Int(n)) = state.get("current_wave") { self.current_wave = *n as usize; }
+        if let Some(Value::Integer(n)) = state.get("gold") { self.gold = *n as u32; }
+        if let Some(Value::Integer(n)) = state.get("score") { self.score = *n as u64; }
+        if let Some(Value::Integer(n)) = state.get("current_wave") { self.current_wave = *n as usize; }
     }
 
     fn handle_event(&mut self, event: &str, data: &ValueMap, _ctx: &mut AtomContext) {
@@ -438,8 +438,8 @@ impl Atom for TowerDefenseAtom {
                         _ => None,
                     }
                 } else { None }).unwrap_or(TowerType::Arrow);
-                let row = data.get("row").and_then(|v| if let Value::Int(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
-                let col = data.get("col").and_then(|v| if let Value::Int(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
+                let row = data.get("row").and_then(|v| if let Value::Integer(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
+                let col = data.get("col").and_then(|v| if let Value::Integer(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
                 self.place_tower(tt, row, col);
             }
             "upgrade_tower" => {

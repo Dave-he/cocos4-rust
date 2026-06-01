@@ -4,7 +4,7 @@ use rand::Rng;
 
 use crate::base::value::{Value, ValueMap};
 
-use super::atom::{AtomId, AtomRegistry};
+use super::atom::{AtomFactory, AtomId, AtomRegistry};
 use super::gameplay::GameplayType;
 
 #[derive(Debug, Clone)]
@@ -237,8 +237,8 @@ impl DimensionGenerator {
             let ti = template_indices.remove(idx);
             let template = &rule_templates[ti];
             let mut params = ValueMap::new();
-            params.insert("intensity".to_string(), Value::Float(difficulty as f64));
-            params.insert("duration".to_string(), Value::Float((10.0 + self.rng.gen::<f32>() * 30.0) as f64));
+            params.insert("intensity".to_string(), Value::Float(difficulty as f32));
+            params.insert("duration".to_string(), Value::Float((10.0 + self.rng.gen::<f32>() * 30.0) as f32));
 
             rules.push(GeneratedRule {
                 rule_id: template.0.to_string(),
@@ -406,8 +406,8 @@ impl RuleComposer {
                 continue;
             }
 
-            let has_conflict = def.conflict_rules.iter().any(|c| {
-                rules.iter().any(|r| r.rule_id == *c)
+            let has_conflict = def.conflict_rules.iter().any(|c: &String| {
+                rules.iter().any(|r: &crate::agi_minigame::ai_engine::GeneratedRule| r.rule_id == *c)
             });
             if has_conflict {
                 continue;
@@ -417,7 +417,7 @@ impl RuleComposer {
 
             let mut params = ValueMap::new();
             let intensity = if has_synergy { difficulty * 1.5 } else { difficulty };
-            params.insert("intensity".to_string(), Value::Float(intensity as f64));
+            params.insert("intensity".to_string(), Value::Float(intensity as f32));
 
             rules.push(GeneratedRule {
                 rule_id: id.clone(),
@@ -619,9 +619,8 @@ mod tests {
                 description: format!("{} atom", name),
                 tags: vec![gt.to_string()],
             };
-            registry.register(id.to_string(), metadata, || {
-                panic!("factory not used in test")
-            });
+            let factory: AtomFactory = Box::new(|| panic!("factory not used in test"));
+            registry.register(id.to_string(), metadata, factory);
         }
         registry
     }

@@ -198,7 +198,10 @@ impl ParkourAtom {
         let move_speed = self.speed * dt;
         self.position += move_speed;
         self.distance += move_speed;
-        self.score += (move_speed * 10.0) as u64;
+        // Score is recomputed from accumulated distance so the small
+        // per-frame increments (which would truncate to 0 with the
+        // default 60Hz tick) still produce a non-zero score.
+        self.score = (self.distance * 10.0) as u64;
 
         for obs in &mut self.obstacles {
             obs.position -= move_speed;
@@ -337,20 +340,20 @@ impl Atom for ParkourAtom {
 
     fn save_state(&self) -> ValueMap {
         let mut map = ValueMap::new();
-        map.insert("score".to_string(), Value::Int(self.score as i64));
-        map.insert("distance".to_string(), Value::Float(self.distance as f64));
-        map.insert("hp".to_string(), Value::Int(self.hp as i64));
-        map.insert("coins".to_string(), Value::Int(self.coins as i64));
-        map.insert("lane".to_string(), Value::Int(self.lane as i64));
+        map.insert("score".to_string(), Value::Integer(self.score as i32));
+        map.insert("distance".to_string(), Value::Float(self.distance as f32));
+        map.insert("hp".to_string(), Value::Integer(self.hp as i32));
+        map.insert("coins".to_string(), Value::Integer(self.coins as i32));
+        map.insert("lane".to_string(), Value::Integer(self.lane as i32));
         map
     }
 
     fn load_state(&mut self, state: &ValueMap) {
-        if let Some(Value::Int(n)) = state.get("score") { self.score = *n as u64; }
+        if let Some(Value::Integer(n)) = state.get("score") { self.score = *n as u64; }
         if let Some(Value::Float(n)) = state.get("distance") { self.distance = *n as f32; }
-        if let Some(Value::Int(n)) = state.get("hp") { self.hp = *n as i32; }
-        if let Some(Value::Int(n)) = state.get("coins") { self.coins = *n as u32; }
-        if let Some(Value::Int(n)) = state.get("lane") { self.lane = *n as u8; }
+        if let Some(Value::Integer(n)) = state.get("hp") { self.hp = *n as i32; }
+        if let Some(Value::Integer(n)) = state.get("coins") { self.coins = *n as u32; }
+        if let Some(Value::Integer(n)) = state.get("lane") { self.lane = *n as u8; }
     }
 
     fn handle_event(&mut self, event: &str, data: &ValueMap, _ctx: &mut AtomContext) {

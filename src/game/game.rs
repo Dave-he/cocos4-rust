@@ -504,7 +504,7 @@ impl Game {
         let mut run_eval = |context: &mut Context, source: &str| {
             context.eval(Source::from_bytes(source)).is_ok()
         };
-let prelude = r#"
+let prelude = r##"
 var window = typeof window === "undefined" ? (typeof globalThis === "undefined" ? this : globalThis) : window;
 if (typeof console === "undefined") {
     var console = { log() {}, warn() {}, error() {}, info() {}, debug() {}, trace() {} };
@@ -3675,7 +3675,7 @@ if (typeof window.System.warmup !== "function") {
         return window.__mockThenable(_option).then(function () { return true; });
     };
 }
-"#;
+"##;
         let execute_bootstrap = if call_bootstrap {
             r#"
   if (typeof window.boot === "function") {

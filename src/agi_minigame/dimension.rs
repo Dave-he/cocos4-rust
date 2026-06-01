@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::base::value::{Value, ValueMap};
 
-use super::atom::{Atom, AtomContext, AtomId, AtomPhase, AtomRegistry, AtomRunner};
+use super::atom::{Atom, AtomContext, AtomId, AtomFactory, AtomPhase, AtomRegistry, AtomRunner};
 use super::ai_engine::DimensionBlueprint;
 use super::world_state::UnifiedWorldState;
 
@@ -241,8 +241,8 @@ impl Dimension {
         self.state = DimensionState::Completed;
 
         let mut data = ValueMap::new();
-        data.insert("score".to_string(), Value::Int(self.score as i64));
-        data.insert("time".to_string(), Value::Float(self.elapsed_time as f64));
+        data.insert("score".to_string(), Value::Integer(self.score as i32));
+        data.insert("time".to_string(), Value::Float(self.elapsed_time as f32));
         self.log_event("dimension_complete", data);
     }
 
@@ -293,11 +293,13 @@ impl Dimension {
     }
 
     fn check_all_mandatory_objectives(&self) -> bool {
-        self.config
-            .objectives
-            .iter()
-            .filter(|o| !o.is_optional)
-            .all(|o| o.is_completed)
+        let mandatory: Vec<_> = self.config.objectives.iter().filter(|o| !o.is_optional).collect();
+        // A dimension with no objectives never auto-completes — only the
+        // runner's `complete()` call or a time-limit expiry ends it.
+        if mandatory.is_empty() {
+            return false;
+        }
+        mandatory.iter().all(|o| o.is_completed)
     }
 
     fn log_event(&mut self, event_type: &str, data: ValueMap) {
@@ -380,21 +382,21 @@ impl DimensionRunner {
 
     pub fn update(&mut self, dt: f32) {
         if let Some(ref mut dim) = self.active_dimension {
-            let mut ctx = self.make_ctx();
+            let mut ctx = AtomContext::new(Arc::clone(&self.world_state));
             dim.update(dt, &mut ctx);
         }
     }
 
     pub fn pause(&mut self) {
         if let Some(ref mut dim) = self.active_dimension {
-            let mut ctx = self.make_ctx();
+            let mut ctx = AtomContext::new(Arc::clone(&self.world_state));
             dim.pause(&mut ctx);
         }
     }
 
     pub fn resume(&mut self) {
         if let Some(ref mut dim) = self.active_dimension {
-            let mut ctx = self.make_ctx();
+            let mut ctx = AtomContext::new(Arc::clone(&self.world_state));
             dim.resume(&mut ctx);
         }
     }
@@ -461,11 +463,11 @@ mod tests {
         fn on_destroy(&mut self) { self.phase = AtomPhase::Uninitialized; }
         fn save_state(&self) -> ValueMap {
             let mut m = ValueMap::new();
-            m.insert("update_count".to_string(), Value::Int(self.update_count as i64));
+            m.insert("update_count".to_string(), Value::Integer(self.update_count as i32));
             m
         }
         fn load_state(&mut self, state: &ValueMap) {
-            if let Some(Value::Int(n)) = state.get("update_count") {
+            if let Some(Value::Integer(n)) = state.get("update_count") {
                 self.update_count = *n as u32;
             }
         }
@@ -484,6 +486,7 @@ mod tests {
         ];
         for (id, name, gt) in atoms {
             let id_owned = id.to_string();
+            let factory: AtomFactory = Box::new(move || Box::new(MockAtom::new(&id_owned)));
             registry.register(
                 id.to_string(),
                 AtomMetadata {
@@ -494,7 +497,7 @@ mod tests {
                     description: format!("{} atom", name),
                     tags: vec![gt.to_string()],
                 },
-                move || Box::new(MockAtom::new(&id_owned)),
+                factory,
             );
         }
         registry

@@ -91,11 +91,11 @@ impl AtomRegistry {
         self.atoms.insert(id, (metadata, factory));
     }
 
-    pub fn create(&self, id: &AtomId) -> Option<Box<dyn Atom>> {
+    pub fn create(&self, id: &str) -> Option<Box<dyn Atom>> {
         self.atoms.get(id).map(|(_, factory)| factory())
     }
 
-    pub fn get_metadata(&self, id: &AtomId) -> Option<&AtomMetadata> {
+    pub fn get_metadata(&self, id: &str) -> Option<&AtomMetadata> {
         self.atoms.get(id).map(|(metadata, _)| metadata)
     }
 
@@ -103,7 +103,7 @@ impl AtomRegistry {
         self.atoms.values().map(|(m, _)| m).collect()
     }
 
-    pub fn has_atom(&self, id: &AtomId) -> bool {
+    pub fn has_atom(&self, id: &str) -> bool {
         self.atoms.contains_key(id)
     }
 }
@@ -225,6 +225,7 @@ mod tests {
     #[test]
     fn test_atom_registry() {
         let mut registry = AtomRegistry::new();
+        let factory: AtomFactory = Box::new(|| Box::new(TestAtom::new()));
         registry.register(
             "test".to_string(),
             AtomMetadata {
@@ -235,7 +236,7 @@ mod tests {
                 description: "Test atom".to_string(),
                 tags: vec!["test".to_string()],
             },
-            || Box::new(TestAtom::new()),
+            factory,
         );
 
         assert!(registry.has_atom("test"));

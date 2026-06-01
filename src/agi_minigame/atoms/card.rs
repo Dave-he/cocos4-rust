@@ -250,24 +250,24 @@ impl Atom for CardAtom {
 
     fn save_state(&self) -> ValueMap {
         let mut map = ValueMap::new();
-        map.insert("energy".to_string(), Value::Int(self.energy as i64));
-        map.insert("score".to_string(), Value::Int(self.score as i64));
-        map.insert("cards_played".to_string(), Value::Int(self.cards_played as i64));
-        map.insert("deck_size".to_string(), Value::Int(self.deck.len() as i64));
-        map.insert("hand_size".to_string(), Value::Int(self.hand.len() as i64));
+        map.insert("energy".to_string(), Value::Integer(self.energy as i32));
+        map.insert("score".to_string(), Value::Integer(self.score as i32));
+        map.insert("cards_played".to_string(), Value::Integer(self.cards_played as i32));
+        map.insert("deck_size".to_string(), Value::Integer(self.deck.len() as i32));
+        map.insert("hand_size".to_string(), Value::Integer(self.hand.len() as i32));
         map
     }
 
     fn load_state(&mut self, state: &ValueMap) {
-        if let Some(Value::Int(n)) = state.get("energy") { self.energy = *n as u32; }
-        if let Some(Value::Int(n)) = state.get("score") { self.score = *n as u64; }
-        if let Some(Value::Int(n)) = state.get("cards_played") { self.cards_played = *n as u32; }
+        if let Some(Value::Integer(n)) = state.get("energy") { self.energy = *n as u32; }
+        if let Some(Value::Integer(n)) = state.get("score") { self.score = *n as u64; }
+        if let Some(Value::Integer(n)) = state.get("cards_played") { self.cards_played = *n as u32; }
     }
 
     fn handle_event(&mut self, event: &str, data: &ValueMap, _ctx: &mut AtomContext) {
         match event {
             "play_card" => {
-                if let Some(Value::Int(idx)) = data.get("hand_index") {
+                if let Some(Value::Integer(idx)) = data.get("hand_index") {
                     self.play_card(*idx as usize);
                 }
             }
@@ -276,7 +276,7 @@ impl Atom for CardAtom {
                 self.start_turn();
             }
             "draw" => {
-                let count = data.get("count").and_then(|v| if let Value::Int(n) = v { Some(*n as usize) } else { None }).unwrap_or(1);
+                let count = data.get("count").and_then(|v| if let Value::Integer(n) = v { Some(*n as usize) } else { None }).unwrap_or(1);
                 self.draw_cards(count);
             }
             _ => {}

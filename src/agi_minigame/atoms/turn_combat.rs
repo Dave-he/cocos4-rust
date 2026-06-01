@@ -181,7 +181,7 @@ impl TurnCombatAtom {
     }
 
     pub fn generate_enemies(&mut self, difficulty: f32) {
-        let count = (1 + difficulty * 3.0) as usize;
+        let count = (1.0 + difficulty * 3.0) as usize;
         for i in 0..count.min(4) {
             let hp = (50.0 + difficulty * 50.0) as i32;
             let atk = (10.0 + difficulty * 15.0) as i32;
@@ -317,14 +317,14 @@ impl Atom for TurnCombatAtom {
 
     fn save_state(&self) -> ValueMap {
         let mut map = ValueMap::new();
-        map.insert("turn".to_string(), Value::Int(self.turn as i64));
-        map.insert("score".to_string(), Value::Int(self.score as i64));
+        map.insert("turn".to_string(), Value::Integer(self.turn as i32));
+        map.insert("score".to_string(), Value::Integer(self.score as i32));
         map
     }
 
     fn load_state(&mut self, state: &ValueMap) {
-        if let Some(Value::Int(n)) = state.get("turn") { self.turn = *n as u32; }
-        if let Some(Value::Int(n)) = state.get("score") { self.score = *n as u64; }
+        if let Some(Value::Integer(n)) = state.get("turn") { self.turn = *n as u32; }
+        if let Some(Value::Integer(n)) = state.get("score") { self.score = *n as u64; }
     }
 
     fn handle_event(&mut self, event: &str, data: &ValueMap, _ctx: &mut AtomContext) {
