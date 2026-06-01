@@ -149,29 +149,35 @@ impl Match3Atom {
 
         self.board = Vec::with_capacity(self.rows);
         for r in 0..self.rows {
-            let mut row = Vec::with_capacity(self.cols);
+            let mut row: Vec<Option<GemCell>> = Vec::with_capacity(self.cols);
             for c in 0..self.cols {
                 let gem_type = loop {
                     let gt = GemType::from_index(rng.gen_range(0..self.num_gem_types));
                     let mut would_match = false;
 
+                    // Horizontal: same row, c-1 and c-2 must not both be `gt`.
+                    // Read from the local `row` (not `self.board[r]`, which is
+                    // not yet pushed and would silently never match).
                     if c >= 2 {
-                        if let Some(Some(prev1)) = self.board.get(r).and_then(|row: &Vec<Option<GemCell>>| row.get(c - 1)) {
-                            if let Some(Some(prev2)) = self.board.get(r).and_then(|row| row.get(c - 2)) {
-                                if prev1.gem_type == gt && prev2.gem_type == gt {
-                                    would_match = true;
-                                }
+                        if let (Some(Some(p1)), Some(Some(p2))) =
+                            (row.get(c - 1), row.get(c - 2))
+                        {
+                            if p1.gem_type == gt && p2.gem_type == gt {
+                                would_match = true;
                             }
                         }
                     }
 
-                    if r >= 2 && !would_match {
-                        if let Some(prev_row1) = self.board.get(r - 1) {
-                            if let Some(prev_row2) = self.board.get(r - 2) {
-                                if let (Some(Some(prev1)), Some(Some(prev2))) = (prev_row1.get(c), prev_row2.get(c)) {
-                                    if prev1.gem_type == gt && prev2.gem_type == gt {
-                                        would_match = true;
-                                    }
+                    // Vertical: two rows above must not both be `gt` in the same column.
+                    if !would_match && r >= 2 {
+                        if let (Some(row_above_1), Some(row_above_2)) =
+                            (self.board.get(r - 1), self.board.get(r - 2))
+                        {
+                            if let (Some(Some(p1)), Some(Some(p2))) =
+                                (row_above_1.get(c), row_above_2.get(c))
+                            {
+                                if p1.gem_type == gt && p2.gem_type == gt {
+                                    would_match = true;
                                 }
                             }
                         }
