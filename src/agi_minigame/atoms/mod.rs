@@ -4,6 +4,7 @@ pub mod card;
 pub mod turn_combat;
 pub mod parkour;
 pub mod synthesis;
+pub mod integration_tests;
 
 pub use match3::Match3Atom;
 pub use tower_defense::TowerDefenseAtom;
