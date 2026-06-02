@@ -96,3 +96,94 @@ impl Rule {
         cost
     }
 }
+
+// ---------------------------------------------------------------------------
+// Manual JSON serialization (no serde dependency in cocos4-rust).
+// We intentionally avoid `serde::{Serialize, Deserialize}` so this crate
+// remains dependency-light. The shape is:
+//
+//   {
+//     "event": { "kind": "Collide" | { "Timer": <f32> } | ... },
+//     "actions": [
+//       { "kind": "Damage", "args": [10.0] },
+//       { "kind": "Spawn", "args": ["Fireball", 5.0] }
+//     ]
+//   }
+// ---------------------------------------------------------------------------
+
+impl EventKind {
+    pub fn to_json(&self) -> String {
+        match self {
+            EventKind::Collide => "\"Collide\"".to_string(),
+            EventKind::Timer   => "\"Timer\"".to_string(),
+            EventKind::Spawn   => "\"Spawn\"".to_string(),
+            EventKind::PlayerHit => "\"PlayerHit\"".to_string(),
+        }
+    }
+    pub fn from_json(s: &str) -> Option<Self> { Self::from_str(s) }
+}
+
+impl ActionKind {
+    pub fn to_json(&self) -> String {
+        match self {
+            ActionKind::Damage      => "\"Damage\"".to_string(),
+            ActionKind::Heal        => "\"Heal\"".to_string(),
+            ActionKind::Spawn       => "\"Spawn\"".to_string(),
+            ActionKind::SpawnEntity => "\"SpawnEntity\"".to_string(),
+        }
+    }
+    pub fn from_json(s: &str) -> Option<Self> { Self::from_str(s) }
+}
+
+impl Arg {
+    pub fn to_json(&self) -> String {
+        match self {
+            Arg::Number(n) => {
+                // Render as float with up to 6 fractional digits; trim trailing zeros.
+                let s = format!("{:.6}", n);
+                let trimmed = s.trim_end_matches('0').trim_end_matches('.');
+                trimmed.to_string()
+            }
+            Arg::Str(s) => {
+                let escaped = s.replace('\\', "\\\\").replace('"', "\\\"");
+                format!("\"{}\"", escaped)
+            }
+        }
+    }
+    pub fn from_json(s: &str) -> Option<Self> {
+        let s = s.trim();
+        if s.starts_with('"') && s.ends_with('"') {
+            return Some(Arg::Str(s[1..s.len()-1].to_string()));
+        }
+        if let Ok(n) = s.parse::<f32>() {
+            return Some(Arg::Number(n));
+        }
+        None
+    }
+}
+
+impl Event {
+    pub fn to_json(&self) -> String {
+        let arg_part = match &self.arg {
+            Some(a) => format!(", {}", a.to_json()),
+            None => String::new(),
+        };
+        format!("{{\"kind\":{}, \"arg\":{}}}", self.kind.to_json(),
+                match &self.arg { Some(a) => a.to_json(), None => "null".to_string() })
+    }
+}
+
+impl Action {
+    pub fn to_json(&self) -> String {
+        let args_json: Vec<String> = self.args.iter().map(|a| a.to_json()).collect();
+        format!("{{\"kind\":{}, \"args\":[{}]}}", self.kind.to_json(), args_json.join(","))
+    }
+}
+
+impl Rule {
+    pub fn to_json(&self) -> String {
+        let actions_json: Vec<String> = self.actions.iter().map(|a| a.to_json()).collect();
+        format!("{{\"event\":{}, \"actions\":[{}]}}",
+                self.event.to_json(), actions_json.join(","))
+    }
+}

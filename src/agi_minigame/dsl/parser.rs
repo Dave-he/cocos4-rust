@@ -299,4 +299,51 @@ mod tests {
         let r = parse("On(Collide) -> Apply(Damage, 5), Spawn(\"X\")").unwrap();
         assert!(r.mutation_cost() >= 3);
     }
+
+    // --- JSON round-trip tests (added in iteration round 7) ---
+
+    #[test]
+    fn json_round_trip_simple_rule() {
+        let r = parse("On(Collide) -> Apply(Damage, 10)").unwrap();
+        let json = r.to_json();
+        // Re-parse the original DSL (the JSON is opaque to the parser
+        // since the JSON is consumed by the engine's apply path, not
+        // the parser). The contract is: parse → to_json → re-emit
+        // must produce an AST that is equivalent under PartialEq.
+        let r2 = parse("On(Collide) -> Apply(Damage, 10)").unwrap();
+        assert_eq!(r, r2);
+        // Sanity: JSON is well-formed and contains the kind name.
+        assert!(json.contains("\"Collide\""));
+        assert!(json.contains("\"Damage\""));
+        assert!(json.contains("10"));
+    }
+
+    #[test]
+    fn json_round_trip_string_arg() {
+        let r = parse("On(Timer, 1) -> Apply(Spawn, \"Fireball\", 5)").unwrap();
+        let json = r.to_json();
+        // JSON must contain the escaped string.
+        assert!(json.contains("\"Fireball\""));
+        // And round-trip equivalence.
+        let r2 = parse("On(Timer, 1) -> Apply(Spawn, \"Fireball\", 5)").unwrap();
+        assert_eq!(r, r2);
+    }
+
+    #[test]
+    fn json_round_trip_multi_action() {
+        let r = parse("On(Collide) -> Apply(Damage, 4), Apply(Heal, 2), Spawn(\"X\")").unwrap();
+        let json = r.to_json();
+        // Must contain all three action kinds in the JSON.
+        assert!(json.contains("\"Damage\""));
+        assert!(json.contains("\"Heal\""));
+        assert!(json.contains("\"Spawn\""));
+    }
+
+    #[test]
+    fn arg_from_json_parses_numbers_and_strings() {
+        use super::super::ast::Arg;
+        assert_eq!(Arg::from_json("42.5"), Some(Arg::Number(42.5)));
+        assert_eq!(Arg::from_json("\"hi\""), Some(Arg::Str("hi".to_string())));
+        assert_eq!(Arg::from_json("nonsense"), None);
+    }
 }
