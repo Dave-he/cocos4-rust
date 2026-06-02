@@ -420,4 +420,32 @@ mod tests {
         assert!(unit.hp < 100);
         assert!(unit.is_alive());
     }
+
+    #[test]
+    fn test_combat_action_gauge() {
+        let mut unit = CombatUnit::new("u1", "Speedster", 50, 10, 5, 100, true);
+        // Speed 100 with threshold 100 → 1 tick of update should fire.
+        let ready = unit.tick_action_gauge();
+        assert!(ready);
+    }
+
+    #[test]
+    fn test_heal_caps_at_max_hp() {
+        let mut unit = CombatUnit::new("u1", "Test", 100, 10, 0, 8, true);
+        unit.take_damage(40);
+        assert_eq!(unit.hp, 60);
+        let healed = unit.heal(999);
+        assert_eq!(healed, 40);
+        assert_eq!(unit.hp, 100);
+    }
+
+    #[test]
+    fn test_buff_stacking_uses_max_duration() {
+        let mut unit = CombatUnit::new("u1", "Test", 100, 10, 5, 8, true);
+        unit.add_buff(Buff::new("b1", "B1", 2, 3, BuffEffect::AttackUp));
+        unit.add_buff(Buff::new("b1", "B1", 3, 5, BuffEffect::AttackUp));
+        assert_eq!(unit.buffs.len(), 1);
+        assert_eq!(unit.buffs[0].stacks, 5);
+        assert_eq!(unit.buffs[0].duration, 5);
+    }
 }
