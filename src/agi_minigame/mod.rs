@@ -6,6 +6,7 @@ pub mod gameplay;
 pub mod ai_engine;
 pub mod world_state;
 pub mod atoms;
+pub mod dsl;
 
 pub use atom::{Atom, AtomId, AtomRegistry, AtomContext, AtomPhase, AtomRunner, AtomMetadata};
 pub use dimension::{Dimension, DimensionConfig, DimensionRunner, DimensionState, DimensionObjective, DimensionProgress};
