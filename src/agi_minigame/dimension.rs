@@ -863,3 +863,74 @@ mod round16_tests {
         assert!(!(d.get_progress().state == DimensionState::Completed));
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 17 — DimensionRunner end-to-end: load → update → state asserts.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round17_tests {
+    use super::*;
+    use std::sync::Arc;
+    use crate::agi_minigame::atoms;
+    use crate::agi_minigame::player::PlayerProfile;
+    use crate::agi_minigame::world_state::UnifiedWorldState;
+
+    fn make_registry() -> AtomRegistry {
+        let mut reg = AtomRegistry::new();
+        atoms::register_all_atoms(&mut reg);
+        reg
+    }
+
+    fn make_config(id: &str, atom_ids: Vec<String>) -> DimensionConfig {
+        DimensionConfig {
+            id: id.to_string(),
+            name: id.to_string(),
+            description: "round 17".to_string(),
+            atom_ids,
+            difficulty: 0.5,
+            time_limit_secs: Some(60),
+            rules: Vec::new(),
+            rewards: Vec::new(),
+            objectives: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn runner_loads_a_dimension_with_known_atoms() {
+        let ws = Arc::new(Mutex::new(UnifiedWorldState::new(PlayerProfile::new("runner"))));
+        let reg = make_registry();
+        let mut runner = DimensionRunner::new(ws, Arc::new(Mutex::new(reg)));
+        let cfg = make_config("round17_dim", vec!["match3".into(), "tower_defense".into()]);
+        assert!(runner.start_dimension(cfg));
+        let dim = runner.get_active_dimension().expect("active dim");
+        assert_eq!(dim.config.id, "round17_dim");
+        assert_eq!(dim.config.atom_ids.len(), 2);
+    }
+
+    #[test]
+    fn runner_drives_a_dimension_through_updates() {
+        let ws = Arc::new(Mutex::new(UnifiedWorldState::new(PlayerProfile::new("runner"))));
+        let reg = make_registry();
+        let mut runner = DimensionRunner::new(ws, Arc::new(Mutex::new(reg)));
+        let cfg = make_config("round17_life", vec!["parkour".into()]);
+        assert!(runner.start_dimension(cfg));
+        // The runner's update takes only dt (it builds its own ctx).
+        runner.update(0.016);
+        runner.update(0.016);
+        runner.update(0.016);
+        let dim = runner.get_active_dimension().unwrap();
+        assert!(dim.elapsed_time > 0.0);
+    }
+
+    #[test]
+    fn runner_rejects_unknown_atom_ids() {
+        let ws = Arc::new(Mutex::new(UnifiedWorldState::new(PlayerProfile::new("runner"))));
+        let reg = make_registry();
+        let mut runner = DimensionRunner::new(ws, Arc::new(Mutex::new(reg)));
+        let cfg = make_config("bad", vec!["definitely.not.an.atom".into()]);
+        assert!(!runner.start_dimension(cfg));
+        // No active dimension after a failed start.
+        assert!(runner.get_active_dimension().is_none());
+    }
+}
