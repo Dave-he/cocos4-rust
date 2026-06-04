@@ -739,3 +739,127 @@ mod tests {
         assert_eq!(config.objectives.len(), 1);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 16 — additional lifecycle / state-transition tests.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round16_tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+
+    use crate::agi_minigame::atom::AtomContext;
+    use crate::agi_minigame::atoms;
+    use crate::agi_minigame::player::PlayerProfile;
+    use crate::agi_minigame::world_state::UnifiedWorldState;
+
+    fn make_ctx() -> AtomContext {
+        let ws = Arc::new(Mutex::new(UnifiedWorldState::new(PlayerProfile::new("test"))));
+        AtomContext::new(ws).with_delta_time(0.016)
+    }
+
+    fn make_config() -> DimensionConfig {
+        DimensionConfig {
+            id: "round16".to_string(),
+            name: "Round 16 Test".to_string(),
+            description: "tests".to_string(),
+            atom_ids: vec!["match3".to_string()],
+            difficulty: 0.5,
+            time_limit_secs: Some(120),
+            rules: Vec::new(),
+            rewards: Vec::new(),
+            objectives: Vec::new(),
+        }
+    }
+
+    fn make_registry() -> AtomRegistry {
+        let mut reg = AtomRegistry::new();
+        atoms::register_all_atoms(&mut reg);
+        reg
+    }
+
+    #[test]
+    fn new_dimension_starts_in_uninitialized_state() {
+        let d = Dimension::new(make_config());
+        // state is private; verify via get_progress / is_running / is_completed
+        assert!(!(d.get_progress().state == DimensionState::Running));
+        assert!(!(d.get_progress().state == DimensionState::Completed));
+    }
+
+    #[test]
+    fn load_then_start_transitions_to_running() {
+        let mut d = Dimension::new(make_config());
+        let reg = make_registry();
+        assert!(d.load(&reg));
+        let mut ctx = make_ctx();
+        d.start(&mut ctx);
+        assert!((d.get_progress().state == DimensionState::Running));
+    }
+
+    #[test]
+    fn load_with_unknown_atom_fails() {
+        let mut bad = make_config();
+        bad.atom_ids = vec!["not.an.atom".to_string()];
+        let mut d = Dimension::new(bad);
+        let reg = make_registry();
+        assert!(!d.load(&reg));
+        // Failed state — is_completed remains false
+        assert!(!(d.get_progress().state == DimensionState::Completed));
+    }
+
+    #[test]
+    fn update_accumulates_elapsed_time() {
+        let mut d = Dimension::new(make_config());
+        let reg = make_registry();
+        d.load(&reg);
+        let mut ctx = make_ctx();
+        d.start(&mut ctx);
+        d.update(0.5, &mut ctx);
+        d.update(0.5, &mut ctx);
+        // 1.0s of simulated time, but time_limit = 120 so still running
+        assert!((d.get_progress().state == DimensionState::Running));
+    }
+
+    #[test]
+    fn pause_resume_round_trip() {
+        let mut d = Dimension::new(make_config());
+        let reg = make_registry();
+        d.load(&reg);
+        let mut ctx = make_ctx();
+        d.start(&mut ctx);
+        d.pause(&mut ctx);
+        // While paused, update is a no-op
+        d.update(5.0, &mut ctx);
+        // Resume
+        d.resume(&mut ctx);
+        assert!((d.get_progress().state == DimensionState::Running));
+    }
+
+    #[test]
+    fn complete_transitions_to_completed() {
+        let mut d = Dimension::new(make_config());
+        let reg = make_registry();
+        d.load(&reg);
+        let mut ctx = make_ctx();
+        d.start(&mut ctx);
+        d.complete(&mut ctx);
+        assert!((d.get_progress().state == DimensionState::Completed));
+        // After completion, update is a no-op
+        d.update(1.0, &mut ctx);
+        assert!((d.get_progress().state == DimensionState::Completed));
+    }
+
+    #[test]
+    fn fail_transitions_to_failed() {
+        let mut d = Dimension::new(make_config());
+        let reg = make_registry();
+        d.load(&reg);
+        let mut ctx = make_ctx();
+        d.start(&mut ctx);
+        d.fail(&mut ctx, "out of mana");
+        // After failure, is_completed is false, is_running is false
+        assert!(!(d.get_progress().state == DimensionState::Running));
+        assert!(!(d.get_progress().state == DimensionState::Completed));
+    }
+}
