@@ -346,4 +346,50 @@ mod tests {
         assert_eq!(Arg::from_json("\"hi\""), Some(Arg::Str("hi".to_string())));
         assert_eq!(Arg::from_json("nonsense"), None);
     }
+
+    // --- Round 18 — edge-case tests ---
+
+    // --- Round 18 — edge-case tests ---
+
+    #[test]
+    fn parse_negative_number() {
+        let r = parse("On(Timer, -5) -> Apply(Damage, 10)").unwrap();
+        assert_eq!(r.event.arg, Some(Arg::Number(-5.0)));
+    }
+
+    #[test]
+    fn parse_extra_whitespace() {
+        let r = parse("  On(   Collide   )    ->    Apply(   Damage   ,   42   )  ").unwrap();
+        assert_eq!(r.event.kind, EventKind::Collide);
+        assert_eq!(r.actions[0].kind, ActionKind::Damage);
+        assert_eq!(r.actions[0].args, vec![Arg::Number(42.0)]);
+    }
+
+    #[test]
+    fn parse_negative_heal_arg() {
+        let r = parse("On(Collide) -> Apply(Heal, -5)").unwrap();
+        assert_eq!(r.actions[0].kind, ActionKind::Heal);
+        assert_eq!(r.actions[0].args, vec![Arg::Number(-5.0)]);
+    }
+
+    #[test]
+    fn parse_decimal_number() {
+        let r = parse("On(Timer, 1.5) -> Apply(Spawn, \"X\", 2.5)").unwrap();
+        assert_eq!(r.event.arg, Some(Arg::Number(1.5)));
+        assert_eq!(r.actions[0].kind, ActionKind::Spawn);
+        assert_eq!(r.actions[0].args, vec![Arg::Str("X".to_string()), Arg::Number(2.5)]);
+    }
+
+    #[test]
+    fn parse_unicode_string() {
+        let r = parse("On(Collide) -> Apply(Spawn, \"火球术\", 3)").unwrap();
+        assert_eq!(r.actions[0].kind, ActionKind::Spawn);
+        assert_eq!(r.actions[0].args, vec![Arg::Str("火球术".to_string()), Arg::Number(3.0)]);
+    }
+
+    #[test]
+    fn parse_empty_string_arg() {
+        let r = parse("On(Collide) -> Apply(Spawn, \"\", 1)").unwrap();
+        assert_eq!(r.actions[0].args, vec![Arg::Str("".to_string()), Arg::Number(1.0)]);
+    }
 }
