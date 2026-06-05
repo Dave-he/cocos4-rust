@@ -7,6 +7,7 @@ pub mod ai_engine;
 pub mod world_state;
 pub mod atoms;
 pub mod dsl;
+pub mod vault;
 
 pub use atom::{Atom, AtomId, AtomRegistry, AtomContext, AtomPhase, AtomRunner, AtomMetadata};
 pub use dimension::{Dimension, DimensionConfig, DimensionRunner, DimensionState, DimensionObjective, DimensionProgress};
@@ -16,3 +17,4 @@ pub use gameplay::{GameplayType, GameplayState, GameplayEvent, GameplayModule};
 pub use ai_engine::{AiEngine, DimensionGenerator, DimensionBlueprint, RuleComposer, BalanceTuner, GenerationConfig};
 pub use world_state::{UnifiedWorldState, SharedWorld, WorldEvent, PlayerStats};
 pub use atoms::register_all_atoms;
+pub use vault::{DimensionOutcome, DimensionVault, VaultEntry, VaultStats};
