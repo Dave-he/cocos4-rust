@@ -1,1 +1,11 @@
 /target
+
+# Stray bare-repository artifacts accidentally exploded into the worktree.
+# These are git internals (see config: `bare = true`) and must never be committed.
+/HEAD
+/config
+/description
+/hooks/
+/info/
+/objects/
+/refs/
