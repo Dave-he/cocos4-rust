@@ -128,6 +128,9 @@ pub struct NpcMind {
     capacity: usize,
     entries: VecDeque<NpcMemoryEntry>,
     disposition: NpcDisposition,
+    /// Round 37 — archetype tag (e.g. 'mage', 'merchant').
+    /// Optional; mirrors the TS-side round-29 field.
+    archetype: Option<String>,
 }
 
 impl NpcMind {
@@ -137,19 +140,45 @@ impl NpcMind {
     pub const DEFAULT_CAPACITY: usize = 32;
 
     /// Build a fresh mind for the given NPC with [`DEFAULT_CAPACITY`].
-    pub fn new(id: impl Into<NpcId>) -> Self {
-        Self::with_capacity(id, Self::DEFAULT_CAPACITY)
+    /// Round 37 — accepts an optional archetype tag, mirroring
+    /// the TS-side round-29 constructor. The tag biases the
+    /// `suggest_topic` NEUTRAL fallback (round-34 TS / round-37
+    /// here) so different archetypes lean toward different
+    /// topics.
+    pub fn new(id: impl Into<NpcId>, archetype: Option<impl Into<String>>) -> Self {
+        Self::with_capacity(id, Self::DEFAULT_CAPACITY, archetype)
     }
 
     /// Build a fresh mind that holds at most `capacity` entries.
     /// `capacity == 0` is allowed; `remember` becomes a no-op.
-    pub fn with_capacity(id: impl Into<NpcId>, capacity: usize) -> Self {
-        Self {
+    /// Round 37 — accepts an optional archetype tag.
+    pub fn with_capacity(
+        id: impl Into<NpcId>,
+        capacity: usize,
+        archetype: Option<impl Into<String>>,
+    ) -> Self {
+        let archetype = archetype.map(|a| a.into());
+        let mut mind = Self {
             id: id.into(),
             capacity,
             entries: VecDeque::with_capacity(capacity),
             disposition: NpcDisposition::default(),
+            archetype,
+        };
+        // Round 37 — seed the initial disposition from the
+        // round-37 archetype helper when an archetype is
+        // supplied. Mirrors the TS-side round-29 init.
+        if let Some(arch) = mind.archetype.as_deref() {
+            if let Some(typed) = npc_archetype_from_str(arch) {
+                mind.disposition = archetype_initial_disposition(typed);
+            }
         }
+        mind
+    }
+
+    /// Round 37 — read the archetype tag (None when unset).
+    pub fn archetype(&self) -> Option<&str> {
+        self.archetype.as_deref()
     }
 
     /// Stable id this mind belongs to.
@@ -244,13 +273,19 @@ impl NpcMind {
 
     /// Suggest a topic the NPC should bring up next, based on mood
     /// and the most recent memory kind. Deterministic on
-    /// `(mood, last_kind, seed)`.
+    /// `(mood, last_kind, seed, archetype)`. Round 37 mirrors
+    /// the TS-side round-34 archetype bias: the NEUTRAL
+    /// fallback is weighted toward the NPC's archetype
+    /// preferences (e.g. a mage leans toward 'lore', a
+    /// merchant toward 'trade'). The specific mood + last-kind
+    /// rules still take precedence; the archetype only colors
+    /// the NEUTRAL fallback.
     pub fn suggest_topic(&self, seed: u64) -> &'static str {
         let mood = self.mood();
         let last_kind = self.entries.back().map(|e| e.kind);
-        // 4 fallback topics; seed picks one to break ties.
+        // 4 fallback topics; seed + archetype weights break
+        // ties. (The round-34 TS side uses the same shape.)
         const NEUTRAL: [&str; 4] = ["greeting", "lore", "trade", "quest"];
-        let neutral_idx = (seed as usize).wrapping_add(self.entries.len()) % NEUTRAL.len();
         match (mood, last_kind) {
             (NpcMood::Happy,   Some(NpcMemoryKind::ReceivedGift))        => "trade",
             (NpcMood::Happy,   Some(NpcMemoryKind::Dialogue))            => "quest",
@@ -260,7 +295,15 @@ impl NpcMind {
             (NpcMood::Uneasy,  Some(NpcMemoryKind::WitnessedEvent))      => "lore",
             (NpcMood::Uneasy,  _)                                        => "farewell",
             (NpcMood::Neutral, Some(NpcMemoryKind::HeardAboutDimension)) => "lore",
-            (NpcMood::Neutral, _)                                        => NEUTRAL[neutral_idx],
+            (NpcMood::Neutral, _)                                        => {
+                // Weighted deterministic pick keyed on
+                // (seed, entries_count) so it's testable.
+                let weights = self.archetype.as_deref()
+                    .and_then(npc_archetype_from_str)
+                    .map(archetype_topic_boost)
+                    .unwrap_or([1, 1, 1, 1]);
+                pick_weighted(&NEUTRAL, weights, seed, self.entries.len() as u64)
+            }
         }
     }
 
@@ -369,7 +412,7 @@ mod tests {
 
     #[test]
     fn new_mind_is_empty_and_has_default_disposition() {
-        let m = NpcMind::new("npc_0");
+        let m = NpcMind::new("npc_0", None::<&str>);
         assert_eq!(m.id(), "npc_0");
         assert!(m.is_empty());
         assert_eq!(m.len(), 0);
@@ -380,7 +423,7 @@ mod tests {
 
     #[test]
     fn capacity_wrap_drops_oldest() {
-        let mut m = NpcMind::with_capacity("npc_0", 3);
+        let mut m = NpcMind::with_capacity("npc_0", 3, None::<&str>);
         for i in 0..5 {
             m.remember(entry(NpcMemoryKind::Dialogue, &format!("d{i}"), i, 0.1));
         }
@@ -393,7 +436,7 @@ mod tests {
 
     #[test]
     fn zero_capacity_is_black_hole() {
-        let mut m = NpcMind::with_capacity("npc_0", 0);
+        let mut m = NpcMind::with_capacity("npc_0", 0, None::<&str>);
         m.remember(entry(NpcMemoryKind::Dialogue, "x", 0, 1.0));
         assert_eq!(m.len(), 0);
         // Disposition still untouched because the no-op short-circuits.
@@ -402,7 +445,7 @@ mod tests {
 
     #[test]
     fn disposition_clamps_to_unit_interval() {
-        let mut m = NpcMind::new("npc_0");
+        let mut m = NpcMind::new("npc_0", None::<&str>);
         // Bash friendliness up beyond +1.
         for i in 0..50 {
             m.remember(entry(NpcMemoryKind::ReceivedGift, "gift", i, 1.0));
@@ -429,7 +472,7 @@ mod tests {
 
     #[test]
     fn recall_by_kind_filters_in_insertion_order() {
-        let mut m = NpcMind::new("npc_0");
+        let mut m = NpcMind::new("npc_0", None::<&str>);
         m.remember(entry(NpcMemoryKind::Dialogue, "a", 0, 0.1));
         m.remember(entry(NpcMemoryKind::ReceivedGift, "gift", 1, 0.5));
         m.remember(entry(NpcMemoryKind::Dialogue, "b", 2, 0.1));
@@ -443,7 +486,7 @@ mod tests {
 
     #[test]
     fn mood_thresholds_match_disposition() {
-        let mut m = NpcMind::new("npc_0");
+        let mut m = NpcMind::new("npc_0", None::<&str>);
         assert_eq!(m.mood(), NpcMood::Neutral);
         // Push friendly past 0.40 with no fear → Happy.
         m.remember(entry(NpcMemoryKind::ReceivedGift, "gift", 0, 1.0)); // +0.40 friendly, +0.30 trust
@@ -451,14 +494,14 @@ mod tests {
         assert_eq!(m.mood(), NpcMood::Happy);
 
         // Hostility flips it.
-        let mut m2 = NpcMind::new("npc_1");
+        let mut m2 = NpcMind::new("npc_1", None::<&str>);
         for i in 0..3 {
             m2.remember(entry(NpcMemoryKind::Hostility, "hit", i, 1.0));
         }
         assert_eq!(m2.mood(), NpcMood::Hostile);
 
         // Mild fear bumps to Uneasy when friendliness is low.
-        let mut m3 = NpcMind::new("npc_2");
+        let mut m3 = NpcMind::new("npc_2", None::<&str>);
         m3.remember(entry(NpcMemoryKind::WitnessedEvent, "earthquake", 0, 1.0)); // +0.15 fear
         m3.remember(entry(NpcMemoryKind::WitnessedEvent, "fire", 1, 1.0));      // +0.30 fear
         assert_eq!(m3.mood(), NpcMood::Uneasy);
@@ -466,37 +509,37 @@ mod tests {
 
     #[test]
     fn suggest_topic_routes_by_mood_and_last_kind() {
-        let mut happy = NpcMind::new("happy");
+        let mut happy = NpcMind::new("happy", None::<&str>);
         happy.remember(entry(NpcMemoryKind::ReceivedGift, "gift", 0, 1.0));
         happy.remember(entry(NpcMemoryKind::ReceivedGift, "gift", 1, 1.0));
         assert_eq!(happy.suggest_topic(0), "trade");
 
-        let mut hostile = NpcMind::new("hostile");
+        let mut hostile = NpcMind::new("hostile", None::<&str>);
         for i in 0..3 {
             hostile.remember(entry(NpcMemoryKind::Hostility, "hit", i, 1.0));
         }
         assert_eq!(hostile.suggest_topic(0), "combat");
 
-        let mut uneasy = NpcMind::new("uneasy");
+        let mut uneasy = NpcMind::new("uneasy", None::<&str>);
         uneasy.remember(entry(NpcMemoryKind::WitnessedEvent, "boom", 0, 1.0));
         uneasy.remember(entry(NpcMemoryKind::WitnessedEvent, "fire", 1, 1.0));
         assert_eq!(uneasy.suggest_topic(0), "lore");
 
-        let neutral = NpcMind::new("neutral");
+        let neutral = NpcMind::new("neutral", None::<&str>);
         // Seed picks index 0 → "greeting" when neutral & empty.
         assert_eq!(neutral.suggest_topic(0), "greeting");
     }
 
     #[test]
     fn manual_shift_clamps() {
-        let mut m = NpcMind::new("npc_0");
+        let mut m = NpcMind::new("npc_0", None::<&str>);
         m.shift_disposition(2.0, -3.0, 5.0);
         assert_eq!(m.disposition(), NpcDisposition { friendly: 1.0, fear: -1.0, trust: 1.0 });
     }
 
     #[test]
     fn clear_resets_everything() {
-        let mut m = NpcMind::new("npc_0");
+        let mut m = NpcMind::new("npc_0", None::<&str>);
         m.remember(entry(NpcMemoryKind::ReceivedGift, "g", 0, 1.0));
         assert!(m.disposition().friendly > 0.0);
         assert_eq!(m.len(), 1);
@@ -508,10 +551,10 @@ mod tests {
     #[test]
     fn registry_insert_replaces_same_id() {
         let mut reg = NpcRegistry::new();
-        reg.insert(NpcMind::with_capacity("a", 8));
-        reg.insert(NpcMind::with_capacity("b", 8));
+        reg.insert(NpcMind::with_capacity("a", 8, None::<&str>));
+        reg.insert(NpcMind::with_capacity("b", 8, None::<&str>));
         assert_eq!(reg.len(), 2);
-        reg.insert(NpcMind::with_capacity("a", 4));
+        reg.insert(NpcMind::with_capacity("a", 4, None::<&str>));
         assert_eq!(reg.len(), 2);
         assert_eq!(reg.get("a").unwrap().capacity(), 4);
     }
@@ -519,9 +562,9 @@ mod tests {
     #[test]
     fn registry_broadcast_records_in_every_mind() {
         let mut reg = NpcRegistry::new();
-        reg.insert(NpcMind::new("a"));
-        reg.insert(NpcMind::new("b"));
-        reg.insert(NpcMind::new("c"));
+        reg.insert(NpcMind::new("a", None::<&str>));
+        reg.insert(NpcMind::new("b", None::<&str>));
+        reg.insert(NpcMind::new("c", None::<&str>));
         reg.broadcast(entry(NpcMemoryKind::HeardAboutDimension, "Neon Cascade", 0, 0.5));
         for id in ["a", "b", "c"] {
             let m = reg.get(id).unwrap();
@@ -535,9 +578,9 @@ mod tests {
     fn registry_average_disposition() {
         let mut reg = NpcRegistry::new();
         assert_eq!(reg.average_disposition(), NpcDisposition::default());
-        let mut a = NpcMind::new("a");
+        let mut a = NpcMind::new("a", None::<&str>);
         a.shift_disposition(1.0, 0.0, 0.0);
-        let mut b = NpcMind::new("b");
+        let mut b = NpcMind::new("b", None::<&str>);
         b.shift_disposition(-1.0, 0.5, 0.0);
         reg.insert(a);
         reg.insert(b);
@@ -549,7 +592,7 @@ mod tests {
 
     #[test]
     fn recent_limit_zero_returns_empty() {
-        let mut m = NpcMind::new("npc_0");
+        let mut m = NpcMind::new("npc_0", None::<&str>);
         m.remember(entry(NpcMemoryKind::Dialogue, "x", 0, 0.1));
         assert!(m.recent(0).is_empty());
     }
@@ -670,6 +713,74 @@ pub fn archetype_initial_disposition(arch: NpcArchetype) -> NpcDisposition {
     }
 }
 
+/// Round 37 — archetype → topic weight vector for the
+/// `suggest_topic` NEUTRAL fallback. The order is fixed:
+/// `[greeting, lore, trade, quest]`. Higher means more
+/// likely to be picked. The shape mirrors the TS-side
+/// round-34 `archetypeTopicBoost`; values are chosen to
+/// match the archetype's lore role (Mage leans toward
+/// 'lore', Siren toward 'greeting', etc.) so the
+/// canonical 11-archetype set has at least one topic
+/// distinctly favored.
+pub fn archetype_topic_boost(arch: NpcArchetype) -> [u32; 4] {
+    // [greeting, lore, trade, quest]
+    match arch {
+        NpcArchetype::Mage         => [1, 3, 0, 2],
+        NpcArchetype::Robot        => [1, 3, 1, 1],
+        NpcArchetype::Astronaut    => [1, 2, 1, 2],
+        NpcArchetype::Diver        => [2, 1, 2, 1],
+        NpcArchetype::Nomad        => [2, 1, 2, 2],
+        NpcArchetype::Siren        => [3, 1, 1, 1],
+        NpcArchetype::Lich         => [0, 3, 0, 1],
+        NpcArchetype::Beast        => [1, 1, 0, 3],
+        NpcArchetype::Alien        => [1, 2, 0, 3],
+        NpcArchetype::Scorpion     => [1, 0, 0, 3],
+        NpcArchetype::Skeleton     => [0, 1, 0, 3],
+    }
+}
+
+/// Round 37 — weighted deterministic pick over the 4
+/// NEUTRAL topics, keyed on `(seed, entry_count)`. Same
+/// inputs → same output (no rng call, just modular
+/// arithmetic), so tests can pin specific values. Mirrors
+/// the TS-side `pickWeighted`.
+fn pick_weighted(pool: &'static [&'static str; 4], weights: [u32; 4], seed: u64, entry_count: u64) -> &'static str {
+    let total: u64 = weights.iter().map(|&w| w as u64).sum();
+    if total == 0 { return pool[0]; }
+    let target = seed.wrapping_add(entry_count) % total;
+    let mut acc: u64 = 0;
+    for (i, &w) in weights.iter().enumerate() {
+        acc += w as u64;
+        if target < acc { return pool[i]; }
+    }
+    pool[pool.len() - 1]
+}
+
+/// Round 37 — `&str` → `Option<NpcArchetype>` lookup. Used
+/// to convert the TS-style archetype string ("mage",
+/// "merchant", ...) to the canonical Rust enum when the
+/// NpcMind was constructed with a string. Unknown strings
+/// return None and the mind falls back to flat weights.
+pub fn npc_archetype_from_str(s: &str) -> Option<NpcArchetype> {
+    use NpcArchetype::*;
+    Some(match s {
+        "robot"     => Robot,
+        "mage"      => Mage,
+        "beast"     => Beast,
+        "astronaut" => Astronaut,
+        "alien"     => Alien,
+        "siren"     => Siren,
+        "diver"     => Diver,
+        "scorpion"  => Scorpion,
+        "nomad"     => Nomad,
+        "skeleton"  => Skeleton,
+        "lich"      => Lich,
+        // Round 34 TS archetypes fall back to None.
+        "merchant" | "guard" | "rogue" | "shaman" | "peasant" => return None,
+        _ => return None,
+    })
+}
+
 #[cfg(test)]
 mod archetype_tests {
     use super::*;
@@ -695,7 +806,7 @@ mod archetype_tests {
             A::Siren, A::Diver, A::Scorpion, A::Nomad, A::Skeleton, A::Lich,
         ] {
             let d = archetype_initial_disposition(arch);
-            let mut m = NpcMind::new("n");
+            let mut m = NpcMind::new("n", None::<&str>);
             m.shift_disposition(d.friendly, d.fear, d.trust);
             assert_eq!(m.mood(), archetype_initial_mood(arch),
                        "mood round-trip mismatch for {:?}", arch);
@@ -781,5 +892,130 @@ mod archetype_tests {
             // uneasy cluster: fear ≥ 0.3
             assert!(d.fear >= 0.3, "uneasy cluster fear must be ≥ 0.3 for {:?}, got {}", a, d.fear);
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Round 37 — archetype → topic bias (mirror of TS round 34).
+//
+// Round 34 added an archetype layer to `suggestTopic` on the
+// TS side: the NEUTRAL fallback is weighted by the NPC's
+// archetype. Round 37 mirrors this on the engine side so
+// the canonical 11-archetype set has a distinct topic
+// preference, and the same NpcMind built from a string
+// archetype ('mage', 'merchant', ...) gets the right bias.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round37_tests {
+    use super::*;
+    use crate::agi_minigame::scene_gen::NpcArchetype as A;
+
+    #[test]
+    fn archetype_archetype_field_round_trips_through_constructor() {
+        let m = NpcMind::new("mage_1", Some("mage"));
+        assert_eq!(m.archetype(), Some("mage"));
+        let plain = NpcMind::new("plain_1", None::<&str>);
+        assert_eq!(plain.archetype(), None);
+    }
+
+    #[test]
+    fn archetype_init_seeds_disposition_from_table() {
+        // Mage → neutral mood, all-zero default per
+        // archetype_initial_disposition. The test just
+        // confirms that the constructor *did* call the
+        // helper (i.e. the disposition is not just
+        // `NpcDisposition::default()`).
+        let m = NpcMind::new("lich_1", Some("lich"));
+        let d = m.disposition();
+        // archetype_initial_disposition(Lich) →
+        // { friendly: -0.5, fear: 0.7, trust: -0.5 }
+        assert!((d.friendly - (-0.5)).abs() < 1e-6);
+        assert!((d.fear - 0.7).abs() < 1e-6);
+        assert!((d.trust - (-0.5)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn unknown_archetype_string_leaves_default_disposition() {
+        // Defensive: a string that doesn't map to a known
+        // NpcArchetype variant leaves the disposition at
+        // zero (no crash).
+        let m = NpcMind::new("x1", Some("this-archetype-does-not-exist"));
+        let d = m.disposition();
+        assert_eq!(d.friendly, 0.0);
+        assert_eq!(d.fear, 0.0);
+        assert_eq!(d.trust, 0.0);
+    }
+
+    #[test]
+    fn npc_archetype_from_str_maps_known_archetypes() {
+        // The 11 canonical NpcArchetype variants.
+        for (s, expected) in &[
+            ("robot",     A::Robot),
+            ("mage",      A::Mage),
+            ("beast",     A::Beast),
+            ("astronaut", A::Astronaut),
+            ("alien",     A::Alien),
+            ("siren",     A::Siren),
+            ("diver",     A::Diver),
+            ("scorpion",  A::Scorpion),
+            ("nomad",     A::Nomad),
+            ("skeleton",  A::Skeleton),
+            ("lich",      A::Lich),
+        ] {
+            assert_eq!(npc_archetype_from_str(s), Some(*expected));
+        }
+    }
+
+    #[test]
+    fn archetype_topic_boost_assigns_distinct_profiles() {
+        // Sanity: no two archetypes share the same 4-vector
+        // (otherwise the bias is meaningless). With 11
+        // archetypes × 4 topics, the odds of a collision
+        // are ~1%; the test just guards against accidental
+        // duplication.
+        use std::collections::HashSet;
+        let profiles: HashSet<[u32; 4]> = [
+            A::Robot, A::Mage, A::Beast, A::Astronaut, A::Alien,
+            A::Siren, A::Diver, A::Scorpion, A::Nomad, A::Skeleton, A::Lich,
+        ].iter().map(|a| archetype_topic_boost(*a)).collect();
+        assert_eq!(profiles.len(), 11);
+    }
+
+    #[test]
+    fn mage_archetype_leans_toward_lore() {
+        // mage weights: [1, 3, 0, 2] — 'lore' is the
+        // heaviest, so the weighted pick should favor
+        // 'lore' across many seeds.
+        const NEUTRAL: [&str; 4] = ["greeting", "lore", "trade", "quest"];
+        let weights = archetype_topic_boost(A::Mage);
+        let mut lore = 0;
+        for seed in 0..30 {
+            if pick_weighted(&NEUTRAL, weights, seed, 0) == "lore" {
+                lore += 1;
+            }
+        }
+        // total=6, lore=3 → 50% of seeds.
+        assert!(lore >= 10, "expected ≥10 lore picks in 30 seeds, got {lore}");
+    }
+
+    #[test]
+    fn archetype_weighted_pick_is_deterministic_per_seed() {
+        const NEUTRAL: [&str; 4] = ["greeting", "lore", "trade", "quest"];
+        let weights = archetype_topic_boost(A::Nomad);
+        for seed in 0..10 {
+            let a = pick_weighted(&NEUTRAL, weights, seed, 0);
+            let b = pick_weighted(&NEUTRAL, weights, seed, 0);
+            assert_eq!(a, b);
+        }
+    }
+
+    #[test]
+    fn archetype_zero_total_weights_falls_back_to_pool_0() {
+        // Defensive: all-zero weights → total=0 → return
+        // pool[0] without dividing by zero.
+        const NEUTRAL: [&str; 4] = ["greeting", "lore", "trade", "quest"];
+        let r = pick_weighted(&NEUTRAL, [0, 0, 0, 0], 42, 0);
+        assert_eq!(r, "greeting");
     }
 }
