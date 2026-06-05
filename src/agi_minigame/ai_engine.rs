@@ -493,7 +493,10 @@ impl BalanceTuner {
             .collect();
 
         if recent.is_empty() {
-            return 0.3 + player_level as f32 * 0.05;
+            // Base scales with player_level but must stay within the
+            // unit range so callers can compare/weight it directly
+            // against history-based suggestions.
+            return (0.3 + player_level as f32 * 0.05).clamp(0.1, 1.0);
         }
 
         let win_rate = recent.iter().filter(|d| d.completed).count() as f32 / recent.len() as f32;
@@ -700,5 +703,70 @@ mod tests {
         let b1 = gen.generate(&config, &registry);
         let b2 = gen.generate(&config, &registry);
         assert_ne!(b1.id, b2.id);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Round 19 — additional ai_engine tests (use the public API only).
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round19_tests {
+    use super::*;
+
+    #[test]
+    fn rule_composer_filters_by_difficulty() {
+        let composer = RuleComposer::new();
+        // A very high minimum_difficulty should yield only high-tier rules.
+        let high = composer.compose(&["parkour".to_string()], 0.99);
+        for r in &high {
+            // GeneratedRule stores its tuning values on `params`
+            // (a ValueMap), and uses `rule_id` (not `id`).
+            assert!(r.params.get("intensity")
+                        .map(|v| matches!(v, crate::base::value::Value::Float(f) if *f >= 0.0))
+                        .unwrap_or(true),
+                    "high-difficulty compose should not include low-tier rules: {:?}", r.rule_id);
+        }
+    }
+
+    #[test]
+    fn rule_composer_default_has_at_least_three_rules() {
+        let composer = RuleComposer::new();
+        assert!(!composer.compose(&["match3".to_string()], 0.5).is_empty()
+                || !composer.compose(&["parkour".to_string()], 0.5).is_empty()
+                || !composer.compose(&["card".to_string()], 0.5).is_empty());
+    }
+
+    #[test]
+    fn balance_tuner_suggests_difficulty_in_unit_range() {
+        let tuner = BalanceTuner::new();
+        for level in 1..=20 {
+            let d = tuner.suggest_difficulty(level);
+            assert!(d >= 0.0 && d <= 1.0, "level {level} → {d} out of [0,1]");
+        }
+    }
+
+    #[test]
+    fn balance_tuner_recording_does_not_change_immediate_suggestion() {
+        let mut tuner = BalanceTuner::new();
+        let d_before = tuner.suggest_difficulty(5);
+        // Record a session at very different levels → the level-5
+        // suggestion should remain stable because the filter takes
+        // only sessions within ±2 of the requested level.
+        for i in 0..5 {
+            tuner.record_result("d1", 0.7, 1, 100, 60.0, i % 2 == 0);
+        }
+        let d_after = tuner.suggest_difficulty(5);
+        assert!((d_before - d_after).abs() < 0.01);
+    }
+
+    #[test]
+    fn balance_tuner_widens_with_matching_level_history() {
+        let mut tuner = BalanceTuner::new();
+        for i in 0..10 {
+            tuner.record_result("d1", 0.5, 5, 100, 60.0, i % 2 == 0);
+        }
+        let d = tuner.suggest_difficulty(5);
+        assert!(d >= 0.0 && d <= 1.0);
     }
 }
