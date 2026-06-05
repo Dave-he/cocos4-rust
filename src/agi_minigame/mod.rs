@@ -8,6 +8,7 @@ pub mod world_state;
 pub mod atoms;
 pub mod dsl;
 pub mod vault;
+pub mod npc;
 
 pub use atom::{Atom, AtomId, AtomRegistry, AtomContext, AtomPhase, AtomRunner, AtomMetadata};
 pub use dimension::{Dimension, DimensionConfig, DimensionRunner, DimensionState, DimensionObjective, DimensionProgress};
@@ -18,3 +19,4 @@ pub use ai_engine::{AiEngine, DimensionGenerator, DimensionBlueprint, RuleCompos
 pub use world_state::{UnifiedWorldState, SharedWorld, WorldEvent, PlayerStats};
 pub use atoms::register_all_atoms;
 pub use vault::{DimensionOutcome, DimensionVault, VaultEntry, VaultStats};
+pub use npc::{NpcDisposition, NpcId, NpcMemoryEntry, NpcMemoryKind, NpcMind, NpcMood, NpcRegistry};
