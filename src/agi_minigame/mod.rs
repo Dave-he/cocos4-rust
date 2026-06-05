@@ -10,6 +10,7 @@ pub mod dsl;
 pub mod vault;
 pub mod npc;
 pub mod scene_gen;
+pub mod narration;
 
 pub use atom::{Atom, AtomId, AtomRegistry, AtomContext, AtomPhase, AtomRunner, AtomMetadata};
 pub use dimension::{Dimension, DimensionConfig, DimensionRunner, DimensionState, DimensionObjective, DimensionProgress};
@@ -28,3 +29,4 @@ pub use scene_gen::{
     theme_to_scene, default_wfc_weights,
     BiomeId, EventStep, MusicMood, NpcArchetype, SceneBlueprint, ThemeInput, VisualStyle,
 };
+pub use narration::{base_intro_sentence_count, mood_branch, mood_tag, mood_4th_sentence, build_sentences};
