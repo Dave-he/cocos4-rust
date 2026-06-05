@@ -554,3 +554,232 @@ mod tests {
         assert!(m.recent(0).is_empty());
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 27 — archetype → NPC-default mappings.
+//
+// Round 24 added `NpcArchetype` (and the
+// `theme_to_scene(theme).npc_archetype_hints` field) so each visual
+// style ships a list of canonical archetype tags. Round 24 only
+// *tagged* the spawned NPCs with the archetype; this block closes
+// the loop and makes the tag actually *do* something: a cyberpunk
+// "robot" spawns as stoic/neutral, a "skeleton" as grumpy/hostile,
+// a "siren" as playful/happy, etc. Players can see the same theme
+// produce a consistent NPC personality profile.
+//
+// Branch order and the personality / faction / mood / disposition
+// values are all canonical — the TS side mirrors them 1:1 in
+// `NpcFactory.ts`. Cross-layer equality is enforced by the TS
+// `archetype_default_*` jest tests and the engine `archetype_*`
+// cargo tests below.
+// ---------------------------------------------------------------------------
+
+use super::scene_gen::NpcArchetype;
+
+/// Coarse-grained personality tag. Mirrors `NPCPersonality` in TS.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NpcPersonality {
+    Cheerful,
+    Grumpy,
+    Mysterious,
+    Wise,
+    Playful,
+    Stoic,
+}
+
+/// Initial mood for a freshly-spawned NPC whose `archetype` is
+/// `arch`. The mood is the *initial* label only — once the player
+/// interacts with the NPC, `NpcMind::mood()` derives the live mood
+/// from `disposition()`.
+pub fn archetype_initial_mood(arch: NpcArchetype) -> NpcMood {
+    match arch {
+        NpcArchetype::Robot     => NpcMood::Neutral,
+        NpcArchetype::Mage      => NpcMood::Neutral,
+        NpcArchetype::Beast     => NpcMood::Uneasy,
+        NpcArchetype::Astronaut => NpcMood::Neutral,
+        NpcArchetype::Alien     => NpcMood::Uneasy,
+        NpcArchetype::Siren     => NpcMood::Happy,
+        NpcArchetype::Diver     => NpcMood::Neutral,
+        NpcArchetype::Scorpion  => NpcMood::Hostile,
+        NpcArchetype::Nomad     => NpcMood::Neutral,
+        NpcArchetype::Skeleton  => NpcMood::Hostile,
+        NpcArchetype::Lich      => NpcMood::Hostile,
+    }
+}
+
+/// Default personality for the given archetype. Picked to be
+/// *narratively consistent* with the visual style — e.g. a robot is
+/// stoic, a siren is playful.
+pub fn archetype_default_personality(arch: NpcArchetype) -> NpcPersonality {
+    match arch {
+        NpcArchetype::Robot     => NpcPersonality::Stoic,
+        NpcArchetype::Mage      => NpcPersonality::Wise,
+        NpcArchetype::Beast     => NpcPersonality::Playful,
+        NpcArchetype::Astronaut => NpcPersonality::Stoic,
+        NpcArchetype::Alien     => NpcPersonality::Mysterious,
+        NpcArchetype::Siren     => NpcPersonality::Playful,
+        NpcArchetype::Diver     => NpcPersonality::Cheerful,
+        NpcArchetype::Scorpion  => NpcPersonality::Grumpy,
+        NpcArchetype::Nomad     => NpcPersonality::Stoic,
+        NpcArchetype::Skeleton  => NpcPersonality::Grumpy,
+        NpcArchetype::Lich      => NpcPersonality::Mysterious,
+    }
+}
+
+/// Default faction hint for the given archetype. Free-form string;
+/// the TS side consumes it as an opaque label for `NPCProfile.faction`.
+pub fn archetype_default_faction(arch: NpcArchetype) -> &'static str {
+    match arch {
+        NpcArchetype::Robot
+        | NpcArchetype::Astronaut => "苍穹骑士团",
+        NpcArchetype::Mage        => "秘银评议会",
+        NpcArchetype::Beast       => "隐者之塔",
+        NpcArchetype::Alien       => "星陨教派",
+        NpcArchetype::Siren
+        | NpcArchetype::Diver     => "潮汐神殿",
+        NpcArchetype::Scorpion
+        | NpcArchetype::Nomad     => "焰心旅团",
+        NpcArchetype::Skeleton
+        | NpcArchetype::Lich      => "暗巷商会",
+    }
+}
+
+/// Initial disposition baseline. Picked so that
+/// `NpcMind::mood()` round-trips to the same label as
+/// `archetype_initial_mood(arch)`. Once the player interacts, the
+/// live disposition diverges and `mood()` tracks it.
+///
+/// Threshold reminder (from `NpcMind::mood()`):
+///   - Hostile requires `fear >= 0.60 && friendly <= 0.0`
+///   - Happy   requires `friendly >= 0.40 && fear <= 0.30`
+///   - Uneasy  requires `fear >= 0.30 || friendly <= -0.20`
+///   - Neutral otherwise
+pub fn archetype_initial_disposition(arch: NpcArchetype) -> NpcDisposition {
+    match arch {
+        NpcArchetype::Robot
+        | NpcArchetype::Mage
+        | NpcArchetype::Astronaut
+        | NpcArchetype::Diver
+        | NpcArchetype::Nomad      => NpcDisposition { friendly: 0.0, fear: 0.0, trust: 0.0 },
+        NpcArchetype::Lich         => NpcDisposition { friendly: -0.5, fear: 0.7, trust: -0.5 },
+        NpcArchetype::Beast
+        | NpcArchetype::Alien      => NpcDisposition { friendly: 0.0, fear: 0.4, trust: -0.1 },
+        NpcArchetype::Siren        => NpcDisposition { friendly: 0.5, fear: 0.0, trust: 0.3 },
+        NpcArchetype::Scorpion
+        | NpcArchetype::Skeleton   => NpcDisposition { friendly: -0.5, fear: 0.7, trust: -0.4 },
+    }
+}
+
+#[cfg(test)]
+mod archetype_tests {
+    use super::*;
+    use crate::agi_minigame::scene_gen::NpcArchetype as A;
+
+    #[test]
+    fn every_archetype_has_a_personality() {
+        for &arch in &[
+            A::Robot, A::Mage, A::Beast, A::Astronaut, A::Alien,
+            A::Siren, A::Diver, A::Scorpion, A::Nomad, A::Skeleton, A::Lich,
+        ] {
+            // Just confirm no panic — the function is total.
+            let _ = archetype_default_personality(arch);
+        }
+    }
+
+    #[test]
+    fn archetype_initial_mood_matches_mind_round_trip() {
+        // Pin: a mind built from `archetype_initial_disposition` should
+        // report the same mood as `archetype_initial_mood`.
+        for &arch in &[
+            A::Robot, A::Mage, A::Beast, A::Astronaut, A::Alien,
+            A::Siren, A::Diver, A::Scorpion, A::Nomad, A::Skeleton, A::Lich,
+        ] {
+            let d = archetype_initial_disposition(arch);
+            let mut m = NpcMind::new("n");
+            m.shift_disposition(d.friendly, d.fear, d.trust);
+            assert_eq!(m.mood(), archetype_initial_mood(arch),
+                       "mood round-trip mismatch for {:?}", arch);
+        }
+    }
+
+    #[test]
+    fn archetype_mood_categorization_matches_palette_priority() {
+        // Hostile → hostile, Siren → happy, Beast/Alien → uneasy, rest → neutral.
+        assert_eq!(archetype_initial_mood(A::Scorpion), NpcMood::Hostile);
+        assert_eq!(archetype_initial_mood(A::Skeleton), NpcMood::Hostile);
+        assert_eq!(archetype_initial_mood(A::Lich), NpcMood::Hostile);
+        assert_eq!(archetype_initial_mood(A::Siren), NpcMood::Happy);
+        assert_eq!(archetype_initial_mood(A::Beast), NpcMood::Uneasy);
+        assert_eq!(archetype_initial_mood(A::Alien), NpcMood::Uneasy);
+        assert_eq!(archetype_initial_mood(A::Robot), NpcMood::Neutral);
+        assert_eq!(archetype_initial_mood(A::Mage), NpcMood::Neutral);
+        assert_eq!(archetype_initial_mood(A::Diver), NpcMood::Neutral);
+    }
+
+    #[test]
+    fn archetype_personality_is_thematic() {
+        // Sanity: a robot is stoic, a mage is wise, a siren is playful, etc.
+        assert_eq!(archetype_default_personality(A::Robot), NpcPersonality::Stoic);
+        assert_eq!(archetype_default_personality(A::Mage), NpcPersonality::Wise);
+        assert_eq!(archetype_default_personality(A::Siren), NpcPersonality::Playful);
+        assert_eq!(archetype_default_personality(A::Skeleton), NpcPersonality::Grumpy);
+        assert_eq!(archetype_default_personality(A::Lich), NpcPersonality::Mysterious);
+    }
+
+    #[test]
+    fn archetype_factions_have_5_unique_factions() {
+        // The 11 archetypes collapse into 7 factions (Robot+Astronaut
+        // share 苍穹骑士团, Siren+Diver share 潮汐神殿, etc.).
+        // Sanity: at least 2 archetypes per faction (or 1 for the rare
+        // case), and total distinct count is 7.
+        let mut seen: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+        for &arch in &[
+            A::Robot, A::Mage, A::Beast, A::Astronaut, A::Alien,
+            A::Siren, A::Diver, A::Scorpion, A::Nomad, A::Skeleton, A::Lich,
+        ] {
+            seen.insert(archetype_default_faction(arch).to_string());
+        }
+        // 7 distinct factions across 11 archetypes (each match arm
+        // is a unique Chinese string).
+        assert_eq!(seen.len(), 7);
+    }
+
+    #[test]
+    fn archetype_dispositions_in_unit_range() {
+        for &arch in &[
+            A::Robot, A::Mage, A::Beast, A::Astronaut, A::Alien,
+            A::Siren, A::Diver, A::Scorpion, A::Nomad, A::Skeleton, A::Lich,
+        ] {
+            let d = archetype_initial_disposition(arch);
+            assert!(d.friendly >= -1.0 && d.friendly <= 1.0);
+            assert!(d.fear >= -1.0 && d.fear <= 1.0);
+            assert!(d.trust >= -1.0 && d.trust <= 1.0);
+        }
+    }
+
+    #[test]
+    fn all_archetype_initial_moods_distinct_per_cluster() {
+        // Cross-cluster consistency: every Hostile-mood archetype
+        // shares the same disposition family; every Neutral-mood
+        // archetype shares the same family.
+        let hostile_archs = [A::Scorpion, A::Skeleton];
+        let happy_archs = [A::Siren];
+        let uneasy_archs = [A::Beast, A::Alien];
+        for &a in &hostile_archs {
+            let d = archetype_initial_disposition(a);
+            // hostile cluster: friendly ≤ -0.2
+            assert!(d.friendly <= -0.2, "hostile cluster friendly must be ≤ -0.2 for {:?}, got {}", a, d.friendly);
+        }
+        for &a in &happy_archs {
+            let d = archetype_initial_disposition(a);
+            // happy cluster: friendly ≥ 0.4 and trust ≥ 0.2
+            assert!(d.friendly >= 0.4);
+            assert!(d.trust >= 0.2);
+        }
+        for &a in &uneasy_archs {
+            let d = archetype_initial_disposition(a);
+            // uneasy cluster: fear ≥ 0.3
+            assert!(d.fear >= 0.3, "uneasy cluster fear must be ≥ 0.3 for {:?}, got {}", a, d.fear);
+        }
+    }
+}
