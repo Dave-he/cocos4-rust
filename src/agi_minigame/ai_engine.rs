@@ -6,6 +6,7 @@ use crate::base::value::{Value, ValueMap};
 
 use super::atom::{AtomFactory, AtomId, AtomRegistry};
 use super::gameplay::GameplayType;
+use super::npc::NpcDisposition;
 
 #[derive(Debug, Clone)]
 pub struct GenerationConfig {
@@ -527,6 +528,55 @@ impl BalanceTuner {
         (base + adjustment).clamp(0.1, 1.0)
     }
 
+    /// Round 22 — reflexive loop with the world's NPC mood.
+    ///
+    /// Returns the same value as [`BalanceTuner::suggest_difficulty`]
+    /// for the given player level, then nudges it by the collective
+    /// NPC disposition (typically from
+    /// [`super::npc::NpcRegistry::average_disposition`]):
+    ///
+    /// - `fear > 0.5` → `-0.10` (the world already feels too scary)
+    /// - `friendly > 0.5 && trust > 0.3` → `+0.08`
+    ///   (NPCs like the player → they're doing well → raise the
+    ///   stakes)
+    /// - `friendly < -0.3` → `-0.05` (NPCs hate the player; a
+    ///   difficulty bump won't fix social rot, ease up a bit instead)
+    ///
+    /// Multiple branches can fire together (their adjustments stack).
+    /// The result is always clamped into `[0.1, 1.0]`, matching
+    /// `suggest_difficulty`.
+    ///
+    /// When `mood == NpcDisposition::default()` (neutral) the
+    /// function returns exactly the same value as
+    /// `suggest_difficulty(player_level)` — the reflexive loop adds
+    /// information when there *is* information, never noise.
+    pub fn suggest_difficulty_with_mood(
+        &self,
+        player_level: u32,
+        mood: NpcDisposition,
+    ) -> f32 {
+        let base = self.suggest_difficulty(player_level);
+        let bias = Self::mood_bias(mood);
+        (base + bias).clamp(0.1, 1.0)
+    }
+
+    /// Pure mood → bias mapping. Exposed for the game layer so the
+    /// HUD can preview the upcoming nudge before committing to a
+    /// dimension. Always returns a value in `[-0.15, 0.08]`.
+    pub fn mood_bias(mood: NpcDisposition) -> f32 {
+        let mut bias = 0.0f32;
+        if mood.fear > 0.5 {
+            bias -= 0.10;
+        }
+        if mood.friendly > 0.5 && mood.trust > 0.3 {
+            bias += 0.08;
+        }
+        if mood.friendly < -0.3 {
+            bias -= 0.05;
+        }
+        bias
+    }
+
     pub fn get_stats(&self) -> BalanceStats {
         if self.history.is_empty() {
             return BalanceStats {
@@ -768,5 +818,99 @@ mod round19_tests {
         }
         let d = tuner.suggest_difficulty(5);
         assert!(d >= 0.0 && d <= 1.0);
+    }
+
+    // ---- Round 22 — NpcMind ↔ BalanceTuner reflexive loop ----
+
+    #[test]
+    fn mood_bias_neutral_disposition_is_zero() {
+        assert_eq!(BalanceTuner::mood_bias(NpcDisposition::default()), 0.0);
+    }
+
+    #[test]
+    fn mood_bias_high_fear_lowers_difficulty() {
+        let scared = NpcDisposition { friendly: 0.0, fear: 0.7, trust: 0.0 };
+        assert!(BalanceTuner::mood_bias(scared) < 0.0);
+        assert!((BalanceTuner::mood_bias(scared) - -0.10).abs() < 1e-6);
+    }
+
+    #[test]
+    fn mood_bias_friendly_and_trusting_raises_difficulty() {
+        let beloved = NpcDisposition { friendly: 0.8, fear: 0.0, trust: 0.5 };
+        assert!(BalanceTuner::mood_bias(beloved) > 0.0);
+        assert!((BalanceTuner::mood_bias(beloved) - 0.08).abs() < 1e-6);
+    }
+
+    #[test]
+    fn mood_bias_friendly_alone_is_not_enough() {
+        let liked_but_distrusted = NpcDisposition { friendly: 0.8, fear: 0.0, trust: 0.1 };
+        // Liked but not trusted → no bonus (trust gate failed).
+        assert_eq!(BalanceTuner::mood_bias(liked_but_distrusted), 0.0);
+    }
+
+    #[test]
+    fn mood_bias_hated_player_eases_difficulty() {
+        let hated = NpcDisposition { friendly: -0.5, fear: 0.0, trust: 0.0 };
+        assert!((BalanceTuner::mood_bias(hated) - -0.05).abs() < 1e-6);
+    }
+
+    #[test]
+    fn mood_bias_branches_can_stack() {
+        // High fear AND hated → both penalties apply (-0.10 - 0.05).
+        let nightmare = NpcDisposition { friendly: -0.5, fear: 0.7, trust: 0.0 };
+        assert!((BalanceTuner::mood_bias(nightmare) - -0.15).abs() < 1e-6);
+    }
+
+    #[test]
+    fn mood_bias_is_bounded() {
+        // Even at extremes, |mood_bias| ≤ 0.15.
+        let extreme = NpcDisposition { friendly: -1.0, fear: 1.0, trust: -1.0 };
+        let bias = BalanceTuner::mood_bias(extreme);
+        assert!(bias <= 0.08 && bias >= -0.15, "got {bias}");
+    }
+
+    #[test]
+    fn suggest_with_mood_equals_plain_when_neutral() {
+        let mut tuner = BalanceTuner::new();
+        for i in 0..6 {
+            tuner.record_result("d1", 0.5, 5, 1000, 100.0, i % 2 == 0);
+        }
+        let plain = tuner.suggest_difficulty(5);
+        let mooded = tuner.suggest_difficulty_with_mood(5, NpcDisposition::default());
+        assert!((plain - mooded).abs() < 1e-6);
+    }
+
+    #[test]
+    fn suggest_with_mood_clamps_at_floor() {
+        // Empty history + low level + scared+hated → would push below 0.1.
+        let tuner = BalanceTuner::new();
+        let nightmare = NpcDisposition { friendly: -1.0, fear: 1.0, trust: 0.0 };
+        let d = tuner.suggest_difficulty_with_mood(1, nightmare);
+        assert!(d >= 0.1, "got {d}");
+        assert!(d <= 1.0);
+    }
+
+    #[test]
+    fn suggest_with_mood_clamps_at_ceiling() {
+        // Empty history + max level + adoring NPCs → would push above 1.0.
+        let tuner = BalanceTuner::new();
+        let adored = NpcDisposition { friendly: 1.0, fear: 0.0, trust: 1.0 };
+        let d = tuner.suggest_difficulty_with_mood(50, adored);
+        assert!(d <= 1.0, "got {d}");
+        assert!(d >= 0.1);
+    }
+
+    #[test]
+    fn suggest_with_mood_actually_moves_difficulty() {
+        let tuner = BalanceTuner::new();
+        // Use a middle-level so we have headroom on both sides.
+        let level = 5;
+        let scared = NpcDisposition { friendly: 0.0, fear: 0.9, trust: 0.0 };
+        let adored = NpcDisposition { friendly: 0.9, fear: 0.0, trust: 0.5 };
+        let d_scared = tuner.suggest_difficulty_with_mood(level, scared);
+        let d_adored = tuner.suggest_difficulty_with_mood(level, adored);
+        let d_plain = tuner.suggest_difficulty(level);
+        assert!(d_scared < d_plain, "scared {d_scared} should be < plain {d_plain}");
+        assert!(d_adored > d_plain, "adored {d_adored} should be > plain {d_plain}");
     }
 }
