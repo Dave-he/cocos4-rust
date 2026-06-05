@@ -21,4 +21,10 @@ pub use world_state::{UnifiedWorldState, SharedWorld, WorldEvent, PlayerStats};
 pub use atoms::register_all_atoms;
 pub use vault::{DimensionOutcome, DimensionVault, VaultEntry, VaultStats};
 pub use npc::{NpcDisposition, NpcId, NpcMemoryEntry, NpcMemoryKind, NpcMind, NpcMood, NpcRegistry};
-pub use scene_gen::{build_generation_config_with_mood, mood_promoted_atoms, GenerationHint};
+pub use scene_gen::{
+    build_generation_config_with_mood, mood_promoted_atoms,
+    mood_palette, palette_accent, palette_background,
+    GenerationHint, Palette, ALL_PALETTES, FEAR_PALETTE, FRIENDLY_PALETTE, HOSTILE_PALETTE, NEUTRAL_PALETTE,
+    theme_to_scene, default_wfc_weights,
+    BiomeId, EventStep, MusicMood, NpcArchetype, SceneBlueprint, ThemeInput, VisualStyle,
+};
