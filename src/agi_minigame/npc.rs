@@ -50,6 +50,23 @@ pub enum NpcMemoryKind {
     Hostility,
 }
 
+/// Round 48 — `&str` → [`NpcMemoryKind`] lookup. Used to deserialize
+/// the round-40 TS `NpcMindSnapshot.kind` field (a string literal)
+/// back into the engine enum. Mirrors the TS-side kind union. The
+/// string shape is the canonical 5-variant form (`"dialogue"` etc.)
+/// — unknown strings return `None` so rehydration can fail soft
+/// (skip the entry, keep the rest) rather than panic on stale saves.
+pub fn npc_memory_kind_from_str(s: &str) -> Option<NpcMemoryKind> {
+    Some(match s {
+        "dialogue"               => NpcMemoryKind::Dialogue,
+        "witnessed_event"        => NpcMemoryKind::WitnessedEvent,
+        "heard_about_dimension"  => NpcMemoryKind::HeardAboutDimension,
+        "received_gift"          => NpcMemoryKind::ReceivedGift,
+        "hostility"              => NpcMemoryKind::Hostility,
+        _ => return None,
+    })
+}
+
 /// One row in an NPC's memory ring.
 #[derive(Debug, Clone, PartialEq)]
 pub struct NpcMemoryEntry {
@@ -76,6 +93,34 @@ impl NpcMemoryEntry {
             weight: weight.clamp(-1.0, 1.0),
         }
     }
+}
+
+/// Round 48 — per-NPC memory + disposition snapshot. Captures the
+/// canonical "what the world remembers about each NPC" state for
+/// cross-save persistence and rehydration. The TS-side
+/// `NpcMindSnapshot` interface (in `src/world/WorldState.ts`) is
+/// the mirror of this struct; field names + types match 1:1 so
+/// the round-40 serialized payload can be rehydrated into a live
+/// [`NpcMind`] via [`NpcMind::rehydrate`] without translation.
+///
+/// Why not derive `Serialize`/`Deserialize` (which would let
+/// serde handle the round-trip)? Because (a) the game layer is
+/// TypeScript and the actual serializer is `JSON.stringify`; the
+/// engine never sees the wire format directly. (b) Keeping the
+/// shape explicit makes the cross-layer contract self-documenting
+/// — anyone reading the struct sees exactly what the TS side
+/// promises to send.
+///
+/// `entries` are stored newest-first-or-newest-last? Newest-last,
+/// matching the order `NpcMind::recent` returns: oldest at
+/// index 0, newest at the back. Rehydration pushes them in the
+/// same order so the ring's `recent(n)` round-trips byte-for-byte.
+#[derive(Debug, Clone, PartialEq)]
+pub struct NpcMindSnapshot {
+    pub id: String,
+    pub archetype: Option<String>,
+    pub disposition: NpcDisposition,
+    pub entries: Vec<NpcMemoryEntry>,
 }
 
 /// Three-axis disposition vector. Each axis is clamped to `[-1.0, 1.0]`.
@@ -313,6 +358,49 @@ impl NpcMind {
         self.entries.clear();
         self.disposition = NpcDisposition::default();
     }
+
+    /// Round 48 — build a [`NpcMind`] from a persisted
+    /// [`NpcMindSnapshot`]. Capacity adapts to the snapshot's
+    /// entry count (clamped to a minimum of [`DEFAULT_CAPACITY`])
+    /// so the rehydrated ring never wraps entries the snapshot
+    /// had room for.
+    ///
+    /// Critically, the rehydrated `disposition` is taken
+    /// **verbatim** from the snapshot — we do NOT call
+    /// `archetype_initial_disposition` here, because the
+    /// snapshot's disposition is the "last-known live state"
+    /// (e.g. round 27's "high-difficulty clear → +0.6 trust"
+    /// broadcasts) and overwriting it with the archetype
+    /// baseline would discard that history. The round-21/29
+    /// constructor path stays the canonical "fresh boot"
+    /// path; this factory is the canonical "rehydrate from
+    /// save" path.
+    ///
+    /// The kind field on each entry is a typed `NpcMemoryKind`
+    /// enum, so there is no string-to-enum round-trip on the
+    /// Rust side. (The TS layer does that round-trip when it
+    /// builds the snapshot from a `JSON.parse` of the save
+    /// file.) Future pure-Rust snapshot deserializers (e.g.
+    /// serde) can use [`npc_memory_kind_from_str`] as the
+    /// lookup, but the canonical wire shape is the typed
+    /// struct.
+    pub fn rehydrate(snap: NpcMindSnapshot) -> Self {
+        let capacity = snap.entries.len().max(Self::DEFAULT_CAPACITY);
+        let mut mind = Self {
+            id: snap.id,
+            capacity,
+            entries: VecDeque::with_capacity(capacity),
+            // The whole point of rehydrate: take the
+            // snapshot's disposition, not the archetype
+            // baseline.
+            disposition: snap.disposition,
+            archetype: snap.archetype,
+        };
+        for entry in snap.entries {
+            mind.entries.push_back(entry);
+        }
+        mind
+    }
 }
 
 /// Many minds, keyed by [`NpcId`]. Mirrors the small registries
@@ -394,6 +482,32 @@ impl NpcRegistry {
             t += d.trust;
         }
         NpcDisposition { friendly: f / n, fear: fr / n, trust: t / n }
+    }
+
+    /// Round 48 — construct a fresh [`NpcRegistry`] from a list
+    /// of [`NpcMindSnapshot`]s. Each snapshot is rehydrated via
+    /// [`NpcMind::rehydrate`] and inserted in order.
+    ///
+    /// The returned registry is **fully replaced** — any minds
+    /// present in `self` are dropped. This matches the round-48
+    /// semantic "snapshot is the new source of truth at app
+    /// boot, not a delta" and is the right behavior for
+    /// save→reload (the snapshot reflects the last live state).
+    pub fn load_from_snapshots(snapshots: Vec<NpcMindSnapshot>) -> Self {
+        let mut reg = Self::new();
+        reg.load_from_snapshots_into(snapshots);
+        reg
+    }
+
+    /// Round 48 — in-place version of [`Self::load_from_snapshots`].
+    /// Clears the existing mind list and inserts a fresh mind per
+    /// snapshot. Idempotent: running twice with the same input
+    /// produces the same registry state.
+    pub fn load_from_snapshots_into(&mut self, snapshots: Vec<NpcMindSnapshot>) {
+        self.minds.clear();
+        for snap in snapshots {
+            self.minds.push(NpcMind::rehydrate(snap));
+        }
     }
 }
 
@@ -595,6 +709,297 @@ mod tests {
         let mut m = NpcMind::new("npc_0", None::<&str>);
         m.remember(entry(NpcMemoryKind::Dialogue, "x", 0, 0.1));
         assert!(m.recent(0).is_empty());
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Round 48 — NpcMind::rehydrate + NpcRegistry::load_from_snapshots.
+//
+// Round 40 added a TS-only `NpcMindSnapshot` interface (see
+// `src/world/WorldState.ts` in AGI-miniGame) and persisted
+// per-NPC entries across save → reload. Round 48 closes the
+// loop: the live `NpcRegistry` is now rebuilt from the
+// snapshot at app startup, so the world's NPC memory is
+// truly continuous across reloads.
+//
+// The Rust side gets:
+//   1. `NpcMindSnapshot` struct (mirror of TS interface)
+//   2. `NpcMind::rehydrate` factory — capacity adapts to
+//      snapshot entries; disposition is taken verbatim
+//      (NOT seeded from archetype_initial_disposition, so
+//      a saved +0.6 trust from round-27 broadcasts survives)
+//   3. `NpcRegistry::load_from_snapshots` (construct) +
+//      `load_from_snapshots_into` (in-place) — full replace
+//      semantics; pre-existing minds are dropped
+//   4. `npc_memory_kind_from_str` — string→enum lookup for
+//      future pure-Rust snapshot deserializers
+//
+// The test suite below mirrors the TS-side jest tests 1-to-1
+// (see AGI-miniGame `src/world/NpcMind.test.ts::round48_*`).
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round48_tests {
+    use super::*;
+
+    fn entry(kind: NpcMemoryKind, summary: &str, turn: u64, weight: f32) -> NpcMemoryEntry {
+        NpcMemoryEntry::new(kind, summary, turn, weight)
+    }
+
+    fn snap(
+        id: &str,
+        archetype: Option<&str>,
+        disp: NpcDisposition,
+        entries: Vec<NpcMemoryEntry>,
+    ) -> NpcMindSnapshot {
+        NpcMindSnapshot {
+            id: id.to_string(),
+            archetype: archetype.map(String::from),
+            disposition: disp,
+            entries,
+        }
+    }
+
+    #[test]
+    fn rehydrate_preserves_fields_verbatim() {
+        // Same fields in → same fields out.
+        let entries = vec![
+            entry(NpcMemoryKind::Dialogue,       "hi",  1, 0.5),
+            entry(NpcMemoryKind::ReceivedGift,   "gem", 2, 1.0),
+            entry(NpcMemoryKind::WitnessedEvent, "boom",3, 0.2),
+        ];
+        let s = snap("mage_1", Some("mage"),
+                     NpcDisposition { friendly: 0.5, fear: 0.1, trust: 0.7 },
+                     entries.clone());
+        let m = NpcMind::rehydrate(s);
+        assert_eq!(m.id(), "mage_1");
+        assert_eq!(m.archetype(), Some("mage"));
+        assert_eq!(m.len(), 3);
+        assert_eq!(m.disposition().friendly, 0.5);
+        assert_eq!(m.disposition().fear,     0.1);
+        assert_eq!(m.disposition().trust,    0.7);
+        // Order preserved.
+        let r = m.recent(3);
+        assert_eq!(r[0].summary, "hi");
+        assert_eq!(r[1].summary, "gem");
+        assert_eq!(r[2].summary, "boom");
+    }
+
+    #[test]
+    fn rehydrate_does_not_apply_archetype_initial_disposition() {
+        // Headline invariant: a saved `mage` whose disposition is
+        // {0,0,0} (e.g. after a wipe of trust) stays at {0,0,0}.
+        // The fresh-boot path would seed +0.1 trust via
+        // archetype_initial_disposition(Mage), but rehydrate
+        // must take the snapshot's value verbatim.
+        let s = snap("mage_x", Some("mage"),
+                     NpcDisposition { friendly: 0.0, fear: 0.0, trust: 0.0 },
+                     vec![]);
+        let m = NpcMind::rehydrate(s);
+        assert_eq!(m.disposition().trust, 0.0);
+        // Same check for Lich (which has a non-zero baseline).
+        let s2 = snap("lich_x", Some("lich"),
+                      NpcDisposition { friendly: 0.0, fear: 0.0, trust: 0.0 },
+                      vec![]);
+        let m2 = NpcMind::rehydrate(s2);
+        // Lich baseline is { -0.5, 0.7, -0.5 }; snapshot says
+        // {0,0,0}; rehydrate keeps {0,0,0}.
+        assert_eq!(m2.disposition().friendly, 0.0);
+        assert_eq!(m2.disposition().fear,     0.0);
+        assert_eq!(m2.disposition().trust,    0.0);
+    }
+
+    #[test]
+    fn rehydrate_capacity_adapts_to_entries_len() {
+        // 5 entries → capacity ≥ 5.
+        let entries: Vec<NpcMemoryEntry> = (0..5)
+            .map(|i| entry(NpcMemoryKind::Dialogue, &format!("d{i}"), i, 0.1))
+            .collect();
+        let m = NpcMind::rehydrate(snap("n", None, NpcDisposition::default(), entries));
+        assert!(m.capacity() >= 5);
+        assert_eq!(m.len(), 5);
+
+        // 50 entries → capacity ≥ 50 (no wraparound).
+        let entries50: Vec<NpcMemoryEntry> = (0..50)
+            .map(|i| entry(NpcMemoryKind::Dialogue, &format!("d{i}"), i, 0.1))
+            .collect();
+        let m50 = NpcMind::rehydrate(snap("n", None, NpcDisposition::default(), entries50));
+        assert!(m50.capacity() >= 50);
+        assert_eq!(m50.len(), 50);
+        // First entry should be index 0 (oldest) — proves no wraparound.
+        assert_eq!(m50.recent(50)[0].summary, "d0");
+    }
+
+    #[test]
+    fn rehydrate_capacity_floor_is_default() {
+        // 0 entries → capacity = DEFAULT_CAPACITY (32).
+        let m = NpcMind::rehydrate(snap("n", None, NpcDisposition::default(), vec![]));
+        assert_eq!(m.capacity(), NpcMind::DEFAULT_CAPACITY);
+        assert_eq!(m.len(), 0);
+    }
+
+    #[test]
+    fn rehydrate_preserves_unknown_archetype_string() {
+        // An archetype string that the engine doesn't recognize
+        // must survive the round-trip verbatim. The TS layer
+        // round-29 keeps unknown archetypes; this keeps the
+        // cross-layer contract symmetric.
+        let s = snap("n", Some("this-archetype-does-not-exist"),
+                     NpcDisposition::default(), vec![]);
+        let m = NpcMind::rehydrate(s);
+        assert_eq!(m.archetype(), Some("this-archetype-does-not-exist"));
+    }
+
+    #[test]
+    fn rehydrate_no_archetype_yields_none() {
+        // The TS interface's `archetype: string | null` maps to
+        // `Option<String>` here; `null` → `None` → `archetype()`
+        // returns `None` (not `Some("")` or `Some("null")`).
+        let s = snap("n", None, NpcDisposition::default(), vec![]);
+        let m = NpcMind::rehydrate(s);
+        assert_eq!(m.archetype(), None);
+    }
+
+    #[test]
+    fn npc_memory_kind_from_str_maps_5_canonical_kinds() {
+        assert_eq!(npc_memory_kind_from_str("dialogue"),
+                   Some(NpcMemoryKind::Dialogue));
+        assert_eq!(npc_memory_kind_from_str("witnessed_event"),
+                   Some(NpcMemoryKind::WitnessedEvent));
+        assert_eq!(npc_memory_kind_from_str("heard_about_dimension"),
+                   Some(NpcMemoryKind::HeardAboutDimension));
+        assert_eq!(npc_memory_kind_from_str("received_gift"),
+                   Some(NpcMemoryKind::ReceivedGift));
+        assert_eq!(npc_memory_kind_from_str("hostility"),
+                   Some(NpcMemoryKind::Hostility));
+        // Unknown kind → None (fail-soft for future variants).
+        assert_eq!(npc_memory_kind_from_str("future_kind"), None);
+        assert_eq!(npc_memory_kind_from_str(""),            None);
+    }
+
+    #[test]
+    fn registry_load_from_snapshots_fully_replaces() {
+        // Pre-existing mind "old_1" must be gone after load —
+        // replace semantics, not merge.
+        let mut reg = NpcRegistry::new();
+        reg.insert(NpcMind::new("old_1", None::<&str>));
+        assert_eq!(reg.len(), 1);
+        reg.load_from_snapshots_into(vec![
+            snap("a", None, NpcDisposition::default(), vec![]),
+            snap("b", None, NpcDisposition::default(), vec![]),
+        ]);
+        assert_eq!(reg.len(), 2);
+        assert!(reg.get("old_1").is_none());
+        assert!(reg.get("a").is_some());
+        assert!(reg.get("b").is_some());
+    }
+
+    #[test]
+    fn registry_load_from_snapshots_empty_input_yields_empty_registry() {
+        // Empty snapshot list → empty registry (no NpcFactory
+        // fallback; that's the game layer's job to choose).
+        let mut reg = NpcRegistry::new();
+        reg.insert(NpcMind::new("x", None::<&str>));
+        reg.load_from_snapshots_into(vec![]);
+        assert!(reg.is_empty());
+        assert_eq!(reg.len(), 0);
+
+        // Construct variant: empty snapshots → empty registry.
+        let reg2 = NpcRegistry::load_from_snapshots(vec![]);
+        assert!(reg2.is_empty());
+    }
+
+    #[test]
+    fn registry_load_from_snapshots_into_is_idempotent() {
+        // Running twice with the same input → same state.
+        let mut reg = NpcRegistry::new();
+        let snaps = vec![
+            snap("a", Some("mage"),
+                 NpcDisposition { friendly: 0.4, fear: 0.0, trust: 0.3 },
+                 vec![entry(NpcMemoryKind::Dialogue, "hi", 1, 0.5)]),
+            snap("b", Some("merchant"),
+                 NpcDisposition { friendly: 0.0, fear: 0.2, trust: 0.1 },
+                 vec![]),
+        ];
+        reg.load_from_snapshots_into(snaps.clone());
+        let len_after_first = reg.len();
+        let avg_after_first = reg.average_disposition();
+        reg.load_from_snapshots_into(snaps);
+        assert_eq!(reg.len(), len_after_first);
+        assert_eq!(reg.average_disposition().friendly, avg_after_first.friendly);
+        assert_eq!(reg.average_disposition().fear,     avg_after_first.fear);
+        assert_eq!(reg.average_disposition().trust,    avg_after_first.trust);
+    }
+
+    #[test]
+    fn registry_load_from_snapshots_preserves_disposition() {
+        // The headline: a snapshot's disposition survives intact
+        // through rehydrate → average_disposition (the round-22
+        // BalanceTuner signal) reflects it byte-for-byte.
+        let mut reg = NpcRegistry::new();
+        reg.load_from_snapshots_into(vec![
+            snap("a", None, NpcDisposition { friendly: 0.6, fear: 0.2, trust: 0.4 }, vec![]),
+            snap("b", None, NpcDisposition { friendly: 0.2, fear: 0.4, trust: 0.0 }, vec![]),
+        ]);
+        let avg = reg.average_disposition();
+        assert!((avg.friendly - 0.4).abs() < 1e-6);
+        assert!((avg.fear     - 0.3).abs() < 1e-6);
+        assert!((avg.trust    - 0.2).abs() < 1e-6);
+    }
+
+    #[test]
+    fn registry_load_from_snapshots_preserves_entries() {
+        // The round-40 snapshot's per-NPC entries must be
+        // readable from the rehydrated registry (so the
+        // NpcMindPanel can show "8 段记忆" after reload).
+        let mut reg = NpcRegistry::new();
+        reg.load_from_snapshots_into(vec![
+            snap("a", Some("merchant"),
+                 NpcDisposition { friendly: 0.4, fear: 0.0, trust: 0.0 },
+                 vec![
+                     entry(NpcMemoryKind::Dialogue,       "haggled", 1, 0.2),
+                     entry(NpcMemoryKind::ReceivedGift,   "gem",     2, 1.0),
+                 ]),
+        ]);
+        let a = reg.get("a").unwrap();
+        assert_eq!(a.len(), 2);
+        let r = a.recent(2);
+        assert_eq!(r[0].summary, "haggled");
+        assert_eq!(r[1].summary, "gem");
+    }
+
+    #[test]
+    fn snapshot_to_mind_round_trip_is_byte_identical() {
+        // The full round-trip invariant: build a NpcMind
+        // (fresh path), observe its disposition + recent
+        // entries, build a NpcMindSnapshot from those
+        // observations, rehydrate → the new mind has the
+        // same disposition + same entries (FIFO order).
+        let mut m = NpcMind::new("rt", Some("mage"));
+        m.remember(entry(NpcMemoryKind::Dialogue,       "d0", 1, 0.3));
+        m.remember(entry(NpcMemoryKind::ReceivedGift,   "g0", 2, 1.0));
+        m.remember(entry(NpcMemoryKind::WitnessedEvent, "w0", 3, 0.5));
+        let s = NpcMindSnapshot {
+            id: m.id().to_string(),
+            archetype: m.archetype().map(String::from),
+            disposition: m.disposition(),
+            entries: m.recent(m.len()),
+        };
+        let m2 = NpcMind::rehydrate(s);
+        assert_eq!(m.id(),               m2.id());
+        assert_eq!(m.archetype(),        m2.archetype());
+        assert_eq!(m.disposition().friendly, m2.disposition().friendly);
+        assert_eq!(m.disposition().fear,     m2.disposition().fear);
+        assert_eq!(m.disposition().trust,    m2.disposition().trust);
+        let r1 = m.recent(m.len());
+        let r2 = m2.recent(m2.len());
+        assert_eq!(r1.len(), r2.len());
+        for (e1, e2) in r1.iter().zip(r2.iter()) {
+            assert_eq!(e1.kind,    e2.kind);
+            assert_eq!(e1.summary, e2.summary);
+            assert_eq!(e1.turn,    e2.turn);
+            assert_eq!(e1.weight,  e2.weight);
+        }
     }
 }
 
