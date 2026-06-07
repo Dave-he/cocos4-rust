@@ -12,6 +12,12 @@ pub mod npc;
 pub mod scene_gen;
 pub mod narration;
 
+// Round 48 — WASM bridge for the scene_gen POC slice. Only compiled
+// when the `wasm-bindings` Cargo feature is on; the non-wasm build is
+// unaffected.
+#[cfg(feature = "wasm-bindings")]
+pub mod wasm_exports;
+
 pub use atom::{Atom, AtomId, AtomRegistry, AtomContext, AtomPhase, AtomRunner, AtomMetadata};
 pub use dimension::{Dimension, DimensionConfig, DimensionRunner, DimensionState, DimensionObjective, DimensionProgress};
 pub use economy::{Currency, CurrencyType, Inventory, InventoryItem, Transaction, Wallet};

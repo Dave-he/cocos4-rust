@@ -45,7 +45,22 @@ terrain = []
 tiled-map = []
 js-runtime-probe = []
 js-runtime-mock = []
-js-runtime-real = ["boa_engine", "serde_json"]
+js-runtime-real = ["dep:boa_engine", "dep:serde_json"]
+
+# Round 48 — WASM bindings for the agi_minigame::scene_gen slice.
+# Enabling this feature pulls wasm-bindgen + serde + serde_json + the
+# `js` feature on getrandom (required for wasm32-unknown-unknown). Build
+# with: `wasm-pack build --target web --no-default-features --features
+# wasm-bindings --out-dir ../AGI-miniGame/wasm-pkg`. The AGI-miniGame
+# game layer (TypeScript) loads the produced ES module asynchronously
+# and uses it via the JSON bridge in src/agi_minigame/wasm_exports.rs.
+wasm-bindings = ["dep:wasm-bindgen", "dep:serde", "dep:serde_json", "dep:getrandom"]
+
+[lib]
+# cdylib is needed by wasm-pack to produce a .wasm artifact; rlib keeps
+# the crate usable as a normal Rust library dep (cargo test, downstream
+# consumers). Adding cdylib does not break existing rlib users.
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 bitflags = "2"
@@ -53,6 +68,17 @@ rand = "0.8"
 lazy_static = "1.4"
 boa_engine = { version = "0.20", optional = true }
 serde_json = { version = "1", optional = true }
+# Round 48 — wasm-bindings deps. All `optional = true` so the default
+# (non-wasm) build pulls nothing extra.
+wasm-bindgen = { version = "0.2", optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
+# `getrandom` is a transitive dep of `rand`; on wasm32-unknown-unknown
+# it needs the `js` feature to fall back to the browser's
+# `crypto.getRandomValues`. We don't use it for `scene_gen` (which seeds
+# its RNGs deterministically), but the rand crate's compile-time check
+# fires regardless. Pull it as an optional dep with the `js` feature so
+# the wasm-bindings build links.
+getrandom = { version = "0.2", features = ["js"], optional = true }
 
 [dev-dependencies]
 
