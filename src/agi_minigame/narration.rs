@@ -116,6 +116,15 @@ pub fn mood_4th_sentence(branch: u8) -> Option<&'static str> {
 /// keyed on `blueprint_id`. Same blueprint always gets the same
 /// 4th sentence (so re-visits don't re-roll flavour); different
 /// blueprints get different ones (so the player feels variety).
+///
+/// Round 53b — the AGI-miniGame TypeScript layer's
+/// `NarrationEngine.narrate` average-mood fallback now uses the
+/// **same FNV-1a constants** (offset basis 2166136261, prime
+/// 16777619) over the same `blueprint_id` string, so the WASM
+/// and TS paths produce byte-identical sentences for the same
+/// input. The TS individual-NPC path (round 33) still uses a
+/// `djb2` fallback because the WASM helper doesn't model
+/// individual-NPC contexts yet (round-54 follow-up).
 fn fnv1a(s: &str) -> u32 {
     let mut h: u32 = 2166136261;
     for b in s.as_bytes() {
