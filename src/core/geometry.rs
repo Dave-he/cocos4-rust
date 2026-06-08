@@ -1801,7 +1801,7 @@ impl AnimationCurve {
                 WrapMode::Loop => start + ((time - start) % duration + duration) % duration,
                 WrapMode::PingPong => {
                     let cycle = ((time - start) / duration).abs();
-                    if (cycle as u32).is_multiple_of(2) {
+                    if (cycle as u32) % 2 == 0 {
                         start + (time - start).abs() % duration
                     } else {
                         end - (time - start).abs() % duration

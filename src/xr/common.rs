@@ -387,7 +387,7 @@ impl std::fmt::Debug for XRControllerEvent {
 }
 
 /// XR swapchain
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct XRSwapchain {
     pub xr_swapchain_handle: *mut std::ffi::c_void,
     pub width: u32,
@@ -395,6 +395,19 @@ pub struct XRSwapchain {
     pub gl_draw_framebuffer: u32,
     pub swapchain_image_index: u32,
     pub eye: u32,
+}
+
+impl Default for XRSwapchain {
+    fn default() -> Self {
+        Self {
+            xr_swapchain_handle: std::ptr::null_mut(),
+            width: 0,
+            height: 0,
+            gl_draw_framebuffer: 0,
+            swapchain_image_index: 0,
+            eye: 0,
+        }
+    }
 }
 
 /// XR tracking image data
