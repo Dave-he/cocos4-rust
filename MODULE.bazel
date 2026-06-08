@@ -41,6 +41,7 @@ crate.from_cargo(
 
 crate.annotation(
     crate = "cocos4-rust",
+    version = "0.1.0",
     repositories = ["crates"],
     crate_features = [
         "std",
