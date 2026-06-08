@@ -10,35 +10,18 @@ bazel_dep(name = "platforms", version = "0.0.10")
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 
 # --- crate_universe: turn Cargo.toml + Cargo.lock into Bazel deps ----------
-# This makes Cargo.toml the single source of truth for external deps & features.
-# Local `cargo` workflows (rust-analyzer, cargo test) keep working unchanged.
+# This makes Cargo.toml the single source of truth for EXTERNAL deps.
+# The local `cocos4-rust` crate is built by the `rust_library` in BUILD.bazel
+# and is NOT mirrored into @crates// — that would make cargo-bazel try to
+# look it up in crates.io and fail (no local path / git / version on a
+# local-only workspace package).
+#
+# Features live on the local rust_library rule (`crate_features` in
+# BUILD.bazel). The set of optional / required features is still read
+# out of Cargo.toml by `crate_universe` so the @crates//:* deps know
+# which `cfg` flags to emit.
 crate = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
 
-# Declare this crate so crate_universe knows about features & deps
-crate.spec(
-    package = "cocos4-rust",
-    features = [
-        "std",
-        "gfx-empty",
-        "gfx-validator",
-        "gfx-wgpu",
-        "gfx-agent",
-        "pipeline-custom",
-        "pipeline-deferred",
-        "physics-2d",
-        "network-real",
-        "platform-real",
-        "storage-disk",
-        "dragon-bones",
-        "spine",
-        "js-bindings",
-        "terrain",
-        "tiled-map",
-        "js-runtime-real",
-    ],
-)
-
-# Pull in the rest from Cargo.lock so transitive deps are pinned
 crate.from_cargo(
     name = "crates",
     cargo_lockfile = "//:Cargo.lock",
