@@ -21,9 +21,11 @@ common:remote --bes_backend=grpcs://remote.buildbuddy.io
 common:remote --bes_results_url=https://app.buildbuddy.io/invocation/
 common:remote --bes_timeout=10m
 # BES auth is independent of --remote_header in Bazel — it needs its own
-# --bes_header. Otherwise BuildBuddy returns UNAUTHENTICATED on event upload.
-common:remote --bes_header=x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}
-common:remote --remote_header=x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}
+# --bes_header. The actual key value is injected at command-line time in
+# the GitHub Actions workflow because Bazel does NOT expand arbitrary
+# ${ENV_VAR} in .bazelrc (only ${cwd} / ${home} / ${user} / ${workspace}
+# / ${bazel–path} are substituted). Passing it via --bes_header on the
+# command line lets the shell do the expansion.
 
 # --- ci profile (remote + hermetic) ----------------------------------------
 build:ci --config=remote

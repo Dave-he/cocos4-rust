@@ -91,6 +91,7 @@ rust_test(
         "src/tests/platform_linux_test.rs",
         "src/tests/storage_test.rs",
     ],
+    crate_root = "src/tests/mod.rs",
     edition = "2021",
     deps = [":cocos4_rust"],
 )

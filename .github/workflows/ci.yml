@@ -59,7 +59,7 @@ jobs:
           path: |
             ~/.cache/bazel
             /tmp/bazel-repo-cache
-          key: ${{ runner.os }}-bazel-repo-${{ hashFiles('.bazelversion', 'MODULE.bazel', 'MODULE.bazel.lock', 'Cargo.toml', 'Cargo.lock') }}
+          key: ${{ runner.os }}-bazel-repo-${{ hashFiles('.bazelversion', 'MODULE.bazel', 'Cargo.toml', 'Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-bazel-repo-
 
@@ -75,19 +75,39 @@ jobs:
         run: bazel mod deps --output=text
 
       - name: Build (debug)
-        run: bazel build //... --config=ci
+        run: |
+          bazel build //... \
+            --config=ci \
+            --bes_header="x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}" \
+            --remote_header="x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}"
 
       - name: Build (release)
-        run: bazel build //:cocos4-rust --config=ci -c opt
+        run: |
+          bazel build //:cocos4-rust \
+            --config=ci -c opt \
+            --bes_header="x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}" \
+            --remote_header="x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}"
 
       - name: Test (debug)
-        run: bazel test //:all_tests --config=ci --test_output=errors
+        run: |
+          bazel test //:all_tests \
+            --config=ci --test_output=errors \
+            --bes_header="x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}" \
+            --remote_header="x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}"
 
       - name: Run demo binary
-        run: bazel run //:cocos4-rust --config=ci
+        run: |
+          bazel run //:cocos4-rust \
+            --config=ci \
+            --bes_header="x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}" \
+            --remote_header="x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}"
 
       - name: Run quaternion demo
-        run: bazel run //:quaternion_demo --config=ci
+        run: |
+          bazel run //:quaternion_demo \
+            --config=ci \
+            --bes_header="x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}" \
+            --remote_header="x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}"
 
       - name: Upload BuildBuddy invocation link
         if: always()
