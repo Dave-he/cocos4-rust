@@ -33,8 +33,6 @@ jobs:
 
       - name: Install Bazelisk
         uses: bazelbuild/setup-bazelisk@v2
-        with:
-          bazelisk-cache: true
 
       - name: Show toolchain info
         run: |
