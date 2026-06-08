@@ -18,10 +18,13 @@ bazel_dep(name = "bazel_skylib", version = "1.7.1")
 # root Cargo.toml is a `[workspace]` root (with itself as a member),
 # `crate.from_cargo` reads the workspace's path-dependency graph, sees
 # `cocos4-rust` as a local path member, and emits a `local_crate_mirror`
-# at `@crates//:cocos4-rust` carrying whatever features the lockfile
-# resolved it with. The optional `boa_engine` / `serde_json` deps
-# (gated by `js-runtime-real`) then appear at `@crates//:boa_engine`
-# and `@crates//:serde_json` for the local rust_library to consume.
+# at `@crates//:cocos4-rust`.
+#
+# `crate.annotation` then tells cargo-bazel WHICH features the local
+# crate is built with. Without this, cargo-bazel defaults to the empty
+# feature set, which strips the optional `boa_engine` / `serde_json`
+# deps and they never appear as `@crates//:boa_engine` /
+# `@crates//:serde_json` — even though they're listed in Cargo.lock.
 crate = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
 
 crate.from_cargo(
@@ -33,6 +36,30 @@ crate.from_cargo(
         "aarch64-unknown-linux-gnu",
         "x86_64-apple-darwin",
         "aarch64-apple-darwin",
+    ],
+)
+
+crate.annotation(
+    crate = "cocos4-rust",
+    repositories = ["crates"],
+    crate_features = [
+        "std",
+        "gfx-empty",
+        "gfx-validator",
+        "gfx-wgpu",
+        "gfx-agent",
+        "pipeline-custom",
+        "pipeline-deferred",
+        "physics-2d",
+        "network-real",
+        "platform-real",
+        "storage-disk",
+        "dragon-bones",
+        "spine",
+        "js-bindings",
+        "terrain",
+        "tiled-map",
+        "js-runtime-real",
     ],
 )
 
