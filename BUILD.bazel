@@ -26,12 +26,7 @@ rust_library(
     crate_root = "src/lib.rs",
     edition = "2021",
     crate_features = [
-        # Matches Cargo.toml `default` features. `js-runtime-real` is
-        # intentionally NOT enabled here because src/game/game.rs (the only
-        # file that uses the feature) is currently broken in trunk — see
-        # the `cargo test` regression-guard job. Re-enable once game.rs
-        # compiles, and re-add `@crates//:boa_engine` and
-        # `@crates//:serde_json` to `deps` below.
+        # Matches Cargo.toml `default` features.
         "std",
         "gfx-empty",
         "gfx-validator",
@@ -48,6 +43,7 @@ rust_library(
         "js-bindings",
         "terrain",
         "tiled-map",
+        "js-runtime-real",
     ],
     deps = [
         # External crates — names match crate_universe's `@crates//:` namespace,
@@ -55,6 +51,9 @@ rust_library(
         "@crates//:bitflags",
         "@crates//:lazy_static",
         "@crates//:rand",
+        # Optional: enabled when `js-runtime-real` is on
+        "@crates//:boa_engine",
+        "@crates//:serde_json",
     ],
 )
 
