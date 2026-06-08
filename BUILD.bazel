@@ -9,13 +9,20 @@ package(default_visibility = ["//visibility:public"])
 # recursive glob. Path aliases like `#[path = "2d/mod.rs"]` in src/lib.rs and
 # sub-module `mod.rs` files are transparent to Bazel — rustc resolves them at
 # compile time. `.bak` files are excluded as build pollution.
+#
+# `src/tests/**` is excluded here because the files under it are not part of
+# the cocos4-rust library (lib.rs has no `mod tests;` declaration). They
+# would only be valid as either (a) a separate integration test crate —
+# rejected because their `use crate::math::...` / `use crate::storage::...`
+# imports assume they're INSIDE cocos4-rust — or (b) an external binary
+# (quaternion_test.rs) which we handle separately as //:quaternion_demo.
 LIB_SRCS = glob(
     [
         "src/**/*.rs",
     ],
     exclude = [
         "src/main.rs",
-        "src/tests/quaternion_test.rs",
+        "src/tests/**",
         "**/*.bak",
     ],
 )
@@ -84,22 +91,10 @@ rust_test(
     # No `srcs` — crate = :cocos4_rust supplies the test compilation unit
 )
 
-# Integration tests under src/tests/
-rust_test(
-    name = "integration_tests",
-    srcs = [
-        "src/tests/mod.rs",
-        "src/tests/math_test.rs",
-        "src/tests/platform_linux_test.rs",
-        "src/tests/storage_test.rs",
-    ],
-    crate_root = "src/tests/mod.rs",
-    edition = "2021",
-    deps = [":cocos4_rust"],
-)
-
 # Orphan: src/tests/quaternion_test.rs is a stand-alone binary (fn main()).
-# Preserved per project decision — exposed as :quaternion_demo.
+# Preserved per project decision — exposed as :quaternion_demo. The
+# `use cocos4_rust::math::...` import assumes the binary links against
+# `//:cocos4_rust` (declared in `deps`).
 rust_binary(
     name = "quaternion_demo",
     srcs = ["src/tests/quaternion_test.rs"],
@@ -114,7 +109,6 @@ test_suite(
     name = "all_tests",
     tests = [
         ":cocos4_rust_test",
-        ":integration_tests",
     ],
 )
 

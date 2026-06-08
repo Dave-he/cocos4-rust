@@ -1,4 +1,4 @@
-use crate::cocos4_rust::{Mat4, Vec2, Vec3};
+use cocos4_rust::math::{Mat4, Quaternion, Vec2, Vec3};
 
 fn main() {
     println!("Testing Quaternion module");
