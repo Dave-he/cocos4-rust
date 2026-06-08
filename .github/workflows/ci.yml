@@ -176,7 +176,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # actions-rs/audit-check@v2 was retired by upstream and now fails
+      # with "unable to find version v2". Run cargo-audit directly via
+      # cargo-binstall or by invoking the cargo-audit subcommand if
+      # installed; otherwise install via cargo install. The action just
+      # shells out to `cargo audit --deny warnings` and exits non-zero
+      # on any known vulnerability in the dependency graph.
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions-rs/audit-check@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install cargo-audit
+        run: cargo install --locked cargo-audit --version "^0.21"
+      - name: Run cargo audit
+        run: cargo audit --deny warnings
