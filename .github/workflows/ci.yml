@@ -39,10 +39,12 @@ jobs:
           BAZELISK_ARCH="amd64"
           URL="https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-${BAZELISK_OS}-${BAZELISK_ARCH}"
           echo "Downloading ${URL}"
+          mkdir -p "${HOME}/bin"
           curl --fail --silent --show-error --location --retry 3 --retry-delay 5 \
-               -o /usr/local/bin/bazel "${URL}"
-          chmod +x /usr/local/bin/bazel
-          /usr/local/bin/bazel --version
+               -o "${HOME}/bin/bazel" "${URL}"
+          chmod +x "${HOME}/bin/bazel"
+          echo "${HOME}/bin" >> "${GITHUB_PATH}"
+          bazel --version
 
       - name: Show toolchain info
         run: |
