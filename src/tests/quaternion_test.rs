@@ -1,4 +1,4 @@
-use cocos4_rust::math::{Mat4, Quaternion, Vec2, Vec3};
+use cocos4_rust::math::{Quaternion, Vec3};
 
 fn main() {
     println!("Testing Quaternion module");
@@ -10,12 +10,11 @@ fn main() {
     let angle = std::f32::consts::FRAC_PI_4;
     println!("Testing rotation from axis-angle: {}", angle);
 
-    let q_rot = Quaternion::from_axis_angle(Vec3::FORWARD, std::f32::consts::FRAC_PI_4 * 0.5);
+    let q_rot = Quaternion::from_axis_angle(&Vec3::FORWARD, std::f32::consts::FRAC_PI_4 * 0.5);
     println!("Rotated quaternion: {:?}", q_rot);
 
-    let mut inv_q = q.inverse();
-    let inv_q_val = inv_q.clone();
-    println!("Inverse quaternion: {:?}", inv_q_val);
+    let inv_q = q.inverse();
+    println!("Inverse quaternion: {:?}", inv_q);
 
     let dot_result = Quaternion::dot(&q_rot, &q);
     println!("Dot product: {:?}", dot_result);
