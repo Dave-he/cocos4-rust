@@ -11,16 +11,40 @@ bazel_dep(name = "bazel_skylib", version = "1.7.1")
 
 # --- crate_universe: turn Cargo.toml + Cargo.lock into Bazel deps ----------
 # This makes Cargo.toml the single source of truth for EXTERNAL deps.
-# The local `cocos4-rust` crate is built by the `rust_library` in BUILD.bazel
-# and is NOT mirrored into @crates// — that would make cargo-bazel try to
-# look it up in crates.io and fail (no local path / git / version on a
-# local-only workspace package).
+# The local `cocos4-rust` crate is built by the `rust_library` in BUILD.bazel.
 #
-# Features live on the local rust_library rule (`crate_features` in
-# BUILD.bazel). The set of optional / required features is still read
-# out of Cargo.toml by `crate_universe` so the @crates//:* deps know
-# which `cfg` flags to emit.
+# We DO declare the local crate here (with `path =`) so that crate_universe
+# knows about its feature set — without this, the optional `boa_engine` and
+# `serde_json` deps (gated by `js-runtime-real`) are never wired into
+# @crates// and the local rust_library fails to resolve them.
+# Setting `path` tells cargo-bazel "this is a local crate, do not look it
+# up in crates.io". Features listed here MUST match what BUILD.bazel passes
+# via `crate_features = [...]` on rust_library.
 crate = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
+
+crate.spec(
+    package = "cocos4-rust",
+    path = "//:Cargo.toml",
+    features = [
+        "std",
+        "gfx-empty",
+        "gfx-validator",
+        "gfx-wgpu",
+        "gfx-agent",
+        "pipeline-custom",
+        "pipeline-deferred",
+        "physics-2d",
+        "network-real",
+        "platform-real",
+        "storage-disk",
+        "dragon-bones",
+        "spine",
+        "js-bindings",
+        "terrain",
+        "tiled-map",
+        "js-runtime-real",
+    ],
+)
 
 crate.from_cargo(
     name = "crates",
