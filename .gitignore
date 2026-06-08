@@ -1,1 +1,22 @@
+# Cargo
 /target
+**/*.rs.bk
+Cargo.lock.bak
+
+# Bazel
+/.bazel/
+/bazel-*
+**/bazel-*
+/bazel-out
+/bazel-testlogs
+/bazel-bin
+/bazel-cargo
+MODULE.bazel.lock
+
+# Local bazel overrides
+/.bazelrc.local
+/.bazelversion.local
+
+# OS
+.DS_Store
+Thumbs.db

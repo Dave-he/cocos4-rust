@@ -1,0 +1,52 @@
+# =============================================================================
+# cocos4-rust Bazel configuration
+# =============================================================================
+
+# --- bzlmod ----------------------------------------------------------------
+common --enable_bzlmod
+common --noenable_workspace
+
+# --- BuildBuddy remote cache + BES (slug: EGDoGaZis5ZMKN4P4TtB) ------------
+# These flags activate only with --config=remote. Locally you stay offline by
+# default; CI uses --config=ci (which inherits remote).
+common:remote --remote_executor=grpcs://remote.buildbuddy.io
+common:remote --remote_cache=grpcs://remote.buildbuddy.io
+common:remote --remote_timeout=10m
+common:remote --remote_download_min=0
+common:remote --jobs=50
+
+# BuildBuddy BES (Build Event Service) — surfaces results at
+# https://app.buildbuddy.io/invocation/<INVOCATION_ID>
+common:remote --bes_backend=grpcs://remote.buildbuddy.io
+common:remote --bes_results_url=https://app.buildbuddy.io/invocation/
+common:remote --bes_timeout=10m
+common:remote --remote_header=x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}
+
+# --- ci profile (remote + hermetic) ----------------------------------------
+build:ci --config=remote
+build:ci --build_metadata=ROLE=CI
+build:ci --build_metadata=VISIBILITY=PUBLIC
+build:ci --noremote_local_fallback
+build:ci --repository_cache=/tmp/bazel-repo-cache
+build:ci --experimental_repository_cache_hardlinks
+
+# --- test profile ----------------------------------------------------------
+test --test_output=errors
+test --test_summary=short
+test --test_tag_filters=-manual
+
+# --- general hygiene --------------------------------------------------------
+build --action_env=BAZEL_RUSTC_BOOTSTRAP=1
+build --announce_rc
+build --keep_going
+build --verbose_failures
+
+# Strip ANSI from non-TTY CI logs
+common --color=auto
+
+# Pin the C/C++ toolchain explicitly so actions like curl/openssl link
+# deterministically on Linux.
+build:linux --crosstool_top=@rules_rust//rust/toolchains/cc:linux_x86_64
+build:linux --host_crosstool_top=@rules_rust//rust/toolchains/cc:linux_x86_64
+build:macos --crosstool_top=@rules_rust//rust/toolchains/cc:darwin_aarch64
+build:macos --host_crosstool_top=@rules_rust//rust/toolchains/cc:darwin_aarch64

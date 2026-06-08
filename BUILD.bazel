@@ -1,0 +1,123 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test", "test_suite")
+
+package(default_visibility = ["//visibility:public"])
+
+# =============================================================================
+# Library
+# =============================================================================
+# All 33 top-level modules + their nested sub-directories are captured by the
+# recursive glob. Path aliases like `#[path = "2d/mod.rs"]` in src/lib.rs and
+# sub-module `mod.rs` files are transparent to Bazel — rustc resolves them at
+# compile time. `.bak` files are excluded as build pollution.
+LIB_SRCS = glob(
+    [
+        "src/**/*.rs",
+    ],
+    exclude = [
+        "src/main.rs",
+        "src/tests/quaternion_test.rs",
+        "**/*.bak",
+    ],
+)
+
+rust_library(
+    name = "cocos4_rust",
+    srcs = LIB_SRCS,
+    crate_root = "src/lib.rs",
+    edition = "2021",
+    crate_features = [
+        # Matches Cargo.toml `default` features
+        "std",
+        "gfx-empty",
+        "gfx-validator",
+        "gfx-wgpu",
+        "gfx-agent",
+        "pipeline-custom",
+        "pipeline-deferred",
+        "physics-2d",
+        "network-real",
+        "platform-real",
+        "storage-disk",
+        "dragon-bones",
+        "spine",
+        "js-bindings",
+        "terrain",
+        "tiled-map",
+    ],
+    deps = [
+        # External crates — names match crate_universe's `@crates//:` namespace,
+        # which is generated from Cargo.lock.
+        "@crates//:bitflags",
+        "@crates//:lazy_static",
+        "@crates//:rand",
+        # Optional: enabled when `js-runtime-real` is on
+        "@crates//:boa_engine",
+        "@crates//:serde_json",
+    ],
+)
+
+# =============================================================================
+# Binary
+# =============================================================================
+rust_binary(
+    name = "cocos4-rust",
+    srcs = ["src/main.rs"],
+    crate_root = "src/main.rs",
+    edition = "2021",
+    deps = [":cocos4_rust"],
+)
+
+# =============================================================================
+# Tests
+# =============================================================================
+
+# All 1837 inline `#[cfg(test)] mod tests { ... }` blocks across 240 .rs files
+# are exercised by re-compiling the library in test mode. rules_rust's
+# `rust_test` with `crate = ":lib"` wires the lib sources back in automatically.
+rust_test(
+    name = "cocos4_rust_test",
+    crate = ":cocos4_rust",
+    # No `srcs` — crate = :cocos4_rust supplies the test compilation unit
+)
+
+# Integration tests under src/tests/
+rust_test(
+    name = "integration_tests",
+    srcs = [
+        "src/tests/mod.rs",
+        "src/tests/math_test.rs",
+        "src/tests/platform_linux_test.rs",
+        "src/tests/storage_test.rs",
+    ],
+    edition = "2021",
+    deps = [":cocos4_rust"],
+)
+
+# Orphan: src/tests/quaternion_test.rs is a stand-alone binary (fn main()).
+# Preserved per project decision — exposed as :quaternion_demo.
+rust_binary(
+    name = "quaternion_demo",
+    srcs = ["src/tests/quaternion_test.rs"],
+    crate_root = "src/tests/quaternion_test.rs",
+    edition = "2021",
+    deps = [":cocos4_rust"],
+)
+
+# Aggregate suite so `bazel test //...` and `bazel test //:all_tests` both
+# return a single PASS/FAIL summary.
+test_suite(
+    name = "all_tests",
+    tests = [
+        ":cocos4_rust_test",
+        ":integration_tests",
+    ],
+)
+
+# Aggregate build target for convenience
+filegroup(
+    name = "all_sources",
+    srcs = glob(["src/**/*.rs", "src/**/*.bak"]) + [
+        "Cargo.toml",
+        "Cargo.lock",
+    ],
+)

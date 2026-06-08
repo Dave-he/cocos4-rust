@@ -140,16 +140,55 @@ Fully completed conversion of Cocos4 engine from C++ to Rust.
 
 ## Building
 
+### Cargo (default)
+
 ```bash
 cd cocos4-rust
 cargo build --release
-```
-
-## Testing
-
-```bash
 cargo test
 ```
+
+### Bazel + BuildBuddy
+
+The project is fully buildable with [Bazel](https://bazel.build) 8.x using
+[`rules_rust`](https://github.com/bazelbuild/rules_rust) + `crate_universe`.
+`Cargo.toml` remains the single source of truth for external dependencies and
+features — `crate_universe` consumes `Cargo.lock` and emits Bazel targets for
+every external crate at `@crates//:<name>`.
+
+Remote cache and BES results are pushed to **BuildBuddy** (slug
+`EGDoGaZis5ZMKN4P4TtB`).
+
+Prerequisites:
+- Bazelisk (recommended) or Bazel ≥ 8.0
+- A C/C++ toolchain (for `cc`-dependent crates)
+- `BUILDBUDDY_API_KEY` exported in your shell for remote-cache access
+  (optional for local-only builds)
+
+Common commands:
+
+```bash
+# Build everything in debug mode
+bazel build //...
+
+# Run all unit + integration tests
+bazel test //:all_tests --test_output=errors
+
+# Release build of the demo binary
+bazel build //:cocos4-rust -c opt
+
+# Run the demo binary
+bazel run //:cocos4-rust
+
+# Run the stand-alone quaternion demo
+bazel run //:quaternion_demo
+
+# With remote cache + BES (requires BUILDBUDDY_API_KEY)
+bazel test //... --config=ci
+```
+
+CI: see `.github/workflows/ci.yml` — the `bazel` job runs against BuildBuddy
+and prints an invocation link in the GitHub Actions step summary.
 
 ## License
 

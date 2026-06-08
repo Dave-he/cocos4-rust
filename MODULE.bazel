@@ -1,0 +1,54 @@
+module(
+    name = "cocos4_rust",
+    version = "0.1.0",
+    compatibility_level = 1,
+)
+
+# Bazel rules for Rust — see https://github.com/bazelbuild/rules_rust
+bazel_dep(name = "rules_rust", version = "0.61.0")
+bazel_dep(name = "platforms", version = "0.0.10")
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+
+# --- crate_universe: turn Cargo.toml + Cargo.lock into Bazel deps ----------
+# This makes Cargo.toml the single source of truth for external deps & features.
+# Local `cargo` workflows (rust-analyzer, cargo test) keep working unchanged.
+crate = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
+
+# Declare this crate so crate_universe knows about features & deps
+crate.spec(
+    package = "cocos4-rust",
+    features = [
+        "std",
+        "gfx-empty",
+        "gfx-validator",
+        "gfx-wgpu",
+        "gfx-agent",
+        "pipeline-custom",
+        "pipeline-deferred",
+        "physics-2d",
+        "network-real",
+        "platform-real",
+        "storage-disk",
+        "dragon-bones",
+        "spine",
+        "js-bindings",
+        "terrain",
+        "tiled-map",
+        "js-runtime-real",
+    ],
+)
+
+# Pull in the rest from Cargo.lock so transitive deps are pinned
+crate.from_cargo(
+    name = "crates",
+    cargo_lockfile = "//:Cargo.lock",
+    manifests = ["//:Cargo.toml"],
+    supported_platform_triples = [
+        "x86_64-unknown-linux-gnu",
+        "aarch64-unknown-linux-gnu",
+        "x86_64-apple-darwin",
+        "aarch64-apple-darwin",
+    ],
+)
+
+use_repo(crate, "crates")
