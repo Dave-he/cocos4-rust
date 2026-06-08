@@ -34,13 +34,25 @@ rust_library(
     edition = "2021",
     crate_features = [
         # Matches Cargo.toml `default` features. `js-runtime-real` is
-        # intentionally NOT enabled in the Bazel build because
-        # cargo-bazel 0.61.0 doesn't materialize `@crates//:boa_engine`
-        # and `@crates//:serde_json` as targets when the local crate is
-        # a path-dependency — `crate.annotation(crate_features = [...])`
-        # is silently ignored for path members. Re-enable once
-        # crate_universe has a working path-member annotation path, or
-        # move to `crates_vendor` and pin explicit feature flags.
+        # intentionally NOT enabled by default in the Bazel build. We
+        # verified the wiring (boa_engine/serde_json materialize into
+        # @crates//:) by flipping the feature on once — see the comment
+        # below for the cargo-bazel path-member workaround and the
+        # downstream toolchain blocker (regress 0.10.x requires nightly).
+        # Re-enable by:
+        #   1. Add "js-runtime-real" to crate_features below.
+        #   2. Add "@crates//:boa_engine", "@crates//:serde_json" to deps.
+        #   3. Make boa_engine/serde_json NON-optional direct deps in
+        #      Cargo.toml (cargo-bazel 0.61.0 ignores
+        #      `crate.annotation(crate_features = [...])` for path
+        #      members; declaring them as required direct deps is the
+        #      bypass).
+        #   4. Add a stable-capable regress pin in Cargo.lock (regress
+        #      0.10.1+ uses `if`/`let` chains — rust-lang/rust#53667,
+        #      #54725 — which are nightly-only). Easiest path: pin
+        #      regress 0.10.0 in Cargo.toml's [patch.crates-io] with a
+        #      path source mirroring the vendor/paste/ trick; or
+        #      upgrade the Bazel rust toolchain to nightly.
         "std",
         "gfx-empty",
         "gfx-validator",

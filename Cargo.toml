@@ -58,6 +58,37 @@ serde_json = { version = "1", optional = true }
 
 [dev-dependencies]
 
+# RUSTSEC-2024-0436: `paste` is unmaintained. `pastey` is the official
+# drop-in fork (https://github.com/as1100k/pastey). We can't use
+# `[patch.crates-io] paste = { package = "pastey", ... }` directly because
+# (a) cargo requires a non-registry source for package renames, and
+# (b) cargo refuses to apply the patch when the version range can't be
+# satisfied (paste 1.0.x vs pastey 0.2.x), even though pastey is a true
+# drop-in.
+#
+# Workaround: vendor pastey at vendor/paste/, renamed in its Cargo.toml to
+# package name "paste" and version "1.0.15" (matching the original
+# advisory-triggering version), and point the patch at that path. This
+# is the minimal surface that lets cargo resolve boa_string's transitive
+# `paste = "1.0"` requirement through our local pastey source. The
+# vendored source is pastey — only the package metadata is renamed, so
+# boa_string compiles unchanged against the pastey `paste!` macro API.
+#
+# Caveat: `cargo audit` matches advisories by package name and version.
+# Because the lockfile records the package as `paste 1.0.15` (just
+# sourced from a path instead of the registry), cargo audit will still
+# emit RUSTSEC-2024-0436 even though the code is pastey. This is a
+# false positive from cargo audit's name-based matching. The
+# `--ignore RUSTSEC-2024-0436` flag in the security CI job documents
+# this. If pastey ever publishes a 1.0.x release, we can switch to a
+# `package = "pastey"` rename patch and drop the --ignore flag.
+#
+# To refresh from upstream: re-clone https://github.com/as1100k/pastey
+# at the desired tag, copy src/ + LICENSE-* + README.md into
+# vendor/paste/, and update the version in vendor/paste/Cargo.toml.
+[patch.crates-io]
+paste = { path = "vendor/paste" }
+
 [profile.release]
 opt-level = 3
 lto = true
@@ -65,3 +96,46 @@ codegen-units = 1
 
 [profile.dev]
 opt-level = 0
+
+# --- Clippy lint policy -----------------------------------------------------
+# We track the 26 clippy::style lints that historically fired in this
+# project. Each lint is set to `warn` so the build still passes; CI can
+# incrementally upgrade specific entries to `deny` as the team fixes the
+# underlying code. The `cargo clippy -- -D clippy::<group>` pattern in
+# the CI workflow is the supported way to "enable" a lint: deny it, fix
+# the resulting errors, commit. See `.github/workflows/ci.yml` job
+# `clippy-strict` for the per-PR deny experiments.
+#
+# Concretely: today the only `deny` is `clippy::double_ended_iterator_last`
+# (the perf lint we just fixed in src/core/utils/id_generator.rs). The
+# rest stay at `warn` to avoid blocking unrelated work; they are
+# candidates for the next promotion to `deny`.
+[lints.clippy]
+double_ended_iterator_last = "deny"
+
+# Style lints the team is tracking (each set to `warn` for now):
+assign_op_pattern           = "warn"
+clone_on_copy               = "warn"
+collapsible_if              = "warn"
+derivable_impls             = "warn"
+field_reassign_with_default = "warn"
+identity_op                 = "warn"
+if_same_then_else           = "warn"
+inherent_to_string          = "warn"
+len_zero                    = "warn"
+let_and_return              = "warn"
+manual_checked_ops          = "warn"
+manual_flatten              = "warn"
+manual_is_multiple_of       = "warn"
+manual_range_contains       = "warn"
+manual_strip                = "warn"
+module_inception             = "warn"
+needless_range_loop         = "warn"
+needless_return             = "warn"
+new_without_default         = "warn"
+redundant_pattern_matching  = "warn"
+should_implement_trait      = "warn"
+too_many_arguments          = "warn"
+unnecessary_cast            = "warn"
+unnecessary_sort_by         = "warn"
+unwrap_or_default           = "warn"

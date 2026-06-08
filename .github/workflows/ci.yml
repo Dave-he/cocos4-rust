@@ -141,12 +141,42 @@ jobs:
           components: clippy
       # Same feature set as the Bazel job (default features) and the
       # lib's own `cargo check`. The pre-existing clippy style warnings
-      # (64 of them at the time of the Bazel migration) are NOT
-      # blockers for the build — they are style hints that the project
-      # has not yet opted into. Promote individual warnings to errors
-      # incrementally with `cargo clippy -- -D clippy::<name>` instead
-      # of blanket `-D warnings`, which would never go green.
+      # are NOT blockers for the build — they are style hints that the
+      # project has not yet opted into. Promote individual warnings to
+      # errors incrementally with `cargo clippy -- -D clippy::<name>`
+      # instead of blanket `-D warnings`, which would never go green.
+      # The `[lints.clippy]` table in Cargo.toml is the source of truth
+      # for which lints are currently `deny`; today that's just
+      # `clippy::double_ended_iterator_last` (the perf lint we fixed in
+      # src/core/utils/id_generator.rs).
       - run: cargo clippy --all-targets --no-deps
+
+  clippy-strict:
+    # Incremental lint enforcement: this job promotes one (or a small
+    # batch of) clippy lints from `warn` to `deny` on a per-PR basis.
+    # The list below mirrors the candidate set in Cargo.toml's
+    # `[lints.clippy]` table. Promoting a lint is a two-step ritual:
+    #   1. Add the lint to the `-- -D clippy::<name>` list here.
+    #   2. Fix the resulting errors, commit, push.
+    # Once a lint is promoted and the tree is clean, the entry can be
+    # moved into Cargo.toml's `[lints.clippy]` table as `deny` (and
+    # removed from the CLI flag list here, to keep this job focused on
+    # the next candidate). The job runs with continue-on-error so a
+    # failing promotion doesn't take down the whole suite — it surfaces
+    # as a noisy red check on the PR and a clear signal that more
+    # fixes are needed before the lint can graduate.
+    name: cargo clippy -- -D clippy::perf (incremental)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      # Promote a single perf-group lint as the canonical example of the
+      # incremental rollout. Add more `-- -D clippy::<name>` flags as
+      # lints graduate from the [lints.clippy] warn set to deny.
+      - run: cargo clippy --all-targets --no-deps -- -D clippy::perf
 
   cargo-test:
     name: cargo test (regression guard)

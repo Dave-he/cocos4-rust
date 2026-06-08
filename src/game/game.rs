@@ -4278,18 +4278,14 @@ function __initApp() {
 
     #[cfg(feature = "js-runtime-mock")]
     #[test]
-    // Marked #[ignore] because the mock runtime cannot actually execute
-    // a `window.__require = function(){...}` assignment — the mock
-    // passes the syntax probe and the bootstrap-entry detection, but
-    // `try_execute_bootstrap` returns false (no real JS engine to run
-    // the function literal) and the function then reports
-    // RuntimeUnavailable. The probe/detection paths DO accept this
-    // entry, which is what the test name asserts; the gap is the
-    // "execute" half of the mock. Tracked for follow-up; without the
-    // ignore the cargo test (regression guard) job has been failing on
-    // master since 2026-05-26.
-    #[ignore = "mock runtime can't actually execute this bootstrap; tracked separately"]
-    #[test]
+    // The mock runtime's `execute_bootstrap_mock` does marker-based
+    // detection (it cannot spin up a real JS engine), but it DOES
+    // return `true` for a valid modern __require bootstrap entry that
+    // carries the expected system.register / __require / cc markers.
+    // This test asserts exactly that: that the mock accepts a valid
+    // modern bootstrap, not that it fully executes the JS. The
+    // historic `#[ignore]` (added 2026-05-26 when the mock fell behind
+    // the detect path) is no longer needed.
     fn test_start_with_bootstrap_can_start_modern_when_mock_accepts_require_bootstrap() {
         let mut g = Game::new();
         g.init();

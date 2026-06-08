@@ -30,7 +30,15 @@ crate = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
 crate.from_cargo(
     name = "crates",
     cargo_lockfile = "//:Cargo.lock",
-    manifests = ["//:Cargo.toml"],
+    manifests = [
+        # The root crate — cocos4-rust itself.
+        "//:Cargo.toml",
+        # The vendored pastey (renamed in-package to `paste`) used as a
+        # [patch.crates-io] redirect target. cargo-bazel's splicing tool
+        # scans all manifest paths in this list when building the
+        # workspace, so the vendored copy must be enumerated explicitly.
+        "//:vendor/paste/Cargo.toml",
+    ],
     supported_platform_triples = [
         "x86_64-unknown-linux-gnu",
         "aarch64-unknown-linux-gnu",
