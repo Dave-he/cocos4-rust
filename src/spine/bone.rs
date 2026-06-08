@@ -22,13 +22,18 @@ impl SpineBone {
         Self {
             name: name.to_string(),
             parent: None,
-            x: 0.0, y: 0.0,
+            x: 0.0,
+            y: 0.0,
             rotation: 0.0,
-            scale_x: 1.0, scale_y: 1.0,
-            shear_x: 0.0, shear_y: 0.0,
-            world_x: 0.0, world_y: 0.0,
+            scale_x: 1.0,
+            scale_y: 1.0,
+            shear_x: 0.0,
+            shear_y: 0.0,
+            world_x: 0.0,
+            world_y: 0.0,
             world_rotation: 0.0,
-            world_scale_x: 1.0, world_scale_y: 1.0,
+            world_scale_x: 1.0,
+            world_scale_y: 1.0,
             length: 0.0,
         }
     }

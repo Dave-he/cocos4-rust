@@ -4,8 +4,8 @@ Original C++ version Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 // SPDX-License-Identifier: MIT
 
-use super::super::render_stage::{RenderStage, RenderStageInfo};
 use super::super::render_queue::RenderItem;
+use super::super::render_stage::{RenderStage, RenderStageInfo};
 use crate::renderer::gfx_base::DrawInfo;
 use crate::renderer::gfx_empty::EmptyCommandBuffer;
 
@@ -89,7 +89,6 @@ impl Default for ForwardStage {
 
 #[cfg(test)]
 mod tests {
-use super::super::super::render_stage::RenderStageInfo;
     use super::*;
 
     #[test]

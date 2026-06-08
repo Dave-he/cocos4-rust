@@ -1,9 +1,11 @@
 use super::intersection;
 use crate::math::Vec2;
-use crate::physics_2d::types::{AABB2D, ColliderType2D, ContactPoint2D, RayCastResult2D, RigidBodyType2D};
 use crate::physics_2d::collider::Collider2D;
-use crate::physics_2d::rigid_body::RigidBody2D;
 use crate::physics_2d::joint::Joint2D;
+use crate::physics_2d::rigid_body::RigidBody2D;
+use crate::physics_2d::types::{
+    ColliderType2D, ContactPoint2D, RayCastResult2D, RigidBodyType2D, AABB2D,
+};
 
 pub struct BuiltinWorld2D {
     gravity: Vec2,
@@ -15,6 +17,7 @@ pub struct BuiltinWorld2D {
     next_collider_id: u32,
     next_joint_id: u32,
     step_count: u64,
+    #[allow(dead_code)]
     allow_sleep: bool,
 }
 
@@ -108,26 +111,37 @@ impl BuiltinWorld2D {
                     | (ColliderType2D::Polygon, ColliderType2D::Polygon) => {
                         let aabb_a = a.get_aabb([0.0, 0.0]);
                         let aabb_b = b.get_aabb([0.0, 0.0]);
-                        intersection::aabb_overlap(&aabb_a.min, &aabb_a.max, &aabb_b.min, &aabb_b.max)
+                        intersection::aabb_overlap(
+                            &aabb_a.min,
+                            &aabb_a.max,
+                            &aabb_b.min,
+                            &aabb_b.max,
+                        )
                     }
                     (ColliderType2D::Circle, ColliderType2D::Circle) => {
                         intersection::circle_circle_intersect(
-                            &Vec2::new(a.offset[0], a.offset[1]), a.radius,
-                            &Vec2::new(b.offset[0], b.offset[1]), b.radius,
+                            &Vec2::new(a.offset[0], a.offset[1]),
+                            a.radius,
+                            &Vec2::new(b.offset[0], b.offset[1]),
+                            b.radius,
                         )
                     }
                     (ColliderType2D::Circle, _) => {
                         let aabb_b = b.get_aabb([0.0, 0.0]);
                         intersection::aabb_circle_intersect(
-                            &aabb_b.min, &aabb_b.max,
-                            &Vec2::new(a.offset[0], a.offset[1]), a.radius,
+                            &aabb_b.min,
+                            &aabb_b.max,
+                            &Vec2::new(a.offset[0], a.offset[1]),
+                            a.radius,
                         )
                     }
                     (_, ColliderType2D::Circle) => {
                         let aabb_a = a.get_aabb([0.0, 0.0]);
                         intersection::aabb_circle_intersect(
-                            &aabb_a.min, &aabb_a.max,
-                            &Vec2::new(b.offset[0], b.offset[1]), b.radius,
+                            &aabb_a.min,
+                            &aabb_a.max,
+                            &Vec2::new(b.offset[0], b.offset[1]),
+                            b.radius,
                         )
                     }
                     _ => false,
@@ -152,8 +166,8 @@ impl BuiltinWorld2D {
         self.colliders
             .iter()
             .filter(|c| {
-                c.enabled &&
-                    intersection::aabb_overlap(
+                c.enabled
+                    && intersection::aabb_overlap(
                         &c.get_aabb([0.0, 0.0]).min,
                         &c.get_aabb([0.0, 0.0]).max,
                         &aabb.min,
@@ -164,12 +178,24 @@ impl BuiltinWorld2D {
             .collect()
     }
 
-    pub fn get_contact_points(&self) -> &[ContactPoint2D] { &self.contact_points }
-    pub fn get_contact_count(&self) -> usize { self.contact_points.len() }
-    pub fn get_body_count(&self) -> usize { self.rigid_bodies.len() }
-    pub fn get_collider_count(&self) -> usize { self.colliders.len() }
-    pub fn get_joint_count(&self) -> usize { self.joints.len() }
-    pub fn get_step_count(&self) -> u64 { self.step_count }
+    pub fn get_contact_points(&self) -> &[ContactPoint2D] {
+        &self.contact_points
+    }
+    pub fn get_contact_count(&self) -> usize {
+        self.contact_points.len()
+    }
+    pub fn get_body_count(&self) -> usize {
+        self.rigid_bodies.len()
+    }
+    pub fn get_collider_count(&self) -> usize {
+        self.colliders.len()
+    }
+    pub fn get_joint_count(&self) -> usize {
+        self.joints.len()
+    }
+    pub fn get_step_count(&self) -> u64 {
+        self.step_count
+    }
 
     pub fn clear(&mut self) {
         self.rigid_bodies.clear();
@@ -186,11 +212,15 @@ impl BuiltinWorld2D {
         self.gravity = Vec2::new(x, y);
     }
 
-    pub fn get_gravity(&self) -> Vec2 { self.gravity }
+    pub fn get_gravity(&self) -> Vec2 {
+        self.gravity
+    }
 }
 
 impl Default for BuiltinWorld2D {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]

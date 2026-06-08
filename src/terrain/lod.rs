@@ -8,10 +8,15 @@ pub enum LODLevel {
 
 impl LODLevel {
     pub fn from_distance(distance: f32) -> Self {
-        if distance < 20.0 { LODLevel::LOD0 }
-        else if distance < 50.0 { LODLevel::LOD1 }
-        else if distance < 100.0 { LODLevel::LOD2 }
-        else { LODLevel::LOD3 }
+        if distance < 20.0 {
+            LODLevel::LOD0
+        } else if distance < 50.0 {
+            LODLevel::LOD1
+        } else if distance < 100.0 {
+            LODLevel::LOD2
+        } else {
+            LODLevel::LOD3
+        }
     }
 
     pub fn get_subdivision_factor(&self) -> u32 {
@@ -38,7 +43,12 @@ pub struct LODData {
 
 impl LODData {
     pub fn new(level: LODLevel) -> Self {
-        Self { level, vertex_count: 0, index_count: 0, visible: true }
+        Self {
+            level,
+            vertex_count: 0,
+            index_count: 0,
+            visible: true,
+        }
     }
 }
 
@@ -46,6 +56,7 @@ impl LODData {
 pub struct LODManager {
     pub lod_levels: Vec<LODData>,
     pub active_level: usize,
+    #[allow(dead_code)]
     max_distance: f32,
 }
 
@@ -61,7 +72,11 @@ impl LODManager {
             };
             lod_levels.push(LODData::new(level));
         }
-        Self { lod_levels, active_level: 0, max_distance: 100.0 }
+        Self {
+            lod_levels,
+            active_level: 0,
+            max_distance: 100.0,
+        }
     }
 
     pub fn update(&mut self, distance: f32) {
@@ -72,11 +87,15 @@ impl LODManager {
         &self.lod_levels[self.active_level]
     }
 
-    pub fn get_level_count(&self) -> usize { self.lod_levels.len() }
+    pub fn get_level_count(&self) -> usize {
+        self.lod_levels.len()
+    }
 }
 
 impl Default for LODManager {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]

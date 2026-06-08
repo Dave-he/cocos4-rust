@@ -106,9 +106,15 @@ impl Armature {
         }
     }
 
-    pub fn get_bone_count(&self) -> usize { self.bones.len() }
-    pub fn get_slot_count(&self) -> usize { self.slots.len() }
-    pub fn get_animation_count(&self) -> usize { self.animations.len() }
+    pub fn get_bone_count(&self) -> usize {
+        self.bones.len()
+    }
+    pub fn get_slot_count(&self) -> usize {
+        self.slots.len()
+    }
+    pub fn get_animation_count(&self) -> usize {
+        self.animations.len()
+    }
 }
 
 #[cfg(test)]

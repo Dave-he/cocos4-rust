@@ -38,11 +38,15 @@ impl WebView {
     pub fn stop_loading(&mut self) {}
 
     pub fn go_back(&mut self) {
-        if self.can_go_back { self.can_go_forward = true; }
+        if self.can_go_back {
+            self.can_go_forward = true;
+        }
     }
 
     pub fn go_forward(&mut self) {
-        if self.can_go_forward { self.can_go_back = true; }
+        if self.can_go_forward {
+            self.can_go_back = true;
+        }
     }
 
     pub fn evaluate_js(&self, js: &str) {
@@ -53,11 +57,15 @@ impl WebView {
         self.visible = visible;
     }
 
-    pub fn is_loaded(&self) -> bool { self.loaded }
+    pub fn is_loaded(&self) -> bool {
+        self.loaded
+    }
 }
 
 impl Default for WebView {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]

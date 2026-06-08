@@ -1,7 +1,7 @@
-use crate::renderer::pipeline::RenderPipeline;
+use super::layout_graph::LayoutGraph;
 use super::render_graph::RenderGraph;
 use super::resource_graph::ResourceGraph;
-use super::layout_graph::LayoutGraph;
+use crate::renderer::pipeline::RenderPipeline;
 
 pub struct NativePipeline {
     pub name: String,
@@ -81,7 +81,8 @@ mod tests {
     #[test]
     fn test_native_pipeline_clear() {
         let mut np = NativePipeline::new("test");
-        np.render_graph.add_pass(super::super::types::PassDesc::default());
+        np.render_graph
+            .add_pass(super::super::types::PassDesc::default());
         np.clear();
         assert_eq!(np.render_graph.get_node_count(), 0);
     }

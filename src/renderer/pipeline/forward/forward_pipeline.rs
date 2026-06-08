@@ -58,7 +58,7 @@ impl ForwardPipeline {
     }
 
     pub fn render(&mut self, cameras: &[u64]) {
-let mut command_buffer = EmptyCommandBuffer::new(CommandBufferInfo::default());
+        let mut command_buffer = EmptyCommandBuffer::new(CommandBufferInfo::default());
         command_buffer.begin();
 
         let flow_count = self.base.flows.len();

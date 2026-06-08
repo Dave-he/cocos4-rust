@@ -445,10 +445,13 @@ mod tests {
     fn test_device_validator_resource_leak_on_destroy() {
         let mut validator = DeviceValidator::default();
         validator.initialize();
-let buf = validator.create_buffer(BufferInfo {
+        // Intentionally leaked to test the leak detector.
+        #[allow(unused_variables)]
+        let buf = validator.create_buffer(BufferInfo {
             size: 64,
             ..Default::default()
         });
+        let _ = buf;
         validator.destroy();
         assert!(validator.get_log().has_errors());
     }
@@ -457,7 +460,7 @@ let buf = validator.create_buffer(BufferInfo {
     fn test_device_validator_no_leak_on_destroy() {
         let mut validator = DeviceValidator::default();
         validator.initialize();
-let buf = validator.create_buffer(BufferInfo {
+        let buf = validator.create_buffer(BufferInfo {
             size: 64,
             ..Default::default()
         });
@@ -473,10 +476,14 @@ let buf = validator.create_buffer(BufferInfo {
         let mut validator = DeviceValidator::default();
         validator.set_enabled(false);
         validator.initialize();
-let buf = validator.create_buffer(BufferInfo {
+        // Resource is created but discarded — verifies the validator
+        // is silent when disabled.
+        #[allow(unused_variables)]
+        let buf = validator.create_buffer(BufferInfo {
             size: 0,
             ..Default::default()
         });
+        let _ = buf;
         assert!(!validator.get_log().has_errors());
     }
 

@@ -41,7 +41,9 @@ impl AnimationTrack {
     }
 
     pub fn get_keyframe_at(&self, time: f32) -> Option<&KeyFrame> {
-        self.keyframes.iter().find(|kf| (kf.time - time).abs() < 0.001)
+        self.keyframes
+            .iter()
+            .find(|kf| (kf.time - time).abs() < 0.001)
     }
 
     pub fn get_total_frames(&self) -> usize {

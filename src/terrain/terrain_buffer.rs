@@ -29,15 +29,25 @@ impl TerrainBuffer {
         self.index_count = 0;
     }
 
-    pub fn get_vertex_count(&self) -> u32 { self.vertex_count }
-    pub fn get_index_count(&self) -> u32 { self.index_count }
+    pub fn get_vertex_count(&self) -> u32 {
+        self.vertex_count
+    }
+    pub fn get_index_count(&self) -> u32 {
+        self.index_count
+    }
 
-    pub fn get_vertex_size(&self) -> usize { self.vertex_buffer.len() * std::mem::size_of::<f32>() }
-    pub fn get_index_size(&self) -> usize { self.index_buffer.len() * std::mem::size_of::<u32>() }
+    pub fn get_vertex_size(&self) -> usize {
+        self.vertex_buffer.len() * std::mem::size_of::<f32>()
+    }
+    pub fn get_index_size(&self) -> usize {
+        self.index_buffer.len() * std::mem::size_of::<u32>()
+    }
 }
 
 impl Default for TerrainBuffer {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]

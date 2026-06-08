@@ -63,8 +63,8 @@ pub use renderer::gfx_base::*;
 pub use renderer::pipeline::*;
 
 pub use game::{
-    Director, DirectorEvent, Game, GameBootstrapContract, GameBootstrapError, GameConfig, GameEvent,
-    SceneManager, SceneState,
+    Director, DirectorEvent, Game, GameBootstrapContract, GameBootstrapError, GameConfig,
+    GameEvent, SceneManager, SceneState,
 };
 pub use input::{
     EventKeyboard, EventMouse, EventTouch, Input, InputEventType, KeyCode, MouseButton, Touch,

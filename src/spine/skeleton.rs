@@ -44,8 +44,10 @@ impl Skeleton {
             slots: Vec::new(),
             animations: Vec::new(),
             default_skin: "default".to_string(),
-            x: 0.0, y: 0.0,
-            scale_x: 1.0, scale_y: 1.0,
+            x: 0.0,
+            y: 0.0,
+            scale_x: 1.0,
+            scale_y: 1.0,
             current_anim: None,
         }
     }
@@ -103,9 +105,15 @@ impl Skeleton {
         self.animations.iter().find(|a| a.name == name)
     }
 
-    pub fn get_bone_count(&self) -> usize { self.bones.len() }
-    pub fn get_slot_count(&self) -> usize { self.slots.len() }
-    pub fn get_animation_count(&self) -> usize { self.animations.len() }
+    pub fn get_bone_count(&self) -> usize {
+        self.bones.len()
+    }
+    pub fn get_slot_count(&self) -> usize {
+        self.slots.len()
+    }
+    pub fn get_animation_count(&self) -> usize {
+        self.animations.len()
+    }
 }
 
 #[cfg(test)]

@@ -8,7 +8,13 @@ pub struct LinuxWindow {
 
 impl LinuxWindow {
     pub fn new(title: &str, width: u32, height: u32) -> Self {
-        Self { title: title.into(), width, height, visible: false, fullscreen: false }
+        Self {
+            title: title.into(),
+            width,
+            height,
+            visible: false,
+            fullscreen: false,
+        }
     }
 
     pub fn show(&mut self) {

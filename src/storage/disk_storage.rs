@@ -41,7 +41,9 @@ impl DiskStorage {
     }
 
     pub fn get_size(&self, key: &str) -> Option<usize> {
-        fs::metadata(self.resolve_path(key)).ok().map(|m| m.len() as usize)
+        fs::metadata(self.resolve_path(key))
+            .ok()
+            .map(|m| m.len() as usize)
     }
 
     pub fn get_total_size(&self) -> usize {
@@ -81,7 +83,10 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_root() -> PathBuf {
-        let nonce = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
         std::env::temp_dir().join(format!("cocos4-rust-storage-{nonce}"))
     }
 

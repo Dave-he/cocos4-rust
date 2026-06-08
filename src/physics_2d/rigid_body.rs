@@ -49,7 +49,9 @@ impl RigidBody2D {
     }
 
     pub fn apply_force(&mut self, force: [f32; 2]) {
-        if self.body_type != RigidBodyType2D::Dynamic { return; }
+        if self.body_type != RigidBodyType2D::Dynamic {
+            return;
+        }
         if self.mass > 0.0 {
             self.linear_velocity[0] += force[0] / self.mass;
             self.linear_velocity[1] += force[1] / self.mass;
@@ -58,7 +60,9 @@ impl RigidBody2D {
     }
 
     pub fn apply_impulse(&mut self, impulse: [f32; 2]) {
-        if self.body_type != RigidBodyType2D::Dynamic { return; }
+        if self.body_type != RigidBodyType2D::Dynamic {
+            return;
+        }
         if self.mass > 0.0 {
             self.linear_velocity[0] += impulse[0] / self.mass;
             self.linear_velocity[1] += impulse[1] / self.mass;
@@ -66,9 +70,15 @@ impl RigidBody2D {
         }
     }
 
-    pub fn get_mass(&self) -> f32 { self.mass }
-    pub fn is_static(&self) -> bool { self.body_type == RigidBodyType2D::Static }
-    pub fn is_kinematic(&self) -> bool { self.body_type == RigidBodyType2D::Kinematic }
+    pub fn get_mass(&self) -> f32 {
+        self.mass
+    }
+    pub fn is_static(&self) -> bool {
+        self.body_type == RigidBodyType2D::Static
+    }
+    pub fn is_kinematic(&self) -> bool {
+        self.body_type == RigidBodyType2D::Kinematic
+    }
 }
 
 #[cfg(test)]

@@ -39,7 +39,12 @@ impl Bone {
         }
     }
 
-    pub fn update_world_transform(&mut self, parent_wp: &[f32; 2], parent_rot: f32, parent_scale: &[f32; 2]) {
+    pub fn update_world_transform(
+        &mut self,
+        parent_wp: &[f32; 2],
+        parent_rot: f32,
+        parent_scale: &[f32; 2],
+    ) {
         let cos = parent_rot.to_radians().cos();
         let sin = parent_rot.to_radians().sin();
         let rx = self.position[0] * cos - self.position[1] * sin;

@@ -340,7 +340,10 @@ mod tests {
         let items = d.read_array("items").unwrap();
         assert_eq!(items[0].as_int(), Some(1));
         assert_eq!(items[1].get("label").unwrap().as_str(), Some("a,b:c"));
-        assert_eq!(items[1].get("escaped").unwrap().as_str(), Some("line\nnext"));
+        assert_eq!(
+            items[1].get("escaped").unwrap().as_str(),
+            Some("line\nnext")
+        );
         assert_eq!(d.read_str("name"), Some("hero\"x"));
     }
 }

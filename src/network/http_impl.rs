@@ -1,4 +1,3 @@
-
 pub struct HttpClient {
     timeout_ms: u32,
     _max_redirects: u32,
@@ -6,7 +5,10 @@ pub struct HttpClient {
 
 impl HttpClient {
     pub fn new() -> Self {
-        Self { timeout_ms: 30000, _max_redirects: 5 }
+        Self {
+            timeout_ms: 30000,
+            _max_redirects: 5,
+        }
     }
 
     pub fn set_timeout(&mut self, ms: u32) {
@@ -27,7 +29,9 @@ impl HttpClient {
 }
 
 impl Default for HttpClient {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]

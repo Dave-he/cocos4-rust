@@ -9,7 +9,9 @@ pub enum RigidBodyType2D {
 }
 
 impl Default for RigidBodyType2D {
-    fn default() -> Self { Self::Dynamic }
+    fn default() -> Self {
+        Self::Dynamic
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,7 +29,9 @@ pub enum JointType2D {
 }
 
 impl Default for JointType2D {
-    fn default() -> Self { Self::Distance }
+    fn default() -> Self {
+        Self::Distance
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,7 +44,9 @@ pub enum ColliderType2D {
 }
 
 impl Default for ColliderType2D {
-    fn default() -> Self { Self::Box }
+    fn default() -> Self {
+        Self::Box
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -52,7 +58,11 @@ pub struct PhysicsMaterial2D {
 
 impl Default for PhysicsMaterial2D {
     fn default() -> Self {
-        Self { density: 1.0, friction: 0.5, restitution: 0.1 }
+        Self {
+            density: 1.0,
+            friction: 0.5,
+            restitution: 0.1,
+        }
     }
 }
 
@@ -63,14 +73,20 @@ pub struct AABB2D {
 }
 
 impl AABB2D {
-    pub fn new(min: Vec2, max: Vec2) -> Self { Self { min, max } }
+    pub fn new(min: Vec2, max: Vec2) -> Self {
+        Self { min, max }
+    }
     pub fn contains(&self, point: &Vec2) -> bool {
-        point.x >= self.min.x && point.x <= self.max.x
-            && point.y >= self.min.y && point.y <= self.max.y
+        point.x >= self.min.x
+            && point.x <= self.max.x
+            && point.y >= self.min.y
+            && point.y <= self.max.y
     }
     pub fn overlaps(&self, other: &AABB2D) -> bool {
-        self.min.x <= other.max.x && self.max.x >= other.min.x
-            && self.min.y <= other.max.y && self.max.y >= other.min.y
+        self.min.x <= other.max.x
+            && self.max.x >= other.min.x
+            && self.min.y <= other.max.y
+            && self.max.y >= other.min.y
     }
 }
 
@@ -84,7 +100,12 @@ pub struct RayCastResult2D {
 
 impl Default for RayCastResult2D {
     fn default() -> Self {
-        Self { hit: false, point: Vec2::ZERO, normal: Vec2::ZERO, fraction: 1.0 }
+        Self {
+            hit: false,
+            point: Vec2::ZERO,
+            normal: Vec2::ZERO,
+            fraction: 1.0,
+        }
     }
 }
 

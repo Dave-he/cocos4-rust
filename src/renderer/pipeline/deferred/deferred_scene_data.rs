@@ -47,8 +47,8 @@ impl Default for DeferredSceneDataManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::deferred_types::DeferredLight;
+    use super::*;
 
     #[test]
     fn test_scene_data_manager_new() {

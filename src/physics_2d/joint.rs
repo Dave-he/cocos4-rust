@@ -35,11 +35,11 @@ impl Joint2D {
         self.anchor_b = anchor_b;
     }
 
-    pub fn get_reaction_force(&self, inv_dt: f32) -> [f32; 2] {
+    pub fn get_reaction_force(&self, _inv_dt: f32) -> [f32; 2] {
         [0.0, 0.0]
     }
 
-    pub fn get_reaction_torque(&self, inv_dt: f32) -> f32 {
+    pub fn get_reaction_torque(&self, _inv_dt: f32) -> f32 {
         0.0
     }
 }
@@ -82,9 +82,15 @@ mod tests {
     #[test]
     fn test_joint_types() {
         let types = [
-            JointType2D::Distance, JointType2D::Spring, JointType2D::Wheel,
-            JointType2D::Revolute, JointType2D::Prismatic, JointType2D::Rope,
-            JointType2D::Weld, JointType2D::Motor, JointType2D::Mouse,
+            JointType2D::Distance,
+            JointType2D::Spring,
+            JointType2D::Wheel,
+            JointType2D::Revolute,
+            JointType2D::Prismatic,
+            JointType2D::Rope,
+            JointType2D::Weld,
+            JointType2D::Motor,
+            JointType2D::Mouse,
             JointType2D::Relative,
         ];
         for t in &types {

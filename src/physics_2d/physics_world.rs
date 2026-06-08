@@ -1,15 +1,17 @@
-use crate::math::Vec2;
-use super::types::{AABB2D, ContactPoint2D, RayCastResult2D};
-use super::collider::Collider2D;
-use super::rigid_body::RigidBody2D;
-use super::joint::Joint2D;
 use super::builtin::intersection;
+use super::collider::Collider2D;
+use super::joint::Joint2D;
+use super::rigid_body::RigidBody2D;
+use super::types::{ContactPoint2D, RayCastResult2D, AABB2D};
+use crate::math::Vec2;
 
 pub struct PhysicsWorld2D {
     pub gravity: Vec2,
     pub allow_sleep: bool,
     pub auto_clear_forces: bool,
+    #[allow(dead_code)]
     base_velocity_iterations: u32,
+    #[allow(dead_code)]
     base_position_iterations: u32,
     rigid_bodies: Vec<RigidBody2D>,
     colliders: Vec<Collider2D>,
@@ -153,7 +155,11 @@ impl PhysicsWorld2D {
             .filter(|c| {
                 c.enabled
                     && group_mask.map(|mask| (c.group & mask) != 0).unwrap_or(true)
-                    && intersection::point_in_aabb(&point, &c.get_aabb([0.0, 0.0]).min, &c.get_aabb([0.0, 0.0]).max)
+                    && intersection::point_in_aabb(
+                        &point,
+                        &c.get_aabb([0.0, 0.0]).min,
+                        &c.get_aabb([0.0, 0.0]).max,
+                    )
             })
             .map(|c| c.id)
             .collect()
@@ -174,13 +180,31 @@ impl PhysicsWorld2D {
             }
             let aabb = collider.get_aabb([0.0, 0.0]);
             let edges = [
-                (Vec2::new(aabb.min.x, aabb.min.y), Vec2::new(aabb.max.x, aabb.min.y), Vec2::new(0.0, -1.0)),
-                (Vec2::new(aabb.max.x, aabb.min.y), Vec2::new(aabb.max.x, aabb.max.y), Vec2::new(1.0, 0.0)),
-                (Vec2::new(aabb.max.x, aabb.max.y), Vec2::new(aabb.min.x, aabb.max.y), Vec2::new(0.0, 1.0)),
-                (Vec2::new(aabb.min.x, aabb.max.y), Vec2::new(aabb.min.x, aabb.min.y), Vec2::new(-1.0, 0.0)),
+                (
+                    Vec2::new(aabb.min.x, aabb.min.y),
+                    Vec2::new(aabb.max.x, aabb.min.y),
+                    Vec2::new(0.0, -1.0),
+                ),
+                (
+                    Vec2::new(aabb.max.x, aabb.min.y),
+                    Vec2::new(aabb.max.x, aabb.max.y),
+                    Vec2::new(1.0, 0.0),
+                ),
+                (
+                    Vec2::new(aabb.max.x, aabb.max.y),
+                    Vec2::new(aabb.min.x, aabb.max.y),
+                    Vec2::new(0.0, 1.0),
+                ),
+                (
+                    Vec2::new(aabb.min.x, aabb.max.y),
+                    Vec2::new(aabb.min.x, aabb.min.y),
+                    Vec2::new(-1.0, 0.0),
+                ),
             ];
             for (start, end, normal) in edges {
-                if let Some((t, point)) = intersection::ray_segment_intersection(&origin, &dir, &start, &end) {
+                if let Some((t, point)) =
+                    intersection::ray_segment_intersection(&origin, &dir, &start, &end)
+                {
                     if t <= max_distance && t < best_fraction {
                         best_fraction = t;
                         closest.hit = true;
@@ -298,10 +322,7 @@ mod tests {
         let mut c = Collider2D::new(0);
         c.set_as_box(1.0, 1.0);
         world.create_collider(c);
-        let query = AABB2D::new(
-            Vec2::new(-10.0, -10.0),
-            Vec2::new(10.0, 10.0),
-        );
+        let query = AABB2D::new(Vec2::new(-10.0, -10.0), Vec2::new(10.0, 10.0));
         let results = world.query_aabb(&query);
         assert!(!results.is_empty());
     }

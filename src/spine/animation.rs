@@ -55,7 +55,9 @@ impl SpineAnimation {
     }
 
     pub fn update(&mut self, dt: f32) {
-        if !self.playing { return; }
+        if !self.playing {
+            return;
+        }
         self.elapsed += dt;
         if self.elapsed >= self.duration {
             match self.play_mode {
@@ -74,14 +76,23 @@ impl SpineAnimation {
     }
 
     pub fn get_interpolated(&self, bone_name: &str) -> Option<SpineKeyFrame> {
-        self.tracks.iter().find(|t| t.bone_name == bone_name).and_then(|track| {
-            if track.keyframes.is_empty() { return None; }
-            let t = self.elapsed;
-            if let Some(kf) = track.keyframes.iter().find(|kf| (kf.time - t).abs() < 0.001) {
-                return Some(kf.clone());
-            }
-            Some(track.keyframes[0].clone())
-        })
+        self.tracks
+            .iter()
+            .find(|t| t.bone_name == bone_name)
+            .and_then(|track| {
+                if track.keyframes.is_empty() {
+                    return None;
+                }
+                let t = self.elapsed;
+                if let Some(kf) = track
+                    .keyframes
+                    .iter()
+                    .find(|kf| (kf.time - t).abs() < 0.001)
+                {
+                    return Some(kf.clone());
+                }
+                Some(track.keyframes[0].clone())
+            })
     }
 }
 

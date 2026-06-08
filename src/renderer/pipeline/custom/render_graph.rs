@@ -1,4 +1,4 @@
-use super::types::{PassDesc, PassKind, ResourceDesc, ResourceKind, SubpassDesc};
+use super::types::{PassDesc, ResourceDesc, SubpassDesc};
 
 #[derive(Debug, Clone)]
 pub struct RenderGraphNode {
@@ -238,6 +238,7 @@ impl Default for RenderGraph {
 
 #[cfg(test)]
 mod tests {
+    use super::super::types::{PassKind, ResourceKind};
     use super::*;
 
     fn create_test_pass(name: &str, kind: PassKind) -> PassDesc {
@@ -365,10 +366,14 @@ mod tests {
     #[test]
     fn test_render_graph_complex_pipeline() {
         let mut graph = RenderGraph::new("Pipeline");
-        let rt_albedo = graph.add_resource(create_test_resource("albedo", ResourceKind::ManagedTexture));
-        let rt_normal = graph.add_resource(create_test_resource("normal", ResourceKind::ManagedTexture));
-        let rt_depth = graph.add_resource(create_test_resource("depth", ResourceKind::ManagedTexture));
-        let rt_output = graph.add_resource(create_test_resource("output", ResourceKind::ManagedTexture));
+        let rt_albedo =
+            graph.add_resource(create_test_resource("albedo", ResourceKind::ManagedTexture));
+        let rt_normal =
+            graph.add_resource(create_test_resource("normal", ResourceKind::ManagedTexture));
+        let rt_depth =
+            graph.add_resource(create_test_resource("depth", ResourceKind::ManagedTexture));
+        let rt_output =
+            graph.add_resource(create_test_resource("output", ResourceKind::ManagedTexture));
 
         let gbuffer = graph.add_pass(create_test_pass("gbuffer", PassKind::Raster));
         graph.set_resource_producer(rt_albedo, gbuffer);

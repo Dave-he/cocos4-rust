@@ -61,17 +61,11 @@ impl GameBootstrapContract {
         }
 
         let normalized = match style.as_str() {
-            "legacy-cocos2d-js"
-            | "legacy-cocos2d-jsb"
-            | "legacy-cocos2d"
-            | "cocos2d-js"
+            "legacy-cocos2d-js" | "legacy-cocos2d-jsb" | "legacy-cocos2d" | "cocos2d-js"
             | "cocos2d-jsb" => "legacy-cocos2d-js",
-            "modern-systemjs"
-            | "modern-cocos2d-js"
-            | "systemjs"
-            | "cjs"
-            | "esm"
-            | "modern" => "modern-systemjs",
+            "modern-systemjs" | "modern-cocos2d-js" | "systemjs" | "cjs" | "esm" | "modern" => {
+                "modern-systemjs"
+            }
             "bootstrap-only" | "bootstrap" => "bootstrap-only",
             other => other,
         };
@@ -169,8 +163,10 @@ const REASON_JS_BOOTSTRAP_ENTRY_NOT_DETECTED: &str =
     "javascript bootstrap entrypoint could not be detected in main entry source";
 const REASON_JS_SOURCE_SYNTAX_HEURISTIC_FAILED: &str =
     "javascript source syntax heuristic probe failed";
+#[allow(dead_code)] // only referenced under js-runtime-mock / js-runtime-real cfg
 const REASON_JS_RUNTIME_SIMULATOR_FAILED: &str =
     "javascript runtime simulator rejected bootstrap entrypoint";
+#[allow(dead_code)] // only referenced under js-runtime-mock / js-runtime-real cfg
 const REASON_JS_RUNTIME_EXECUTION_FAILED: &str =
     "javascript runtime rejected bootstrap entrypoint during execution";
 
@@ -198,7 +194,12 @@ impl Game {
             return Some("main entry source is not available in bootstrap contract".to_string());
         }
 
-        if bootstrap.main_entry_source.as_ref().map(|source| source.trim().is_empty()) == Some(true) {
+        if bootstrap
+            .main_entry_source
+            .as_ref()
+            .map(|source| source.trim().is_empty())
+            == Some(true)
+        {
             return Some("main entry source is empty".to_string());
         }
 
@@ -344,7 +345,11 @@ impl Game {
             }
         }
 
-        !in_single_quote && !in_double_quote && !in_template && !in_line_comment && !in_block_comment
+        !in_single_quote
+            && !in_double_quote
+            && !in_template
+            && !in_line_comment
+            && !in_block_comment
             && paren_depth == 0
             && brace_depth == 0
             && bracket_depth == 0
@@ -360,15 +365,12 @@ impl Game {
         source.len() > 0
     }
 
-    fn probe_bootstrap_entry_inner(
-        &self,
-        style_detected: &str,
-        source: &str,
-    ) -> Option<String> {
+    fn probe_bootstrap_entry_inner(&self, style_detected: &str, source: &str) -> Option<String> {
         let normalized = source.to_lowercase();
         match style_detected {
-            "legacy-cocos2d-js" if normalized.contains("window.boot")
-                || normalized.contains("window[\"boot\"]") =>
+            "legacy-cocos2d-js"
+                if normalized.contains("window.boot")
+                    || normalized.contains("window[\"boot\"]") =>
             {
                 None
             }
@@ -377,15 +379,16 @@ impl Game {
                 REASON_JS_BOOTSTRAP_ENTRY_NOT_DETECTED,
                 "legacy style expects window.boot definition"
             )),
-            "modern-systemjs" if normalized.contains("system.register")
-                || normalized.contains("system[\"register\"]")
-                || normalized.contains("window.__require")
-                || normalized.contains("__require")
-                || normalized.contains("__initapp")
-                || normalized.contains("system.import")
-                || normalized.contains("system.warmup")
-                || normalized.contains("first-screen")
-                || normalized.contains("firstscreen") =>
+            "modern-systemjs"
+                if normalized.contains("system.register")
+                    || normalized.contains("system[\"register\"]")
+                    || normalized.contains("window.__require")
+                    || normalized.contains("__require")
+                    || normalized.contains("__initapp")
+                    || normalized.contains("system.import")
+                    || normalized.contains("system.warmup")
+                    || normalized.contains("first-screen")
+                    || normalized.contains("firstscreen") =>
             {
                 None
             }
@@ -398,7 +401,11 @@ impl Game {
         }
     }
 
-    fn probe_bootstrap_entry(&self, normalized_style: &str, source: Option<&str>) -> Option<String> {
+    fn probe_bootstrap_entry(
+        &self,
+        normalized_style: &str,
+        source: Option<&str>,
+    ) -> Option<String> {
         if cfg!(feature = "js-runtime-probe") {
             if let Some(source) = source {
                 if !self.run_js_probe(source) {
@@ -420,6 +427,7 @@ impl Game {
         self.probe_bootstrap_entry_inner(style_detected, source)
     }
 
+    #[allow(unused_variables)] // used only under js-runtime-* cfg branches
     fn try_execute_bootstrap(&self, bootstrap: &GameBootstrapContract) -> bool {
         #[cfg(feature = "js-runtime-real")]
         {
@@ -453,8 +461,7 @@ impl Game {
         let source_lower = source.to_lowercase();
         match normalized_style.as_str() {
             "legacy-cocos2d-js" => {
-                source_lower.contains("window.boot")
-                    && source_lower.contains("cc.game")
+                source_lower.contains("window.boot") && source_lower.contains("cc.game")
             }
             "modern-systemjs" => {
                 let marker = source_lower.contains("system.register")
@@ -484,7 +491,9 @@ impl Game {
             .map(str::trim)
             .unwrap_or("");
         let settings_path = bootstrap.settings_path.as_deref().unwrap_or("");
-        let is_settings_json = settings_path.to_ascii_lowercase().ends_with("settings.json");
+        let is_settings_json = settings_path
+            .to_ascii_lowercase()
+            .ends_with("settings.json");
 
         if source.is_empty() {
             return false;
@@ -501,10 +510,9 @@ impl Game {
 
         let normalized_style = bootstrap.normalized_runtime_style();
         let call_bootstrap = normalized_style == "legacy-cocos2d-js";
-        let mut run_eval = |context: &mut Context, source: &str| {
-            context.eval(Source::from_bytes(source)).is_ok()
-        };
-let prelude = r###"
+        let mut run_eval =
+            |context: &mut Context, source: &str| context.eval(Source::from_bytes(source)).is_ok();
+        let prelude = r###"
 var window = typeof window === "undefined" ? (typeof globalThis === "undefined" ? this : globalThis) : window;
 if (typeof console === "undefined") {
     var console = { log() {}, warn() {}, error() {}, info() {}, debug() {}, trace() {} };
@@ -3759,7 +3767,9 @@ if (typeof window.System.warmup !== "function") {
 
         if !settings_source.is_empty() {
             if is_settings_json {
-                if let Ok(settings_json) = serde_json::from_str::<serde_json::Value>(settings_source) {
+                if let Ok(settings_json) =
+                    serde_json::from_str::<serde_json::Value>(settings_source)
+                {
                     if let Ok(serialized) = serde_json::to_string(&settings_json) {
                         let settings_eval = format!(
                             "try {{\n  var __runtimeSettings = {serialized};\n  if (typeof __runtimeSettings === \"object\" && __runtimeSettings !== null) {{\n    cc._CCSettings = cc._CCSettings || {{}};\n    window._CCSettings = window._CCSettings || {{}};\n    for (var __k in __runtimeSettings) {{\n      if (Object.prototype.hasOwnProperty.call(__runtimeSettings, __k)) {{\n        cc._CCSettings[__k] = __runtimeSettings[__k];\n        window._CCSettings[__k] = __runtimeSettings[__k];\n      }}\n    }}\n  }}\n}} catch (_e) {{}}",
@@ -3997,7 +4007,15 @@ mod tests {
             entry_candidates: vec!["main.js".to_string()],
         };
 
-        let aliases: HashSet<&str> = vec!["legacy-cocos2d-js", "legacy-cocos2d-jsb", "legacy-cocos2d", "cocos2d-js", "cocos2d-jsb"].into_iter().collect();
+        let aliases: HashSet<&str> = vec![
+            "legacy-cocos2d-js",
+            "legacy-cocos2d-jsb",
+            "legacy-cocos2d",
+            "cocos2d-js",
+            "cocos2d-jsb",
+        ]
+        .into_iter()
+        .collect();
         for alias in aliases {
             let contract = GameBootstrapContract {
                 runtime_style: alias.to_string(),
@@ -4080,7 +4098,9 @@ mod tests {
             .expect_err("legacy runtime is still unimplemented");
         assert_eq!(err.code(), "RUNTIME_UNAVAILABLE");
         assert!(err.message().contains("not implemented"));
-        assert!(err.message().contains("native JS runtime path is not implemented"));
+        assert!(err
+            .message()
+            .contains("native JS runtime path is not implemented"));
     }
 
     #[cfg(feature = "js-runtime-real")]
@@ -4098,7 +4118,10 @@ mod tests {
             entry_candidates: vec!["main.js".to_string()],
         };
         let ret = g.start_with_bootstrap(&bootstrap);
-        assert!(ret.is_ok(), "real runtime should accept a valid legacy bootstrap entry");
+        assert!(
+            ret.is_ok(),
+            "real runtime should accept a valid legacy bootstrap entry"
+        );
     }
 
     #[cfg(feature = "js-runtime-real")]
@@ -4109,7 +4132,8 @@ mod tests {
         let bootstrap = GameBootstrapContract {
             runtime_style: "modern-systemjs".to_string(),
             main_entry: Some("assets/main/index.js".to_string()),
-            main_entry_source: Some(r#"
+            main_entry_source: Some(
+                r#"
 System.register([], function (_export) {
   return {
     setters: [],
@@ -4134,14 +4158,18 @@ function __initApp() {
     });
 }
 "#
-            .to_string()),
+                .to_string(),
+            ),
             game_path: "test/path".to_string(),
             settings_path: None,
             settings_source: None,
             entry_candidates: vec!["assets/main/index.js".to_string()],
         };
         let ret = g.start_with_bootstrap(&bootstrap);
-        assert!(ret.is_ok(), "real runtime should tolerate Promise-based modern bootstrap chains");
+        assert!(
+            ret.is_ok(),
+            "real runtime should tolerate Promise-based modern bootstrap chains"
+        );
     }
 
     #[cfg(feature = "js-runtime-real")]
@@ -4152,7 +4180,8 @@ function __initApp() {
         let bootstrap = GameBootstrapContract {
             runtime_style: "modern-systemjs".to_string(),
             main_entry: Some("assets/main/index.js".to_string()),
-            main_entry_source: Some(r#"
+            main_entry_source: Some(
+                r#"
 System.register([], function (_export) {
   return {
     setters: [],
@@ -4188,14 +4217,18 @@ function __initApp() {
     });
 }
 "#
-.to_string()),
+                .to_string(),
+            ),
             game_path: "test/path".to_string(),
             settings_path: None,
             settings_source: None,
             entry_candidates: vec!["assets/main/index.js".to_string()],
         };
         let ret = g.start_with_bootstrap(&bootstrap);
-        assert!(ret.is_ok(), "real runtime should accept a valid modern bootstrap entry");
+        assert!(
+            ret.is_ok(),
+            "real runtime should accept a valid modern bootstrap entry"
+        );
     }
 
     #[cfg(feature = "js-runtime-real")]
@@ -4216,7 +4249,10 @@ function __initApp() {
             entry_candidates: vec!["main.js".to_string()],
         };
         let ret = g.start_with_bootstrap(&bootstrap);
-        assert!(ret.is_ok(), "real runtime should accept legacy bootstrap when runtime throws are tolerated");
+        assert!(
+            ret.is_ok(),
+            "real runtime should accept legacy bootstrap when runtime throws are tolerated"
+        );
     }
 
     #[cfg(feature = "js-runtime-mock")]
@@ -4234,7 +4270,10 @@ function __initApp() {
             entry_candidates: vec!["main.js".to_string()],
         };
         let ret = g.start_with_bootstrap(&bootstrap);
-        assert!(ret.is_ok(), "mock runtime should accept a valid legacy bootstrap entry");
+        assert!(
+            ret.is_ok(),
+            "mock runtime should accept a valid legacy bootstrap entry"
+        );
     }
 
     #[cfg(feature = "js-runtime-mock")]
@@ -4252,7 +4291,10 @@ function __initApp() {
             entry_candidates: vec!["assets/main/index.js".to_string()],
         };
         let ret = g.start_with_bootstrap(&bootstrap);
-        assert!(ret.is_ok(), "mock runtime should accept a valid modern __require bootstrap entry");
+        assert!(
+            ret.is_ok(),
+            "mock runtime should accept a valid modern __require bootstrap entry"
+        );
     }
 
     #[cfg(feature = "js-runtime-mock")]
@@ -4301,7 +4343,10 @@ __initApp();
             entry_candidates: vec!["game.js".to_string()],
         };
         let ret = g.start_with_bootstrap(&bootstrap);
-        assert!(ret.is_ok(), "mock runtime should accept System.import/application.js chain");
+        assert!(
+            ret.is_ok(),
+            "mock runtime should accept System.import/application.js chain"
+        );
     }
 
     #[cfg(feature = "js-runtime-mock")]
@@ -4536,7 +4581,9 @@ System.import("project:def");
             .start_with_bootstrap(&bootstrap)
             .expect_err("legacy main entry without window.boot should fail preflight");
         assert_eq!(err.code(), "RUNTIME_UNAVAILABLE");
-        assert!(err.message().contains("legacy style expects window.boot definition"));
+        assert!(err
+            .message()
+            .contains("legacy style expects window.boot definition"));
     }
 
     #[test]
@@ -4577,7 +4624,9 @@ System.import("project:def");
             .start_with_bootstrap(&bootstrap)
             .expect_err("unbalanced source should fail js runtime probe");
         assert_eq!(err.code(), "RUNTIME_UNAVAILABLE");
-        assert!(err.message().contains(REASON_JS_SOURCE_SYNTAX_HEURISTIC_FAILED));
+        assert!(err
+            .message()
+            .contains(REASON_JS_SOURCE_SYNTAX_HEURISTIC_FAILED));
     }
 
     #[test]

@@ -9,7 +9,10 @@ pub fn aabb_overlap(min_a: &Vec2, max_a: &Vec2, min_b: &Vec2, max_b: &Vec2) -> b
 }
 
 pub fn circle_circle_intersect(
-    center_a: &Vec2, radius_a: f32, center_b: &Vec2, radius_b: f32,
+    center_a: &Vec2,
+    radius_a: f32,
+    center_b: &Vec2,
+    radius_b: f32,
 ) -> bool {
     let dx = center_a.x - center_b.x;
     let dy = center_a.y - center_b.y;
@@ -18,9 +21,7 @@ pub fn circle_circle_intersect(
     dist_sq <= radii * radii
 }
 
-pub fn aabb_circle_intersect(
-    min: &Vec2, max: &Vec2, center: &Vec2, radius: f32,
-) -> bool {
+pub fn aabb_circle_intersect(min: &Vec2, max: &Vec2, center: &Vec2, radius: f32) -> bool {
     let closest_x = center.x.clamp(min.x, max.x);
     let closest_y = center.y.clamp(min.y, max.y);
     let dx = center.x - closest_x;
@@ -28,14 +29,15 @@ pub fn aabb_circle_intersect(
     dx * dx + dy * dy <= radius * radius
 }
 
-pub fn box_box_intersect(
-    min_a: &Vec2, max_a: &Vec2, min_b: &Vec2, max_b: &Vec2,
-) -> bool {
+pub fn box_box_intersect(min_a: &Vec2, max_a: &Vec2, min_b: &Vec2, max_b: &Vec2) -> bool {
     aabb_overlap(min_a, max_a, min_b, max_b)
 }
 
 pub fn ray_segment_intersection(
-    ray_origin: &Vec2, ray_dir: &Vec2, seg_start: &Vec2, seg_end: &Vec2,
+    ray_origin: &Vec2,
+    ray_dir: &Vec2,
+    seg_start: &Vec2,
+    seg_end: &Vec2,
 ) -> Option<(f32, Vec2)> {
     let seg = *seg_end - *seg_start;
     let denom = ray_dir.x * seg.y - ray_dir.y * seg.x;
@@ -43,7 +45,8 @@ pub fn ray_segment_intersection(
         return None;
     }
     let t = ((seg_start.x - ray_origin.x) * seg.y - (seg_start.y - ray_origin.y) * seg.x) / denom;
-    let u = ((seg_start.x - ray_origin.x) * ray_dir.y - (seg_start.y - ray_origin.y) * ray_dir.x) / denom;
+    let u = ((seg_start.x - ray_origin.x) * ray_dir.y - (seg_start.y - ray_origin.y) * ray_dir.x)
+        / denom;
     if t < 0.0 || u < 0.0 || u > 1.0 {
         return None;
     }
@@ -84,38 +87,52 @@ mod tests {
     #[test]
     fn test_aabb_overlap() {
         assert!(aabb_overlap(
-            &Vec2::new(0.0, 0.0), &Vec2::new(2.0, 2.0),
-            &Vec2::new(1.0, 1.0), &Vec2::new(3.0, 3.0),
+            &Vec2::new(0.0, 0.0),
+            &Vec2::new(2.0, 2.0),
+            &Vec2::new(1.0, 1.0),
+            &Vec2::new(3.0, 3.0),
         ));
         assert!(!aabb_overlap(
-            &Vec2::new(0.0, 0.0), &Vec2::new(1.0, 1.0),
-            &Vec2::new(2.0, 2.0), &Vec2::new(3.0, 3.0),
+            &Vec2::new(0.0, 0.0),
+            &Vec2::new(1.0, 1.0),
+            &Vec2::new(2.0, 2.0),
+            &Vec2::new(3.0, 3.0),
         ));
     }
 
     #[test]
     fn test_circle_circle_intersect() {
         assert!(circle_circle_intersect(
-            &Vec2::new(0.0, 0.0), 1.0, &Vec2::new(1.0, 0.0), 1.0,
+            &Vec2::new(0.0, 0.0),
+            1.0,
+            &Vec2::new(1.0, 0.0),
+            1.0,
         ));
         assert!(!circle_circle_intersect(
-            &Vec2::new(0.0, 0.0), 1.0, &Vec2::new(3.0, 0.0), 1.0,
+            &Vec2::new(0.0, 0.0),
+            1.0,
+            &Vec2::new(3.0, 0.0),
+            1.0,
         ));
     }
 
     #[test]
     fn test_aabb_circle_intersect() {
         assert!(aabb_circle_intersect(
-            &Vec2::new(-1.0, -1.0), &Vec2::new(1.0, 1.0),
-            &Vec2::new(0.0, 0.0), 1.5,
+            &Vec2::new(-1.0, -1.0),
+            &Vec2::new(1.0, 1.0),
+            &Vec2::new(0.0, 0.0),
+            1.5,
         ));
     }
 
     #[test]
     fn test_ray_intersection() {
         let result = ray_segment_intersection(
-            &Vec2::new(0.0, 0.0), &Vec2::new(1.0, 0.0),
-            &Vec2::new(0.5, -1.0), &Vec2::new(0.5, 1.0),
+            &Vec2::new(0.0, 0.0),
+            &Vec2::new(1.0, 0.0),
+            &Vec2::new(0.5, -1.0),
+            &Vec2::new(0.5, 1.0),
         );
         assert!(result.is_some());
         let (_t, point) = result.unwrap();
@@ -126,8 +143,10 @@ mod tests {
     #[test]
     fn test_ray_no_intersection() {
         let result = ray_segment_intersection(
-            &Vec2::new(0.0, 0.0), &Vec2::new(1.0, 0.0),
-            &Vec2::new(0.5, 1.0), &Vec2::new(1.5, 2.0),
+            &Vec2::new(0.0, 0.0),
+            &Vec2::new(1.0, 0.0),
+            &Vec2::new(0.5, 1.0),
+            &Vec2::new(1.5, 2.0),
         );
         assert!(result.is_none());
     }

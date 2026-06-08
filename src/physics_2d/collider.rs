@@ -42,30 +42,26 @@ impl Collider2D {
 
     pub fn get_aabb(&self, position: [f32; 2]) -> AABB2D {
         match self.collider_type {
-            ColliderType2D::Box => {
-                AABB2D::new(
-                    crate::math::Vec2::new(
-                        position[0] + self.offset[0] - self.size[0] * 0.5,
-                        position[1] + self.offset[1] - self.size[1] * 0.5,
-                    ),
-                    crate::math::Vec2::new(
-                        position[0] + self.offset[0] + self.size[0] * 0.5,
-                        position[1] + self.offset[1] + self.size[1] * 0.5,
-                    ),
-                )
-            }
-            ColliderType2D::Circle => {
-                AABB2D::new(
-                    crate::math::Vec2::new(
-                        position[0] + self.offset[0] - self.radius,
-                        position[1] + self.offset[1] - self.radius,
-                    ),
-                    crate::math::Vec2::new(
-                        position[0] + self.offset[0] + self.radius,
-                        position[1] + self.offset[1] + self.radius,
-                    ),
-                )
-            }
+            ColliderType2D::Box => AABB2D::new(
+                crate::math::Vec2::new(
+                    position[0] + self.offset[0] - self.size[0] * 0.5,
+                    position[1] + self.offset[1] - self.size[1] * 0.5,
+                ),
+                crate::math::Vec2::new(
+                    position[0] + self.offset[0] + self.size[0] * 0.5,
+                    position[1] + self.offset[1] + self.size[1] * 0.5,
+                ),
+            ),
+            ColliderType2D::Circle => AABB2D::new(
+                crate::math::Vec2::new(
+                    position[0] + self.offset[0] - self.radius,
+                    position[1] + self.offset[1] - self.radius,
+                ),
+                crate::math::Vec2::new(
+                    position[0] + self.offset[0] + self.radius,
+                    position[1] + self.offset[1] + self.radius,
+                ),
+            ),
             _ => AABB2D::new(
                 crate::math::Vec2::new(position[0] - 1.0, position[1] - 1.0),
                 crate::math::Vec2::new(position[0] + 1.0, position[1] + 1.0),

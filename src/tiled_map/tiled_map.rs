@@ -37,14 +37,27 @@ impl TiledMap {
         self.tile_map.get_layer(name)
     }
 
-    pub fn get_tile_at(&self, layer_name: &str, x: u32, y: u32) -> Option<&super::tiled_types::TileData> {
+    pub fn get_tile_at(
+        &self,
+        layer_name: &str,
+        x: u32,
+        y: u32,
+    ) -> Option<&super::tiled_types::TileData> {
         self.tile_map.get_layer(layer_name)?.get_tile(x, y)
     }
 
-    pub fn get_width_in_pixels(&self) -> u32 { self.width_in_pixels }
-    pub fn get_height_in_pixels(&self) -> u32 { self.height_in_pixels }
-    pub fn get_layer_count(&self) -> usize { self.tile_map.get_layer_count() }
-    pub fn is_loaded(&self) -> bool { self.is_loaded }
+    pub fn get_width_in_pixels(&self) -> u32 {
+        self.width_in_pixels
+    }
+    pub fn get_height_in_pixels(&self) -> u32 {
+        self.height_in_pixels
+    }
+    pub fn get_layer_count(&self) -> usize {
+        self.tile_map.get_layer_count()
+    }
+    pub fn is_loaded(&self) -> bool {
+        self.is_loaded
+    }
 }
 
 #[cfg(test)]

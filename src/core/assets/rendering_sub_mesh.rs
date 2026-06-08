@@ -42,7 +42,13 @@ impl RenderingSubMesh {
         self.geometric_info = None;
     }
 
-pub fn set_draw_info(&mut self, _first_vertex: u32, _vertex_count: u32, _first_index: u32, _index_count: u32) {
+    pub fn set_draw_info(
+        &mut self,
+        _first_vertex: u32,
+        _vertex_count: u32,
+        _first_index: u32,
+        _index_count: u32,
+    ) {
     }
 }
 

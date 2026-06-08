@@ -7,7 +7,9 @@ pub enum TileMapOrientation {
 }
 
 impl Default for TileMapOrientation {
-    fn default() -> Self { Self::Orthogonal }
+    fn default() -> Self {
+        Self::Orthogonal
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,7 +21,9 @@ pub enum TileRenderOrder {
 }
 
 impl Default for TileRenderOrder {
-    fn default() -> Self { Self::RightDown }
+    fn default() -> Self {
+        Self::RightDown
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,7 +45,13 @@ pub struct TileData {
 
 impl TileData {
     pub fn new(gid: u32) -> Self {
-        Self { gid, flip_h: false, flip_v: false, flip_d: false, rotation: 0 }
+        Self {
+            gid,
+            flip_h: false,
+            flip_v: false,
+            flip_d: false,
+            rotation: 0,
+        }
     }
 }
 
@@ -62,9 +72,16 @@ pub struct TiledObject {
 impl TiledObject {
     pub fn new(id: u32) -> Self {
         Self {
-            id, name: String::new(), obj_type: String::new(),
-            x: 0.0, y: 0.0, width: 0.0, height: 0.0, rotation: 0.0,
-            visible: true, properties: Vec::new(),
+            id,
+            name: String::new(),
+            obj_type: String::new(),
+            x: 0.0,
+            y: 0.0,
+            width: 0.0,
+            height: 0.0,
+            rotation: 0.0,
+            visible: true,
+            properties: Vec::new(),
         }
     }
 }
@@ -87,11 +104,17 @@ pub struct TilesetInfo {
 impl TilesetInfo {
     pub fn new(first_gid: u32, name: &str) -> Self {
         Self {
-            first_gid, name: name.to_string(),
-            tile_width: 16, tile_height: 16, tile_count: 0, columns: 0,
+            first_gid,
+            name: name.to_string(),
+            tile_width: 16,
+            tile_height: 16,
+            tile_count: 0,
+            columns: 0,
             image_source: String::new(),
-            image_width: 0, image_height: 0,
-            spacing: 0, margin: 0,
+            image_width: 0,
+            image_height: 0,
+            spacing: 0,
+            margin: 0,
         }
     }
 }

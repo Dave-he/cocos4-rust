@@ -114,8 +114,8 @@ impl Default for ResourceGraph {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::types::ResourceKind;
+    use super::*;
 
     fn test_resource(name: &str) -> ResourceDesc {
         ResourceDesc {

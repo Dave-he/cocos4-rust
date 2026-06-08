@@ -7,7 +7,9 @@ pub enum WASM {
 pub struct WasmBindgen {}
 
 impl WasmBindgen {
-    pub fn new() -> Self { Self {} }
+    pub fn new() -> Self {
+        Self {}
+    }
 
     pub fn is_wasm(&self) -> bool {
         false

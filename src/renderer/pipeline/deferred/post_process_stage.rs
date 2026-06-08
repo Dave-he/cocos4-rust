@@ -19,10 +19,7 @@ impl PostProcessStage {
     pub fn new() -> Self {
         Self {
             enabled: true,
-            active_effects: vec![
-                PostProcess::ToneMapping,
-                PostProcess::GammaCorrection,
-            ],
+            active_effects: vec![PostProcess::ToneMapping, PostProcess::GammaCorrection],
             tonemap_exposure: 1.0,
             gamma: 2.2,
             vignette_intensity: 0.0,

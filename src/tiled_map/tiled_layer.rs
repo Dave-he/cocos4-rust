@@ -23,13 +23,18 @@ impl TileLayer {
         Self {
             name: name.to_string(),
             layer_type: TileLayerType::Tile,
-            width, height,
+            width,
+            height,
             tiles: vec![TileData::new(0); (width * height) as usize],
             objects: Vec::new(),
-            opacity: 1.0, visible: true,
-            offset_x: 0.0, offset_y: 0.0,
-            parallax_x: 1.0, parallax_y: 1.0,
-            anim_frame_index: 0, anim_timer: 0.0,
+            opacity: 1.0,
+            visible: true,
+            offset_x: 0.0,
+            offset_y: 0.0,
+            parallax_x: 1.0,
+            parallax_y: 1.0,
+            anim_frame_index: 0,
+            anim_timer: 0.0,
         }
     }
 
@@ -46,7 +51,9 @@ impl TileLayer {
     }
 
     pub fn update_animation(&mut self, dt: f32, _tilesets: &[TilesetInfo]) {
-        if self.layer_type != TileLayerType::Tile { return; }
+        if self.layer_type != TileLayerType::Tile {
+            return;
+        }
         self.anim_timer += dt;
         if self.anim_timer >= 0.2 {
             self.anim_timer = 0.0;

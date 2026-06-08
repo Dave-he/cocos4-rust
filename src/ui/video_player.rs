@@ -77,7 +77,9 @@ impl VideoPlayer {
 }
 
 impl Default for VideoPlayer {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]

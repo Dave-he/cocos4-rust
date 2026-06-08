@@ -4,8 +4,8 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
 pub mod custom;
-pub mod defines;
 pub mod deferred;
+pub mod defines;
 pub mod forward;
 pub mod pipeline_scene_data;
 pub mod pipeline_ubo;
@@ -18,8 +18,8 @@ pub mod shadow;
 pub mod states;
 
 pub use custom::*;
-pub use defines::*;
 pub use deferred::*;
+pub use defines::*;
 pub use forward::*;
 pub use pipeline_scene_data::*;
 pub use pipeline_ubo::*;

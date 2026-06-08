@@ -1,5 +1,5 @@
-use super::tiled_types::TilesetInfo;
 use super::tiled_layer::TileLayer;
+use super::tiled_types::TilesetInfo;
 
 #[derive(Debug, Clone)]
 pub struct TiledMapAsset {
@@ -22,8 +22,12 @@ impl TiledMapAsset {
             name: name.to_string(),
             orientation: super::tiled_types::TileMapOrientation::Orthogonal,
             render_order: super::tiled_types::TileRenderOrder::RightDown,
-            width: 16, height: 16, tile_width: 32, tile_height: 32,
-            tilesets: Vec::new(), layers: Vec::new(),
+            width: 16,
+            height: 16,
+            tile_width: 32,
+            tile_height: 32,
+            tilesets: Vec::new(),
+            layers: Vec::new(),
             bg_color: [0, 0, 0, 0],
             version: "1.0".to_string(),
         }
@@ -51,8 +55,12 @@ impl TiledMapAsset {
         }
     }
 
-    pub fn get_layer_count(&self) -> usize { self.layers.len() }
-    pub fn get_tileset_count(&self) -> usize { self.tilesets.len() }
+    pub fn get_layer_count(&self) -> usize {
+        self.layers.len()
+    }
+    pub fn get_tileset_count(&self) -> usize {
+        self.tilesets.len()
+    }
 }
 
 #[cfg(test)]

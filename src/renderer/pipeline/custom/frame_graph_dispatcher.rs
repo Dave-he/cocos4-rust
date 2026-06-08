@@ -1,6 +1,6 @@
+use super::layout_graph::LayoutGraph;
 use super::render_graph::RenderGraph;
 use super::resource_graph::ResourceGraph;
-use super::layout_graph::LayoutGraph;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompilePhase {
@@ -96,8 +96,8 @@ impl FrameGraphDispatcher {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::types::*;
+    use super::*;
 
     #[test]
     fn test_dispatcher_new() {
@@ -136,7 +136,9 @@ mod tests {
     fn test_dispatcher_reset() {
         let mut dispatcher = FrameGraphDispatcher::new("test");
         dispatcher.render_graph.add_pass(PassDesc::default());
-        dispatcher.resource_graph.create_managed(ResourceDesc::default());
+        dispatcher
+            .resource_graph
+            .create_managed(ResourceDesc::default());
         dispatcher.compile();
         dispatcher.reset();
         assert!(!dispatcher.compiled);

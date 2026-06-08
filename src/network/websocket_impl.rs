@@ -1,4 +1,5 @@
 pub struct WebSocketImpl {
+    #[allow(dead_code)]
     url: String,
     connected: bool,
     protocols: Vec<String>,
@@ -6,7 +7,11 @@ pub struct WebSocketImpl {
 
 impl WebSocketImpl {
     pub fn new(url: &str) -> Self {
-        Self { url: url.to_string(), connected: false, protocols: Vec::new() }
+        Self {
+            url: url.to_string(),
+            connected: false,
+            protocols: Vec::new(),
+        }
     }
 
     pub fn connect(&mut self) -> bool {
@@ -32,7 +37,9 @@ impl WebSocketImpl {
         Ok(Vec::new())
     }
 
-    pub fn is_connected(&self) -> bool { self.connected }
+    pub fn is_connected(&self) -> bool {
+        self.connected
+    }
 
     pub fn set_protocols(&mut self, protocols: &[&str]) {
         self.protocols = protocols.iter().map(|s| s.to_string()).collect();

@@ -77,12 +77,18 @@ impl EditBox {
         self.text.clear();
     }
 
-    pub fn is_focused(&self) -> bool { self.focused }
-    pub fn get_text(&self) -> &str { &self.text }
+    pub fn is_focused(&self) -> bool {
+        self.focused
+    }
+    pub fn get_text(&self) -> &str {
+        &self.text
+    }
 }
 
 impl Default for EditBox {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]

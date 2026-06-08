@@ -8,7 +8,11 @@ pub struct DownloaderImpl {
 
 impl DownloaderImpl {
     pub fn new() -> Self {
-        Self { client: HttpClient::new(), max_concurrent: 3, save_path: ".".to_string() }
+        Self {
+            client: HttpClient::new(),
+            max_concurrent: 3,
+            save_path: ".".to_string(),
+        }
     }
 
     pub fn set_max_concurrent(&mut self, max: u32) {
@@ -26,7 +30,9 @@ impl DownloaderImpl {
 }
 
 impl Default for DownloaderImpl {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]

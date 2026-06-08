@@ -113,7 +113,12 @@ impl WebSocket {
         }
     }
 
-pub fn init(&mut self, url: &str, _protocols: Option<&[String]>, _ca_file_path: Option<&str>) -> bool {
+    pub fn init(
+        &mut self,
+        url: &str,
+        _protocols: Option<&[String]>,
+        _ca_file_path: Option<&str>,
+    ) -> bool {
         self.url = url.to_string();
         *self.state.lock().unwrap() = WebSocketState::Connecting;
         true

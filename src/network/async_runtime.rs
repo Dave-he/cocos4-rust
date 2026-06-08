@@ -24,7 +24,9 @@ impl AsyncRuntime {
 }
 
 impl Default for AsyncRuntime {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]

@@ -52,20 +52,15 @@ impl DeferredPipeline {
 
         self.gbuffer_stage.create_gbuffer();
 
-        let gbuffer_draws = self
-            .gbuffer_stage
-            .render(self.scene_data.get_scene_data());
+        let gbuffer_draws = self.gbuffer_stage.render(self.scene_data.get_scene_data());
         self.frame_draw_calls += gbuffer_draws;
 
-        let lighting_draws = self
-            .lighting_stage
-            .render(self.scene_data.get_scene_data());
+        let lighting_draws = self.lighting_stage.render(self.scene_data.get_scene_data());
         self.frame_draw_calls += lighting_draws;
 
-        let bloom_passes = self.bloom_stage.render(
-            self.config.gbuffer_width,
-            self.config.gbuffer_height,
-        );
+        let bloom_passes = self
+            .bloom_stage
+            .render(self.config.gbuffer_width, self.config.gbuffer_height);
         self.frame_draw_calls += bloom_passes;
 
         let post_passes = self.post_process_stage.render();
@@ -164,9 +159,10 @@ mod tests {
     fn test_deferred_pipeline_full_flow() {
         let mut pipeline = DeferredPipeline::new("deferred_full");
         pipeline.initialize(1920, 1080);
-        pipeline.scene_data.get_scene_data_mut().add_light(
-            super::super::deferred_types::DeferredLight::default(),
-        );
+        pipeline
+            .scene_data
+            .get_scene_data_mut()
+            .add_light(super::super::deferred_types::DeferredLight::default());
         let draws = pipeline.render();
         assert!(draws > 0);
         assert_eq!(pipeline.get_frame_draw_calls(), draws);

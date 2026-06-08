@@ -152,9 +152,7 @@ mod tests {
         let mut stage = BloomStage::new();
         stage.build_passes(1920, 1080);
         let count = stage.get_pass_count();
-        let passes: Vec<BloomPass> = (0..count)
-            .map(|i| *stage.get_pass(i).unwrap())
-            .collect();
+        let passes: Vec<BloomPass> = (0..count).map(|i| *stage.get_pass(i).unwrap()).collect();
 
         assert_eq!(passes[0], BloomPass::Prefilter);
         let last_downsample = passes
