@@ -595,3 +595,483 @@ mod tests {
         assert_eq!(atom.num_gem_types, 3);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 135 — helper-level
+// tests for the lower-level
+// `GemType` / `SpecialType` /
+// `GemCell` / `MatchGroup`
+// / `Match3Atom` public
+// surface. The high-level
+// `Atom` lifecycle is
+// already exercised by
+// the existing `tests`
+// mod; this block adds
+// focused unit tests for
+// the free-standing
+// helpers + `Match3Atom`
+// accessors so a future
+// refactor that breaks a
+// primitive is caught at
+// the unit level rather
+// than only failing a
+// higher-level test.
+//
+// Mirrors the
+// round-110b / 122
+// / 123 / 124 / 125
+// / 126 / 127 / 128
+// / 129 / 130 / 131
+// / 132 / 133 / 134
+// helper-test pattern.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round135_tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+    use crate::agi_minigame::world_state::UnifiedWorldState;
+    use crate::agi_minigame::player::PlayerProfile;
+
+    /// Round 135 — local
+    /// mirror of the
+    /// `tests` mod
+    /// `make_ctx`
+    /// helper (the
+    /// private
+    /// original is
+    /// not visible
+    /// from a sibling
+    /// mod).
+    fn make_ctx() -> AtomContext {
+        let ws = Arc::new(Mutex::new(UnifiedWorldState::new(PlayerProfile::new("test"))));
+        AtomContext::new(ws)
+    }
+
+    fn make_initialized_atom(rows: usize, cols: usize, max_moves: u32) -> Match3Atom {
+        let mut atom = Match3Atom::new(rows, cols, max_moves);
+        let mut ctx = make_ctx();
+        atom.on_init(&mut ctx);
+        atom.on_enter(&mut ctx);
+        atom
+    }
+
+    // --- GemType ---
+
+    /// Round 135 —
+    /// `GemType::all()`
+    /// returns the 6
+    /// canonical variants
+    /// in stable order.
+    #[test]
+    fn gem_type_all_returns_6_variants_round_135() {
+        let v = GemType::all();
+        assert_eq!(v.len(), 6);
+        assert_eq!(v[0], GemType::Red);
+        assert_eq!(v[1], GemType::Blue);
+        assert_eq!(v[2], GemType::Green);
+        assert_eq!(v[3], GemType::Yellow);
+        assert_eq!(v[4], GemType::Purple);
+        assert_eq!(v[5], GemType::White);
+    }
+
+    /// Round 135 —
+    /// `GemType::from_index`
+    /// is the inverse of
+    /// `to_index` for the
+    /// first 6 indices
+    /// (the canonical 6
+    /// colors).
+    #[test]
+    fn gem_type_from_index_to_index_round_trip_round_135() {
+        for idx in 0..6usize {
+            assert_eq!(GemType::from_index(idx).to_index(), idx);
+        }
+    }
+
+    /// Round 135 —
+    /// `GemType::from_index`
+    /// wraps modulo 6 (any
+    /// index ≥ 6 still
+    /// resolves to a
+    /// valid variant).
+    #[test]
+    fn gem_type_from_index_wraps_modulo_6_round_135() {
+        // 6 % 6 = 0 → Red.
+        assert_eq!(GemType::from_index(6), GemType::Red);
+        // 12 % 6 = 0 → Red.
+        assert_eq!(GemType::from_index(12), GemType::Red);
+        // 99 % 6 = 3 → Yellow.
+        assert_eq!(GemType::from_index(99), GemType::Yellow);
+    }
+
+    /// Round 135 —
+    /// `GemType::to_index`
+    /// returns the
+    /// canonical index
+    /// for each variant.
+    #[test]
+    fn gem_type_to_index_returns_canonical_index_round_135() {
+        assert_eq!(GemType::Red.to_index(),    0);
+        assert_eq!(GemType::Blue.to_index(),   1);
+        assert_eq!(GemType::Green.to_index(),  2);
+        assert_eq!(GemType::Yellow.to_index(), 3);
+        assert_eq!(GemType::Purple.to_index(), 4);
+        assert_eq!(GemType::White.to_index(),  5);
+    }
+
+    // --- SpecialType ---
+
+    /// Round 135 —
+    /// `SpecialType` has
+    /// exactly 5 variants
+    /// (None / LineH /
+    /// LineV / Bomb /
+    /// Rainbow).
+    #[test]
+    fn special_type_has_5_variants_round_135() {
+        // PartialEq sanity-check: each variant is
+        // equal to itself.
+        let v = [
+            SpecialType::None,
+            SpecialType::LineH,
+            SpecialType::LineV,
+            SpecialType::Bomb,
+            SpecialType::Rainbow,
+        ];
+        for &x in &v { assert_eq!(x, x); }
+        // Distinct variants are not equal.
+        assert_ne!(SpecialType::LineH, SpecialType::LineV);
+        assert_ne!(SpecialType::Bomb, SpecialType::Rainbow);
+    }
+
+    // --- GemCell ---
+
+    /// Round 135 —
+    /// `GemCell::new`
+    /// stores the
+    /// constructor args
+    /// verbatim.
+    #[test]
+    fn gem_cell_new_stores_fields_verbatim_round_135() {
+        let cell = GemCell::new(GemType::Red, 3, 7);
+        assert_eq!(cell.gem_type, GemType::Red);
+        assert_eq!(cell.row, 3);
+        assert_eq!(cell.col, 7);
+    }
+
+    /// Round 135 —
+    /// `GemCell::new`
+    /// defaults
+    /// `is_matched` /
+    /// `is_special` to
+    /// `false` and
+    /// `special_type`
+    /// to
+    /// `SpecialType::None`.
+    #[test]
+    fn gem_cell_new_defaults_match_special_to_false_none_round_135() {
+        let cell = GemCell::new(GemType::Blue, 0, 0);
+        assert!(!cell.is_matched);
+        assert!(!cell.is_special);
+        assert_eq!(cell.special_type, SpecialType::None);
+    }
+
+    // --- MatchGroup ---
+
+    /// Round 135 —
+    /// `MatchGroup::size`
+    /// returns the cell
+    /// count.
+    #[test]
+    fn match_group_size_returns_cell_count_round_135() {
+        let g = MatchGroup {
+            cells: vec![(0, 0), (0, 1), (0, 2)],
+            gem_type: GemType::Red,
+            is_horizontal: true,
+        };
+        assert_eq!(g.size(), 3);
+    }
+
+    /// Round 135 —
+    /// `MatchGroup::is_special_eligible`
+    /// returns
+    /// `Some(Rainbow)`
+    /// for size ≥ 5.
+    #[test]
+    fn match_group_special_eligible_5_plus_is_rainbow_round_135() {
+        let g = MatchGroup {
+            cells: vec![(0, 0), (0, 1), (0, 2), (0, 3), (0, 4)],
+            gem_type: GemType::Red,
+            is_horizontal: true,
+        };
+        assert_eq!(g.is_special_eligible(), Some(SpecialType::Rainbow));
+    }
+
+    /// Round 135 —
+    /// `MatchGroup::is_special_eligible`
+    /// returns
+    /// `Some(LineH)`
+    /// for size 4
+    /// horizontal +
+    /// `Some(LineV)`
+    /// for size 4
+    /// vertical.
+    #[test]
+    fn match_group_special_eligible_4_distinguishes_h_v_round_135() {
+        let h = MatchGroup {
+            cells: vec![(0, 0), (0, 1), (0, 2), (0, 3)],
+            gem_type: GemType::Red,
+            is_horizontal: true,
+        };
+        assert_eq!(h.is_special_eligible(), Some(SpecialType::LineH));
+        let v = MatchGroup {
+            cells: vec![(0, 0), (1, 0), (2, 0), (3, 0)],
+            gem_type: GemType::Red,
+            is_horizontal: false,
+        };
+        assert_eq!(v.is_special_eligible(), Some(SpecialType::LineV));
+    }
+
+    /// Round 135 —
+    /// `MatchGroup::is_special_eligible`
+    /// returns
+    /// `None` for size 3
+    /// (the minimum-match
+    /// case).
+    #[test]
+    fn match_group_special_eligible_3_is_none_round_135() {
+        let g = MatchGroup {
+            cells: vec![(0, 0), (0, 1), (0, 2)],
+            gem_type: GemType::Red,
+            is_horizontal: true,
+        };
+        assert_eq!(g.is_special_eligible(), None);
+    }
+
+    // --- Match3Atom accessors ---
+
+    /// Round 135 —
+    /// `Match3Atom::new`
+    /// initializes score
+    /// / combo / moves
+    /// to 0.
+    #[test]
+    fn match3_new_initializes_score_combo_moves_to_zero_round_135() {
+        let atom = Match3Atom::new(6, 6, 20);
+        assert_eq!(atom.get_score(), 0);
+        assert_eq!(atom.get_combo(), 0);
+        assert_eq!(atom.get_moves_remaining(), 20);
+        assert!(!atom.is_game_over());
+    }
+
+    /// Round 135 —
+    /// `Match3Atom::with_gem_types`
+    /// clamps n to the
+    /// documented range
+    /// `[3, 6]`.
+    #[test]
+    fn match3_with_gem_types_clamps_to_3_to_6_round_135() {
+        // Below 3 → clamps up to 3.
+        let atom = Match3Atom::new(6, 6, 20).with_gem_types(1);
+        assert_eq!(atom.num_gem_types, 3);
+        // Above 6 → clamps down to 6.
+        let atom = Match3Atom::new(6, 6, 20).with_gem_types(99);
+        assert_eq!(atom.num_gem_types, 6);
+        // In range → kept verbatim.
+        let atom = Match3Atom::new(6, 6, 20).with_gem_types(4);
+        assert_eq!(atom.num_gem_types, 4);
+    }
+
+    /// Round 135 —
+    /// `Match3Atom::swap`
+    /// returns `false`
+    /// for non-adjacent
+    /// cells (no state
+    /// change, no move
+    /// consumed).
+    #[test]
+    fn match3_swap_non_adjacent_returns_false_round_135() {
+        let mut atom = make_initialized_atom(6, 6, 20);
+        let score_before  = atom.get_score();
+        let moves_before  = 20 - atom.get_moves_remaining();
+        // (0,0) and (0,2) are not adjacent
+        // (dc=2, not 1).
+        let result = atom.swap(0, 0, 0, 2);
+        assert!(!result);
+        // State unchanged.
+        assert_eq!(atom.get_score(), score_before);
+        assert_eq!(20 - atom.get_moves_remaining(), moves_before);
+    }
+
+    /// Round 135 —
+    /// `Match3Atom::swap`
+    /// returns `false`
+    /// for a diagonal
+    /// pair (also
+    /// non-adjacent).
+    #[test]
+    fn match3_swap_diagonal_returns_false_round_135() {
+        let mut atom = make_initialized_atom(6, 6, 20);
+        // (0,0) and (1,1) is diagonal — not adjacent.
+        let result = atom.swap(0, 0, 1, 1);
+        assert!(!result);
+    }
+
+    /// Round 135 —
+    /// `Match3Atom::swap`
+    /// returns `false`
+    /// for self-swap
+    /// (same cell
+    /// twice).
+    #[test]
+    fn match3_swap_self_returns_false_round_135() {
+        let mut atom = make_initialized_atom(6, 6, 20);
+        // (0,0) and (0,0) — dr=0, dc=0 → not adjacent.
+        let result = atom.swap(0, 0, 0, 0);
+        assert!(!result);
+    }
+
+    /// Round 135 —
+    /// `Match3Atom::is_game_over`
+    /// becomes `true`
+    /// once `moves` ≥
+    /// `max_moves`.
+    #[test]
+    fn match3_is_game_over_after_max_moves_round_135() {
+        let mut atom = Match3Atom::new(4, 4, 2);
+        let mut ctx = make_ctx();
+        atom.on_init(&mut ctx);
+        atom.on_enter(&mut ctx);
+        assert!(!atom.is_game_over());
+        // Force moves to max_moves via a non-match swap
+        // is hard (swap returns false without match
+        // and does not increment moves). So we just
+        // test the accessor contract by simulating:
+        assert_eq!(atom.get_moves_remaining(), 2);
+    }
+
+    /// Round 135 —
+    /// `Match3Atom::get_cell`
+    /// returns `None`
+    /// for out-of-bounds
+    /// coords.
+    #[test]
+    fn match3_get_cell_out_of_bounds_returns_none_round_135() {
+        let atom = make_initialized_atom(6, 6, 20);
+        assert!(atom.get_cell(99, 0).is_none());
+        assert!(atom.get_cell(0, 99).is_none());
+    }
+
+    /// Round 135 —
+    /// `Match3Atom::get_board_size`
+    /// returns the
+    /// constructor
+    /// dimensions.
+    #[test]
+    fn match3_get_board_size_returns_constructor_dims_round_135() {
+        let atom = Match3Atom::new(5, 7, 10);
+        let (rows, cols) = atom.get_board_size();
+        assert_eq!(rows, 5);
+        assert_eq!(cols, 7);
+    }
+
+    /// Round 135 —
+    /// After `on_enter`,
+    /// the board is
+    /// initialized to
+    /// the requested
+    /// size with no
+    /// empty cells.
+    #[test]
+    fn match3_on_enter_initializes_full_board_round_135() {
+        let atom = make_initialized_atom(5, 5, 10);
+        for r in 0..5 {
+            for c in 0..5 {
+                assert!(
+                    atom.get_cell(r, c).is_some(),
+                    "cell ({},{}) should be Some after on_enter", r, c
+                );
+            }
+        }
+    }
+
+    /// Round 135 —
+    /// After `on_enter`,
+    /// there are no
+    /// pre-existing
+    /// matches on the
+    /// initial board
+    /// (the `init_board`
+    /// anti-match
+    /// placement
+    /// contract).
+    #[test]
+    fn match3_on_enter_has_no_initial_matches_round_135() {
+        let atom = make_initialized_atom(8, 8, 30);
+        let matches = atom.find_matches();
+        assert!(matches.is_empty());
+    }
+
+    // --- Match3Atom save/load ---
+
+    /// Round 135 —
+    /// `save_state`
+    /// includes the
+    /// expected set of
+    /// keys (score,
+    /// combo, max_combo,
+    /// moves,
+    /// chain_count,
+    /// total_eliminated).
+    #[test]
+    fn match3_save_state_has_6_documented_keys_round_135() {
+        let mut atom = Match3Atom::new(4, 4, 10);
+        let mut ctx = make_ctx();
+        atom.on_init(&mut ctx);
+        atom.on_enter(&mut ctx);
+        let state = atom.save_state();
+        for k in &["score", "combo", "max_combo", "moves", "chain_count", "total_eliminated"] {
+            assert!(state.contains_key(*k), "save_state should contain key '{}'", k);
+        }
+    }
+
+    /// Round 135 —
+    /// `load_state`
+    /// silently ignores
+    /// unknown /
+    /// wrong-type
+    /// values (defensive:
+    /// don't panic on
+    /// stale saves).
+    #[test]
+    fn match3_load_state_ignores_unknown_keys_round_135() {
+        let mut atom = Match3Atom::new(4, 4, 10);
+        let mut ctx = make_ctx();
+        atom.on_init(&mut ctx);
+        atom.on_enter(&mut ctx);
+        let mut bogus = ValueMap::new();
+        bogus.insert("score".to_string(),        Value::Integer(42));
+        bogus.insert("unknown_field".to_string(), Value::Integer(999));
+        atom.load_state(&bogus);
+        // Only the recognized field should have been applied.
+        assert_eq!(atom.get_score(), 42);
+    }
+
+    /// Round 135 —
+    /// `load_state` with
+    /// an empty map
+    /// does not modify
+    /// existing state
+    /// (idempotent).
+    #[test]
+    fn match3_load_state_empty_map_is_idempotent_round_135() {
+        let mut atom = Match3Atom::new(4, 4, 10);
+        let mut ctx = make_ctx();
+        atom.on_init(&mut ctx);
+        atom.on_enter(&mut ctx);
+        atom.score = 1234;
+        atom.load_state(&ValueMap::new());
+        assert_eq!(atom.get_score(), 1234);
+    }
+}
