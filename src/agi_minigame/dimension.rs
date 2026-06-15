@@ -934,3 +934,195 @@ mod round17_tests {
         assert!(runner.get_active_dimension().is_none());
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 130 — dimension.rs helper-level unit tests.
+// Mirrors the round-110b / 122 / 123 / 124 / 125 / 126 / 127 / 128 / 129
+// pattern: pin the small public helpers' contracts
+// (`DimensionObjective::new/progress/progress_ratio`,
+// `DimensionState` PartialEq) so a refactor can't silently
+// change the objective / state-machine semantics that
+// the runner relies on for completion signalling.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round130_tests {
+    use super::*;
+
+    // -----------------------------------------------------------------
+    // DimensionState PartialEq round-trip across all 7 variants.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn dimension_state_partial_eq_for_all_7_variants() {
+        use DimensionState::*;
+        assert_eq!(Uninitialized, Uninitialized);
+        assert_eq!(Loading,      Loading);
+        assert_eq!(Ready,        Ready);
+        assert_eq!(Running,      Running);
+        assert_eq!(Paused,       Paused);
+        assert_eq!(Completed,    Completed);
+        assert_eq!(Failed,       Failed);
+        assert_ne!(Uninitialized, Loading);
+        assert_ne!(Running,      Paused);
+        assert_ne!(Completed,    Failed);
+    }
+
+    // -----------------------------------------------------------------
+    // DimensionObjective::new — initial state pinning.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn dimension_objective_new_initial_state() {
+        // `new` should set current=0, is_completed=false,
+        // and copy through id/description/target/is_optional.
+        // A regression that pre-filled current=target
+        // would silently mark every objective as completed.
+        let obj = DimensionObjective::new("kill_10", "Kill 10 enemies", 10, false);
+        assert_eq!(obj.id, "kill_10");
+        assert_eq!(obj.description, "Kill 10 enemies");
+        assert_eq!(obj.target, 10);
+        assert_eq!(obj.current, 0);
+        assert!(!obj.is_completed);
+        assert!(!obj.is_optional);
+    }
+
+    #[test]
+    fn dimension_objective_new_optional_flag_passes_through() {
+        // Optional objective flag must round-trip.
+        let obj = DimensionObjective::new("bonus", "Bonus objective", 5, true);
+        assert!(obj.is_optional);
+        assert!(!obj.is_completed);
+    }
+
+    // -----------------------------------------------------------------
+    // DimensionObjective::progress — completion detection.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn dimension_objective_progress_returns_false_below_target() {
+        // A progress call that doesn't reach
+        // the target returns false and leaves
+        // is_completed=false.
+        let mut obj = DimensionObjective::new("o", "o", 10, false);
+        assert!(!obj.progress(3));
+        assert_eq!(obj.current, 3);
+        assert!(!obj.is_completed);
+        assert!(!obj.progress(5));
+        assert_eq!(obj.current, 8);
+        assert!(!obj.is_completed);
+    }
+
+    #[test]
+    fn dimension_objective_progress_returns_true_on_first_completion() {
+        // The first progress call that reaches
+        // the target returns true and sets
+        // is_completed=true. This is the
+        // primary signal the runner uses to
+        // decide when an objective is done.
+        let mut obj = DimensionObjective::new("o", "o", 10, false);
+        assert!(obj.progress(10));
+        assert_eq!(obj.current, 10);
+        assert!(obj.is_completed);
+    }
+
+    #[test]
+    fn dimension_objective_progress_clamps_overshoot_to_target() {
+        // An overshooting progress call
+        // (amount > remaining) clamps to the
+        // target. This is documented in the
+        // source as `(self.current + amount)
+        // .min(self.target)`.
+        let mut obj = DimensionObjective::new("o", "o", 10, false);
+        assert!(obj.progress(15));
+        assert_eq!(obj.current, 10);
+        assert!(obj.is_completed);
+    }
+
+    #[test]
+    fn dimension_objective_progress_returns_false_on_subsequent_calls_after_complete() {
+        // Once completed, additional progress
+        // calls do NOT keep returning true.
+        // The contract: only the FIRST call
+        // that reaches the target returns
+        // true. Pin this so a refactor can't
+        // accidentally re-emit completion
+        // signals (which would double-count
+        // rewards).
+        let mut obj = DimensionObjective::new("o", "o", 10, false);
+        assert!(obj.progress(10));
+        assert!(!obj.progress(1));
+        assert!(!obj.progress(100));
+        assert_eq!(obj.current, 10);
+        assert!(obj.is_completed);
+    }
+
+    #[test]
+    fn dimension_objective_progress_stale_call_after_completion_keeps_clamping() {
+        // A progress(0) after completion is
+        // a no-op for state but should not
+        // panic and not return true.
+        let mut obj = DimensionObjective::new("o", "o", 10, false);
+        assert!(obj.progress(10));
+        assert!(!obj.progress(0));
+        assert_eq!(obj.current, 10);
+        assert!(obj.is_completed);
+    }
+
+    // -----------------------------------------------------------------
+    // DimensionObjective::progress_ratio — fractional completion.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn dimension_objective_progress_ratio_zero_for_fresh_objective() {
+        // A fresh objective (current=0) has
+        // progress_ratio == 0.0.
+        let obj = DimensionObjective::new("o", "o", 10, false);
+        assert_eq!(obj.progress_ratio(), 0.0);
+    }
+
+    #[test]
+    fn dimension_objective_progress_ratio_for_partial_completion() {
+        // 5/10 → 0.5.
+        let mut obj = DimensionObjective::new("o", "o", 10, false);
+        obj.progress(5);
+        assert!((obj.progress_ratio() - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn dimension_objective_progress_ratio_for_completed_objective_is_one() {
+        // After completion (current == target),
+        // progress_ratio should be exactly 1.0.
+        // This is what the UI uses to draw
+        // the completion bar.
+        let mut obj = DimensionObjective::new("o", "o", 10, false);
+        obj.progress(10);
+        assert!((obj.progress_ratio() - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn dimension_objective_progress_ratio_for_zero_target_is_one() {
+        // Documented edge case: a target=0
+        // objective is treated as "already
+        // complete" by progress_ratio (returns
+        // 1.0) to avoid division by zero. Pin
+        // this so a future change can't
+        // accidentally produce NaN for
+        // zero-target objectives (the AI
+        // engine emits these as auto-pass
+        // conditions).
+        let mut obj = DimensionObjective::new("auto", "auto-pass", 0, true);
+        assert_eq!(obj.progress_ratio(), 1.0);
+        // The FIRST progress() call (even with
+        // amount=0) flips is_completed=true
+        // because `0 >= 0` is true. This is
+        // a side-effect of the target=0
+        // design: it auto-completes on first
+        // tick. Subsequent calls return
+        // false (the once-only signal).
+        assert!(!obj.is_completed);
+        assert!(obj.progress(0));
+        assert!(obj.is_completed);
+        assert!(!obj.progress(0));
+    }
+}

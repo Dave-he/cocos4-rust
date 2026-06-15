@@ -256,20 +256,210 @@ mod tests {
         let mut ctx = AtomContext::new(ws);
 
         assert_eq!(runner.get_phase(), AtomPhase::Uninitialized);
-        
+
         runner.init(&mut ctx);
         assert_eq!(runner.get_phase(), AtomPhase::Initialized);
-        
+
         runner.enter(&mut ctx);
         assert_eq!(runner.get_phase(), AtomPhase::Running);
-        
+
         runner.pause(&mut ctx);
         assert_eq!(runner.get_phase(), AtomPhase::Paused);
-        
+
         runner.resume(&mut ctx);
         assert_eq!(runner.get_phase(), AtomPhase::Running);
-        
+
         runner.exit(&mut ctx);
         assert_eq!(runner.get_phase(), AtomPhase::Completed);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Round 130 — atom.rs helper-level unit tests.
+// Mirrors the round-110b / 122 / 123 / 124 / 125 / 126 / 127 / 128 / 129
+// pattern: pin the small public helpers' contracts
+// (`AtomRegistry` new/default/register/has/get/create/list,
+// `AtomContext` new/with_delta_time/get_world, `AtomPhase`
+// PartialEq round-trip) so a refactor can't silently
+// change the registration / context-builder behaviour.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round130_tests {
+    use super::*;
+    use crate::agi_minigame::player::PlayerProfile;
+
+    fn make_metadata(id: &str) -> AtomMetadata {
+        AtomMetadata {
+            id: id.to_string(),
+            name: format!("{id} name"),
+            version: 1,
+            gameplay_type: "puzzle".to_string(),
+            description: format!("{id} desc"),
+            tags: vec!["test".to_string()],
+        }
+    }
+
+    fn make_factory() -> AtomFactory {
+        Box::new(|| panic!("factory should not run during these tests"))
+    }
+
+    #[test]
+    fn atom_registry_new_is_empty() {
+        // A freshly-constructed registry has
+        // no atoms. list_all() returns [],
+        // has_atom() returns false for any id.
+        let r = AtomRegistry::new();
+        assert!(r.list_all().is_empty());
+        assert!(!r.has_atom("any"));
+        assert!(r.get_metadata("any").is_none());
+        assert!(r.create("any").is_none());
+    }
+
+    #[test]
+    fn atom_registry_default_matches_new() {
+        // `Default::default()` should produce
+        // the same empty state as `new()`.
+        let r: AtomRegistry = Default::default();
+        assert!(r.list_all().is_empty());
+    }
+
+    #[test]
+    fn atom_registry_register_then_has_atom() {
+        let mut r = AtomRegistry::new();
+        r.register("a".to_string(), make_metadata("a"), make_factory());
+        assert!(r.has_atom("a"));
+        assert!(!r.has_atom("b"));
+    }
+
+    #[test]
+    fn atom_registry_register_same_id_twice_overwrites() {
+        // The doc says `register` uses
+        // `HashMap::insert` semantics — a 2nd
+        // register with the same id overwrites
+        // the previous factory. This test pins
+        // the overwrite contract so a refactor
+        // can't silently make it append.
+        let mut r = AtomRegistry::new();
+        let m1 = AtomMetadata {
+            id: "a".to_string(),
+            name: "first".to_string(),
+            version: 1,
+            gameplay_type: "puzzle".to_string(),
+            description: "first".to_string(),
+            tags: vec![],
+        };
+        let m2 = AtomMetadata {
+            id: "a".to_string(),
+            name: "second".to_string(),
+            version: 2,
+            gameplay_type: "strategy".to_string(),
+            description: "second".to_string(),
+            tags: vec!["v2".to_string()],
+        };
+        r.register("a".to_string(), m1, make_factory());
+        r.register("a".to_string(), m2.clone(), make_factory());
+        // The 2nd register wins — get_metadata
+        // returns m2, not m1.
+        let got = r.get_metadata("a").unwrap();
+        assert_eq!(got.name, "second");
+        assert_eq!(got.version, 2);
+    }
+
+    #[test]
+    fn atom_registry_get_metadata_for_unknown_id_returns_none() {
+        // Defensive: a get_metadata call for an
+        // id that was never registered returns
+        // None (not a panic). The WASM bridge
+        // relies on this Option-returning contract
+        // to silently ignore typos in blueprint
+        // atom_ids.
+        let r = AtomRegistry::new();
+        assert!(r.get_metadata("nonexistent").is_none());
+        assert!(r.get_metadata("").is_none());
+        assert!(r.get_metadata("with.dots.in.id").is_none());
+    }
+
+    #[test]
+    fn atom_registry_create_for_unknown_id_returns_none() {
+        // Same defensive contract for
+        // `create`. The runtime never panics
+        // when asked to instantiate an atom
+        // that doesn't exist.
+        let r = AtomRegistry::new();
+        assert!(r.create("nonexistent").is_none());
+    }
+
+    #[test]
+    fn atom_registry_list_all_returns_all_registered() {
+        // Register 3 atoms → list_all returns
+        // 3 entries (order is HashMap
+        // iteration order, not insertion
+        // order — don't pin a specific order).
+        let mut r = AtomRegistry::new();
+        r.register("a".to_string(), make_metadata("a"), make_factory());
+        r.register("b".to_string(), make_metadata("b"), make_factory());
+        r.register("c".to_string(), make_metadata("c"), make_factory());
+        let all = r.list_all();
+        assert_eq!(all.len(), 3);
+        let ids: std::collections::HashSet<&str> = all.iter().map(|m| m.id.as_str()).collect();
+        assert!(ids.contains("a"));
+        assert!(ids.contains("b"));
+        assert!(ids.contains("c"));
+    }
+
+    #[test]
+    fn atom_context_new_has_default_delta_time_0_016() {
+        // `AtomContext::new` should set
+        // `delta_time` to a sane default
+        // (16ms = ~60 FPS). A regression
+        // that defaulted to 0.0 would break
+        // `on_update` callers that compute
+        // frame-dependent deltas.
+        let ws = Arc::new(Mutex::new(UnifiedWorldState::new(PlayerProfile::new("ctx_test"))));
+        let ctx = AtomContext::new(Arc::clone(&ws));
+        assert!((ctx.delta_time - 0.016).abs() < 1e-6);
+    }
+
+    #[test]
+    fn atom_context_with_delta_time_returns_modified_context() {
+        // The builder method should
+        // mutate the delta_time field
+        // and return self for chaining.
+        let ws = Arc::new(Mutex::new(UnifiedWorldState::new(PlayerProfile::new("ctx_test"))));
+        let ctx = AtomContext::new(ws).with_delta_time(0.033);
+        assert!((ctx.delta_time - 0.033).abs() < 1e-6);
+    }
+
+    #[test]
+    fn atom_context_get_world_returns_same_arc() {
+        // `get_world` should return an
+        // Arc that points to the same
+        // underlying UnifiedWorldState
+        // (Arc::clone contract). A regression
+        // that returned a fresh state would
+        // break the runner's ability to
+        // observe world mutations.
+        let ws = Arc::new(Mutex::new(UnifiedWorldState::new(PlayerProfile::new("ctx_test"))));
+        let ctx = AtomContext::new(Arc::clone(&ws));
+        let got = ctx.get_world();
+        assert!(Arc::ptr_eq(&ws, &got));
+    }
+
+    #[test]
+    fn atom_phase_partial_eq_for_all_5_variants() {
+        // Pin the `PartialEq` contract for
+        // all 5 variants. A refactor that
+        // accidentally derives `PartialEq`
+        // from a non-canonical field (e.g.
+        // a debug label) would break this.
+        use AtomPhase::*;
+        assert_eq!(Uninitialized, Uninitialized);
+        assert_eq!(Initialized, Initialized);
+        assert_eq!(Running, Running);
+        assert_eq!(Paused, Paused);
+        assert_eq!(Completed, Completed);
+        assert_ne!(Uninitialized, Initialized);
+        assert_ne!(Running, Paused);
     }
 }
