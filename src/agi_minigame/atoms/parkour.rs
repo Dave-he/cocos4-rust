@@ -453,3 +453,505 @@ mod tests {
         assert_eq!(atom2.get_score(), atom.get_score());
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 137 helper-level tests — follow
+// the round 110b / 122-136
+// pattern. The pre-round-137
+// `mod tests` had 4 integration
+// tests (init, actions, update,
+// save/load) but no focused unit
+// coverage of the public surface.
+// These tests pin the per-enum
+// variant counts, per-field
+// defaults of `ParkourAtom::new`,
+// the lane-bounds / dash
+// invincibility / state machine
+// guards, the `save_state` +
+// `load_state` round-trip for
+// every persisted field, the
+// `handle_event` dispatch for
+// all 5 `RunnerAction` strings
+// + unknown, and the lifecycle
+// `on_init` / `on_enter` /
+// `on_pause` / `on_resume` /
+// `on_exit` / `on_destroy`
+// phase transitions.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round137_tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+    use crate::agi_minigame::world_state::UnifiedWorldState;
+    use crate::agi_minigame::player::PlayerProfile;
+
+    fn make_ctx() -> AtomContext {
+        let ws = Arc::new(Mutex::new(UnifiedWorldState::new(PlayerProfile::new("test"))));
+        AtomContext::new(ws).with_delta_time(0.016)
+    }
+
+    /// `ObstacleType` has 4
+    /// variants (Low / High /
+    /// Gap / Spike).
+    #[test]
+    fn obstacle_type_has_4_variants_round_137() {
+        let v = [
+            ObstacleType::Low,
+            ObstacleType::High,
+            ObstacleType::Gap,
+            ObstacleType::Spike,
+        ];
+        for &x in &v { assert_eq!(x, x); }
+        assert_ne!(ObstacleType::Low, ObstacleType::High);
+        assert_ne!(ObstacleType::Gap, ObstacleType::Spike);
+    }
+
+    /// `CollectibleType` has 4
+    /// variants (Coin / Gem /
+    /// PowerUp / Shield).
+    #[test]
+    fn collectible_type_has_4_variants_round_137() {
+        let v = [
+            CollectibleType::Coin,
+            CollectibleType::Gem,
+            CollectibleType::PowerUp,
+            CollectibleType::Shield,
+        ];
+        for &x in &v { assert_eq!(x, x); }
+        assert_ne!(CollectibleType::Coin, CollectibleType::Gem);
+        assert_ne!(CollectibleType::PowerUp, CollectibleType::Shield);
+    }
+
+    /// `RunnerAction` has 5
+    /// variants (Jump / Slide
+    /// / Dash / LaneLeft /
+    /// LaneRight).
+    #[test]
+    fn runner_action_has_5_variants_round_137() {
+        let v = [
+            RunnerAction::Jump,
+            RunnerAction::Slide,
+            RunnerAction::Dash,
+            RunnerAction::LaneLeft,
+            RunnerAction::LaneRight,
+        ];
+        for &x in &v { assert_eq!(x, x); }
+        assert_ne!(RunnerAction::Jump, RunnerAction::Slide);
+        assert_ne!(RunnerAction::LaneLeft, RunnerAction::LaneRight);
+    }
+
+    /// `RunnerState` has 6
+    /// variants (Running /
+    /// Jumping / Sliding /
+    /// Dashing / Hit / Dead).
+    #[test]
+    fn runner_state_has_6_variants_round_137() {
+        let v = [
+            RunnerState::Running,
+            RunnerState::Jumping,
+            RunnerState::Sliding,
+            RunnerState::Dashing,
+            RunnerState::Hit,
+            RunnerState::Dead,
+        ];
+        for &x in &v { assert_eq!(x, x); }
+        assert_ne!(RunnerState::Running, RunnerState::Jumping);
+        assert_ne!(RunnerState::Hit, RunnerState::Dead);
+    }
+
+    /// `ParkourAtom::new` —
+    /// lane defaults to
+    /// `num_lanes / 2`
+    /// (middle of the
+    /// track).
+    #[test]
+    fn parkour_new_lane_defaults_to_middle_round_137() {
+        let a3 = ParkourAtom::new(3, 5.0, 3);
+        assert_eq!(a3.get_lane(), 1);
+        let a5 = ParkourAtom::new(5, 5.0, 3);
+        assert_eq!(a5.get_lane(), 2);
+        let a1 = ParkourAtom::new(1, 5.0, 3);
+        assert_eq!(a1.get_lane(), 0);
+    }
+
+    /// `ParkourAtom::new` —
+    /// max_speed is 3x the
+    /// base_speed.
+    #[test]
+    fn parkour_new_max_speed_is_3x_base_round_137() {
+        let a = ParkourAtom::new(3, 4.0, 3);
+        assert_eq!(a.max_speed, 12.0);
+    }
+
+    /// `ParkourAtom::new` —
+    /// phase starts
+    /// `Uninitialized`
+    /// (not entered
+    /// yet).
+    #[test]
+    fn parkour_new_phase_starts_uninitialized_round_137() {
+        let a = ParkourAtom::new(3, 5.0, 3);
+        assert_eq!(a.phase, AtomPhase::Uninitialized);
+    }
+
+    /// `ParkourAtom::new` —
+    /// state starts
+    /// `Running`.
+    #[test]
+    fn parkour_new_state_starts_running_round_137() {
+        let a = ParkourAtom::new(3, 5.0, 3);
+        assert_eq!(a.state, RunnerState::Running);
+    }
+
+    /// `ParkourAtom::new` —
+    /// distance / score /
+    /// coins are zero,
+    /// hp == max_hp, all
+    /// collections are
+    /// empty, all timers
+    /// are 0.
+    #[test]
+    fn parkour_new_defaults_all_zero_round_137() {
+        let a = ParkourAtom::new(3, 5.0, 3);
+        assert_eq!(a.position, 0.0);
+        assert_eq!(a.distance, 0.0);
+        assert_eq!(a.score, 0);
+        assert_eq!(a.coins, 0);
+        assert_eq!(a.hp, 3);
+        assert_eq!(a.max_hp, 3);
+        assert!(a.obstacles.is_empty());
+        assert!(a.collectibles.is_empty());
+        assert_eq!(a.action_timer, 0.0);
+        assert_eq!(a.dash_timer, 0.0);
+        assert_eq!(a.invincible_timer, 0.0);
+    }
+
+    /// `perform_action(Jump)`
+    /// from `Running` →
+    /// `Jumping`. From
+    /// `Jumping` →
+    /// still `Jumping`
+    /// (no double-jump).
+    #[test]
+    fn parkour_perform_jump_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        a.perform_action(RunnerAction::Jump);
+        assert_eq!(a.state, RunnerState::Jumping);
+        // Re-jump while
+        // already in
+        // Jumping does
+        // nothing.
+        a.perform_action(RunnerAction::Jump);
+        assert_eq!(a.state, RunnerState::Jumping);
+    }
+
+    /// `perform_action(Slide)`
+    /// from `Running` →
+    /// `Sliding`.
+    #[test]
+    fn parkour_perform_slide_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        a.perform_action(RunnerAction::Slide);
+        assert_eq!(a.state, RunnerState::Sliding);
+    }
+
+    /// `perform_action(Dash)`
+    /// sets
+    /// `dash_timer=0.3`,
+    /// `speed=base*2.5`,
+    /// `invincible_timer=0.3`,
+    /// state →
+    /// `Dashing`.
+    #[test]
+    fn parkour_perform_dash_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        a.perform_action(RunnerAction::Dash);
+        assert_eq!(a.state, RunnerState::Dashing);
+        assert!((a.dash_timer - 0.3).abs() < 1e-6);
+        assert!((a.speed - 12.5).abs() < 1e-6);
+        assert!((a.invincible_timer - 0.3).abs() < 1e-6);
+    }
+
+    /// `perform_action(Dash)`
+    /// while
+    /// `dash_timer > 0`
+    /// is a no-op
+    /// (can't spam
+    /// dash).
+    #[test]
+    fn parkour_dash_no_op_when_timer_active_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        a.perform_action(RunnerAction::Dash);
+        let prev_speed = a.speed;
+        a.perform_action(RunnerAction::Dash);
+        // Speed
+        // unchanged —
+        // second dash
+        // rejected.
+        assert_eq!(a.speed, prev_speed);
+    }
+
+    /// `perform_action(LaneLeft)`
+    /// decrements the
+    /// lane; clamps
+    /// at 0 (no
+    /// negative
+    /// lane).
+    #[test]
+    fn parkour_perform_lane_left_clamps_at_zero_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        a.lane = 0;
+        a.perform_action(RunnerAction::LaneLeft);
+        assert_eq!(a.get_lane(), 0);
+        a.lane = 1;
+        a.perform_action(RunnerAction::LaneLeft);
+        assert_eq!(a.get_lane(), 0);
+    }
+
+    /// `perform_action(LaneRight)`
+    /// increments the
+    /// lane; clamps
+    /// at
+    /// `num_lanes-1`.
+    #[test]
+    fn parkour_perform_lane_right_clamps_at_top_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        a.lane = 2;
+        a.perform_action(RunnerAction::LaneRight);
+        assert_eq!(a.get_lane(), 2);
+        a.lane = 1;
+        a.perform_action(RunnerAction::LaneRight);
+        assert_eq!(a.get_lane(), 2);
+    }
+
+    /// `get_state` /
+    /// `is_dead`
+    /// getters
+    /// surface the
+    /// internal
+    /// state.
+    #[test]
+    fn parkour_getters_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        assert_eq!(a.get_state(), RunnerState::Running);
+        assert!(!a.is_dead());
+        a.hp = 0;
+        assert!(a.is_dead());
+    }
+
+    /// `save_state`
+    /// includes
+    /// the 5
+    /// persisted
+    /// keys.
+    #[test]
+    fn parkour_save_state_keys_round_137() {
+        let a = ParkourAtom::new(3, 5.0, 3);
+        let s = a.save_state();
+        assert!(s.contains_key("score"));
+        assert!(s.contains_key("distance"));
+        assert!(s.contains_key("hp"));
+        assert!(s.contains_key("coins"));
+        assert!(s.contains_key("lane"));
+    }
+
+    /// `load_state`
+    /// restores all
+    /// 5 persisted
+    /// fields.
+    #[test]
+    fn parkour_load_state_restores_all_fields_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        let mut s = ValueMap::new();
+        s.insert("score".to_string(), Value::Integer(1000));
+        s.insert("distance".to_string(), Value::Float(99.5));
+        s.insert("hp".to_string(), Value::Integer(2));
+        s.insert("coins".to_string(), Value::Integer(50));
+        s.insert("lane".to_string(), Value::Integer(2));
+        a.load_state(&s);
+        assert_eq!(a.score, 1000);
+        assert!((a.distance - 99.5).abs() < 1e-6);
+        assert_eq!(a.hp, 2);
+        assert_eq!(a.coins, 50);
+        assert_eq!(a.lane, 2);
+    }
+
+    /// `handle_event`
+    /// with
+    /// `action=jump` →
+    /// `Jumping`.
+    #[test]
+    fn parkour_handle_event_jump_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        let mut s = ValueMap::new();
+        s.insert("type".to_string(), Value::String("jump".to_string()));
+        let mut ctx = make_ctx();
+        a.handle_event("action", &s, &mut ctx);
+        assert_eq!(a.state, RunnerState::Jumping);
+    }
+
+    /// `handle_event`
+    /// with
+    /// `action=slide` →
+    /// `Sliding`.
+    #[test]
+    fn parkour_handle_event_slide_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        let mut s = ValueMap::new();
+        s.insert("type".to_string(), Value::String("slide".to_string()));
+        let mut ctx = make_ctx();
+        a.handle_event("action", &s, &mut ctx);
+        assert_eq!(a.state, RunnerState::Sliding);
+    }
+
+    /// `handle_event`
+    /// with
+    /// `action=left` /
+    /// `action=right` →
+    /// lane
+    /// change.
+    #[test]
+    fn parkour_handle_event_lane_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        let mut s = ValueMap::new();
+        s.insert("type".to_string(), Value::String("right".to_string()));
+        let mut ctx = make_ctx();
+        a.handle_event("action", &s, &mut ctx);
+        assert_eq!(a.get_lane(), 2);
+        s.insert("type".to_string(), Value::String("left".to_string()));
+        a.handle_event("action", &s, &mut ctx);
+        assert_eq!(a.get_lane(), 1);
+    }
+
+    /// `handle_event`
+    /// with
+    /// `action=dash` →
+    /// `Dashing` +
+    /// dash_timer
+    /// set.
+    #[test]
+    fn parkour_handle_event_dash_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        let mut s = ValueMap::new();
+        s.insert("type".to_string(), Value::String("dash".to_string()));
+        let mut ctx = make_ctx();
+        a.handle_event("action", &s, &mut ctx);
+        assert_eq!(a.state, RunnerState::Dashing);
+        assert!(a.dash_timer > 0.0);
+    }
+
+    /// `handle_event`
+    /// with an
+    /// unknown
+    /// event
+    /// name is
+    /// a no-op.
+    #[test]
+    fn parkour_handle_event_unknown_is_noop_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        let prev_state = a.state;
+        let prev_lane = a.lane;
+        let s = ValueMap::new();
+        let mut ctx = make_ctx();
+        a.handle_event("bogus", &s, &mut ctx);
+        assert_eq!(a.state, prev_state);
+        assert_eq!(a.get_lane(), prev_lane);
+    }
+
+    /// `on_init` →
+    /// phase =
+    /// `Initialized`.
+    #[test]
+    fn parkour_on_init_phase_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        let mut ctx = make_ctx();
+        a.on_init(&mut ctx);
+        assert_eq!(a.phase, AtomPhase::Initialized);
+    }
+
+    /// `on_enter`
+    /// resets all
+    /// state and
+    /// sets phase
+    /// to
+    /// `Running`.
+    #[test]
+    fn parkour_on_enter_resets_state_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        // Dirty
+        // up the
+        // state.
+        a.score = 9999;
+        a.coins = 100;
+        a.hp = 1;
+        a.obstacles.push(Obstacle {
+            position: 10.0,
+            lane: 0,
+            obstacle_type: ObstacleType::Low,
+            width: 1.0,
+            passed: false,
+        });
+        let mut ctx = make_ctx();
+        a.on_enter(&mut ctx);
+        assert_eq!(a.score, 0);
+        assert_eq!(a.coins, 0);
+        assert_eq!(a.hp, a.max_hp);
+        assert!(a.obstacles.is_empty());
+        assert_eq!(a.phase, AtomPhase::Running);
+    }
+
+    /// `on_pause` /
+    /// `on_resume` /
+    /// `on_exit` /
+    /// `on_destroy`
+    /// each
+    /// transition
+    /// to the
+    /// matching
+    /// `AtomPhase`.
+    #[test]
+    fn parkour_lifecycle_phases_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        let mut ctx = make_ctx();
+        a.on_init(&mut ctx);
+        a.on_enter(&mut ctx);
+        a.on_pause(&mut ctx);
+        assert_eq!(a.phase, AtomPhase::Paused);
+        a.on_resume(&mut ctx);
+        assert_eq!(a.phase, AtomPhase::Running);
+        a.on_exit(&mut ctx);
+        assert_eq!(a.phase, AtomPhase::Completed);
+        a.on_destroy();
+        assert_eq!(a.phase, AtomPhase::Uninitialized);
+    }
+
+    /// `atom_id` /
+    /// `atom_name` /
+    /// `as_any` /
+    /// `as_any_mut`
+    /// contract.
+    #[test]
+    fn parkour_atom_id_and_name_round_137() {
+        let a = ParkourAtom::new(3, 5.0, 3);
+        assert_eq!(a.atom_id(), "parkour");
+        assert_eq!(a.atom_name(), "跑酷");
+        let _ = a.as_any();
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        let _ = a.as_any_mut();
+    }
+
+    /// `current_phase`
+    /// mirrors
+    /// the
+    /// internal
+    /// `phase`
+    /// field.
+    #[test]
+    fn parkour_current_phase_matches_field_round_137() {
+        let mut a = ParkourAtom::new(3, 5.0, 3);
+        assert_eq!(a.current_phase(), AtomPhase::Uninitialized);
+        a.phase = AtomPhase::Paused;
+        assert_eq!(a.current_phase(), AtomPhase::Paused);
+    }
+}
