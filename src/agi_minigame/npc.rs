@@ -1424,3 +1424,609 @@ mod round37_tests {
         assert_eq!(r, "greeting");
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 134 — helper-level
+// tests for the lower-level
+// NpcMemoryEntry /
+// NpcDisposition /
+// NpcMind / NpcRegistry
+// primitives. The
+// public surface is
+// already tested by the
+// existing `tests` +
+// `round48_tests` +
+// `round37_tests` +
+// `archetype_tests`
+// modules. This block
+// adds focused unit
+// tests for the
+// free-standing
+// helpers
+// (`npc_memory_kind_from_str`)
+// + the NpcMemoryEntry
+// + NpcDisposition
+// + NpcRegistry public
+// surface — so a
+// future refactor that
+// breaks a primitive
+// is caught at the
+// unit level rather
+// than only failing a
+// higher-level test.
+//
+// Mirrors the
+// round-110b / 122
+// / 123 / 124 / 125
+// / 126 / 127 / 128
+// / 129 / 130 / 131
+// / 132 / 133
+// helper-test pattern.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round134_tests {
+    use super::*;
+
+    fn entry(kind: NpcMemoryKind, summary: &str, turn: u64, weight: f32) -> NpcMemoryEntry {
+        NpcMemoryEntry::new(kind, summary, turn, weight)
+    }
+
+    // --- npc_memory_kind_from_str ---
+
+    /// Round 134 —
+    /// `npc_memory_kind_from_str`
+    /// returns
+    /// `Some(_)` for all
+    /// 5 canonical
+    /// string literals.
+    #[test]
+    fn npc_memory_kind_from_str_resolves_5_canonical_strings_round_134() {
+        assert_eq!(npc_memory_kind_from_str("dialogue"),              Some(NpcMemoryKind::Dialogue));
+        assert_eq!(npc_memory_kind_from_str("witnessed_event"),       Some(NpcMemoryKind::WitnessedEvent));
+        assert_eq!(npc_memory_kind_from_str("heard_about_dimension"), Some(NpcMemoryKind::HeardAboutDimension));
+        assert_eq!(npc_memory_kind_from_str("received_gift"),         Some(NpcMemoryKind::ReceivedGift));
+        assert_eq!(npc_memory_kind_from_str("hostility"),             Some(NpcMemoryKind::Hostility));
+    }
+
+    /// Round 134 —
+    /// `npc_memory_kind_from_str`
+    /// returns
+    /// `None` for
+    /// unknown strings
+    /// (defensive: no
+    /// panic on stale
+    /// saves).
+    #[test]
+    fn npc_memory_kind_from_str_unknown_returns_none_round_134() {
+        assert_eq!(npc_memory_kind_from_str("unknown"), None);
+        assert_eq!(npc_memory_kind_from_str("Dialogue"), None); // case-sensitive
+        assert_eq!(npc_memory_kind_from_str(""), None);
+    }
+
+    // --- NpcMemoryEntry ---
+
+    /// Round 134 —
+    /// `NpcMemoryEntry::new`
+    /// stores the
+    /// constructor args
+    /// verbatim.
+    #[test]
+    fn npc_memory_entry_new_stores_fields_verbatim_round_134() {
+        let e = NpcMemoryEntry::new(NpcMemoryKind::Dialogue, "hi", 7, 0.5);
+        assert_eq!(e.kind, NpcMemoryKind::Dialogue);
+        assert_eq!(e.summary, "hi");
+        assert_eq!(e.turn, 7);
+        assert_eq!(e.weight, 0.5);
+    }
+
+    /// Round 134 —
+    /// `NpcMemoryEntry::new`
+    /// clamps the weight
+    /// to `[-1.0, 1.0]`
+    /// (the documented
+    /// contract).
+    #[test]
+    fn npc_memory_entry_new_clamps_weight_to_unit_interval_round_134() {
+        // Above 1.0 → clamped to 1.0.
+        let e = NpcMemoryEntry::new(NpcMemoryKind::Dialogue, "x", 0, 5.0);
+        assert_eq!(e.weight, 1.0);
+        // Below -1.0 → clamped to -1.0.
+        let e = NpcMemoryEntry::new(NpcMemoryKind::Dialogue, "x", 0, -3.0);
+        assert_eq!(e.weight, -1.0);
+    }
+
+    /// Round 134 —
+    /// `NpcMemoryEntry::new`
+    /// accepts
+    /// boundary values
+    /// (±1.0) without
+    /// clamping them.
+    #[test]
+    fn npc_memory_entry_new_boundary_values_round_134() {
+        let e = NpcMemoryEntry::new(NpcMemoryKind::Dialogue, "x", 0, 1.0);
+        assert_eq!(e.weight, 1.0);
+        let e = NpcMemoryEntry::new(NpcMemoryKind::Dialogue, "x", 0, -1.0);
+        assert_eq!(e.weight, -1.0);
+        let e = NpcMemoryEntry::new(NpcMemoryKind::Dialogue, "x", 0, 0.0);
+        assert_eq!(e.weight, 0.0);
+    }
+
+    // --- NpcDisposition ---
+
+    /// Round 134 —
+    /// `NpcDisposition::default`
+    /// is all-zero
+    /// (the documented
+    /// "fresh" state).
+    #[test]
+    fn npc_disposition_default_is_all_zero_round_134() {
+        let d = NpcDisposition::default();
+        assert_eq!(d.friendly, 0.0);
+        assert_eq!(d.fear,     0.0);
+        assert_eq!(d.trust,    0.0);
+    }
+
+    /// Round 134 —
+    /// `NpcDisposition::shift`
+    /// adds the deltas
+    /// to each axis
+    /// (no clamping
+    /// at the lower
+    /// bound).
+    #[test]
+    fn npc_disposition_shift_adds_deltas_verbatim_round_134() {
+        let d = NpcDisposition { friendly: 0.0, fear: 0.0, trust: 0.0 };
+        let d2 = d.shift(0.1, 0.2, 0.3);
+        assert_eq!(d2.friendly, 0.1);
+        assert_eq!(d2.fear,     0.2);
+        assert_eq!(d2.trust,    0.3);
+    }
+
+    /// Round 134 —
+    /// `NpcDisposition::shift`
+    /// clamps each axis
+    /// to `[-1.0, 1.0]`
+    /// independently.
+    #[test]
+    fn npc_disposition_shift_clamps_per_axis_round_134() {
+        // All positive deltas overshoot the upper bound.
+        let d = NpcDisposition { friendly: 0.5, fear: 0.5, trust: 0.5 };
+        let d2 = d.shift(1.0, 1.0, 1.0);
+        assert_eq!(d2.friendly, 1.0);
+        assert_eq!(d2.fear,     1.0);
+        assert_eq!(d2.trust,    1.0);
+        // All negative deltas overshoot the lower bound.
+        let d = NpcDisposition { friendly: -0.5, fear: -0.5, trust: -0.5 };
+        let d2 = d.shift(-1.0, -1.0, -1.0);
+        assert_eq!(d2.friendly, -1.0);
+        assert_eq!(d2.fear,     -1.0);
+        assert_eq!(d2.trust,    -1.0);
+    }
+
+    // --- NpcMemoryKind PartialEq ---
+
+    /// Round 134 —
+    /// `NpcMemoryKind`
+    /// PartialEq
+    /// round-trips for
+    /// all 5 variants.
+    #[test]
+    fn npc_memory_kind_partial_eq_for_5_variants_round_134() {
+        let kinds = [
+            NpcMemoryKind::Dialogue,
+            NpcMemoryKind::WitnessedEvent,
+            NpcMemoryKind::HeardAboutDimension,
+            NpcMemoryKind::ReceivedGift,
+            NpcMemoryKind::Hostility,
+        ];
+        for &k in &kinds {
+            assert_eq!(k, k);
+        }
+        // Distinct variants are not equal.
+        assert_ne!(NpcMemoryKind::Dialogue, NpcMemoryKind::Hostility);
+        assert_ne!(NpcMemoryKind::ReceivedGift, NpcMemoryKind::HeardAboutDimension);
+    }
+
+    // --- NpcMood ---
+
+    /// Round 134 —
+    /// `NpcMood`
+    /// PartialEq
+    /// round-trips for
+    /// all 4 variants.
+    #[test]
+    fn npc_mood_partial_eq_for_4_variants_round_134() {
+        let moods = [
+            NpcMood::Happy,
+            NpcMood::Neutral,
+            NpcMood::Uneasy,
+            NpcMood::Hostile,
+        ];
+        for &m in &moods {
+            assert_eq!(m, m);
+        }
+        // Distinct variants are not equal.
+        assert_ne!(NpcMood::Happy,   NpcMood::Hostile);
+        assert_ne!(NpcMood::Neutral, NpcMood::Uneasy);
+    }
+
+    // --- NpcMind accessors ---
+
+    /// Round 134 —
+    /// `NpcMind::new`
+    /// initializes id +
+    /// capacity
+    /// (DEFAULT_CAPACITY)
+    /// + empty entries
+    /// + default
+    /// disposition.
+    #[test]
+    fn npc_mind_new_initializes_defaults_round_134() {
+        let m = NpcMind::new("merchant_0", None::<&str>);
+        assert_eq!(m.id(), "merchant_0");
+        assert_eq!(m.capacity(), NpcMind::DEFAULT_CAPACITY);
+        assert_eq!(m.len(), 0);
+        assert!(m.is_empty());
+        assert_eq!(m.disposition(), NpcDisposition::default());
+    }
+
+    /// Round 134 —
+    /// `NpcMind::with_capacity`
+    /// respects a custom
+    /// capacity.
+    #[test]
+    fn npc_mind_with_capacity_respects_custom_capacity_round_134() {
+        let m = NpcMind::with_capacity("npc_1", 5, None::<&str>);
+        assert_eq!(m.capacity(), 5);
+    }
+
+    /// Round 134 —
+    /// `NpcMind::archetype`
+    /// returns
+    /// `Some(...)` when
+    /// an archetype is
+    /// supplied in the
+    /// constructor.
+    #[test]
+    fn npc_mind_archetype_returns_supplied_value_round_134() {
+        let m = NpcMind::new("mage_1", Some("mage"));
+        assert_eq!(m.archetype(), Some("mage"));
+    }
+
+    /// Round 134 —
+    /// `NpcMind::archetype`
+    /// returns `None`
+    /// when no
+    /// archetype is
+    /// supplied in the
+    /// constructor.
+    #[test]
+    fn npc_mind_archetype_returns_none_when_unspecified_round_134() {
+        let m = NpcMind::new("plain_1", None::<&str>);
+        assert_eq!(m.archetype(), None);
+    }
+
+    /// Round 134 —
+    /// `NpcMind::len`
+    /// + `is_empty`
+    /// reflect the
+    /// current entry
+    /// count (not
+    /// capacity).
+    #[test]
+    fn npc_mind_len_and_is_empty_reflect_entry_count_round_134() {
+        let mut m = NpcMind::with_capacity("npc_1", 3, None::<&str>);
+        assert_eq!(m.len(), 0);
+        assert!(m.is_empty());
+        m.remember(entry(NpcMemoryKind::Dialogue, "a", 1, 0.5));
+        assert_eq!(m.len(), 1);
+        assert!(!m.is_empty());
+        m.remember(entry(NpcMemoryKind::Dialogue, "b", 2, 0.5));
+        m.remember(entry(NpcMemoryKind::Dialogue, "c", 3, 0.5));
+        assert_eq!(m.len(), 3);
+        // One more triggers the wrap (oldest dropped).
+        m.remember(entry(NpcMemoryKind::Dialogue, "d", 4, 0.5));
+        assert_eq!(m.len(), 3);
+    }
+
+    /// Round 134 —
+    /// `NpcMind::capacity`
+    /// returns the
+    /// capacity
+    /// supplied to
+    /// the constructor
+    /// (DEFAULT_CAPACITY
+    /// for
+    /// `NpcMind::new`).
+    #[test]
+    fn npc_mind_capacity_returns_constructor_arg_round_134() {
+        let m = NpcMind::new("npc_1", None::<&str>);
+        assert_eq!(m.capacity(), NpcMind::DEFAULT_CAPACITY);
+        let m2 = NpcMind::with_capacity("npc_2", 7, None::<&str>);
+        assert_eq!(m2.capacity(), 7);
+    }
+
+    /// Round 134 —
+    /// `NpcMind::recent(0)`
+    /// returns an empty
+    /// vec (no entries
+    /// to take).
+    #[test]
+    fn npc_mind_recent_zero_limit_returns_empty_round_134() {
+        let m = NpcMind::new("npc_1", None::<&str>);
+        assert!(m.recent(0).is_empty());
+    }
+
+    /// Round 134 —
+    /// `NpcMind::recent(limit)`
+    /// is capped at the
+    /// current entry
+    /// count (asking
+    /// for more than
+    /// present returns
+    /// what's there).
+    #[test]
+    fn npc_mind_recent_capped_at_entry_count_round_134() {
+        let mut m = NpcMind::new("npc_1", None::<&str>);
+        m.remember(entry(NpcMemoryKind::Dialogue, "a", 1, 0.5));
+        m.remember(entry(NpcMemoryKind::Dialogue, "b", 2, 0.5));
+        // Asking for 10 returns just 2.
+        assert_eq!(m.recent(10).len(), 2);
+    }
+
+    /// Round 134 —
+    /// `NpcMind::recall_by_kind`
+    /// returns only
+    /// entries of the
+    /// requested kind,
+    /// in insertion
+    /// order.
+    #[test]
+    fn npc_mind_recall_by_kind_filters_in_insertion_order_round_134() {
+        let mut m = NpcMind::new("npc_1", None::<&str>);
+        m.remember(entry(NpcMemoryKind::Dialogue,       "a", 1, 0.5));
+        m.remember(entry(NpcMemoryKind::ReceivedGift,   "b", 2, 0.5));
+        m.remember(entry(NpcMemoryKind::Dialogue,       "c", 3, 0.5));
+        let dialogue = m.recall_by_kind(NpcMemoryKind::Dialogue);
+        assert_eq!(dialogue.len(), 2);
+        assert_eq!(dialogue[0].summary, "a");
+        assert_eq!(dialogue[1].summary, "c");
+        let gifts = m.recall_by_kind(NpcMemoryKind::ReceivedGift);
+        assert_eq!(gifts.len(), 1);
+        assert_eq!(gifts[0].summary, "b");
+    }
+
+    /// Round 134 —
+    /// `NpcMind::shift_disposition`
+    /// updates the
+    /// disposition
+    /// (independent of
+    /// memory writes).
+    #[test]
+    fn npc_mind_shift_disposition_updates_state_round_134() {
+        let mut m = NpcMind::new("npc_1", None::<&str>);
+        m.shift_disposition(0.1, 0.2, 0.3);
+        let d = m.disposition();
+        assert_eq!(d.friendly, 0.1);
+        assert_eq!(d.fear,     0.2);
+        assert_eq!(d.trust,    0.3);
+    }
+
+    /// Round 134 —
+    /// `NpcMind::clear`
+    /// resets entries
+    /// + disposition
+    /// (capacity
+    /// preserved).
+    #[test]
+    fn npc_mind_clear_resets_entries_and_disposition_round_134() {
+        let mut m = NpcMind::new("npc_1", None::<&str>);
+        m.remember(entry(NpcMemoryKind::Dialogue, "a", 1, 0.5));
+        m.shift_disposition(0.1, 0.2, 0.3);
+        m.clear();
+        assert!(m.is_empty());
+        assert_eq!(m.disposition(), NpcDisposition::default());
+        // Capacity is preserved.
+        assert_eq!(m.capacity(), NpcMind::DEFAULT_CAPACITY);
+    }
+
+    // --- NpcRegistry accessors ---
+
+    /// Round 134 —
+    /// `NpcRegistry::new`
+    /// + `default`
+    /// both produce
+    /// an empty
+    /// registry.
+    #[test]
+    fn npc_registry_new_is_empty_round_134() {
+        let r = NpcRegistry::new();
+        assert_eq!(r.len(), 0);
+        assert!(r.is_empty());
+        let r = NpcRegistry::default();
+        assert_eq!(r.len(), 0);
+        assert!(r.is_empty());
+    }
+
+    /// Round 134 —
+    /// `NpcRegistry::insert`
+    /// appends a new
+    /// mind (the
+    /// default
+    /// "first-time"
+    /// path).
+    #[test]
+    fn npc_registry_insert_appends_new_mind_round_134() {
+        let mut r = NpcRegistry::new();
+        r.insert(NpcMind::new("a", None::<&str>));
+        r.insert(NpcMind::new("b", None::<&str>));
+        assert_eq!(r.len(), 2);
+        assert!(r.get("a").is_some());
+        assert!(r.get("b").is_some());
+    }
+
+    /// Round 134 —
+    /// `NpcRegistry::insert`
+    /// replaces an
+    /// existing mind
+    /// with the same
+    /// id (no
+    /// duplicates).
+    #[test]
+    fn npc_registry_insert_replaces_same_id_round_134() {
+        let mut r = NpcRegistry::new();
+        r.insert(NpcMind::new("a", None::<&str>));
+        // Insert again with the same id.
+        r.insert(NpcMind::new("a", Some("mage")));
+        // Still 1 entry.
+        assert_eq!(r.len(), 1);
+        // The second insert wins (archetype = mage).
+        assert_eq!(r.get("a").unwrap().archetype(), Some("mage"));
+    }
+
+    /// Round 134 —
+    /// `NpcRegistry::get`
+    /// returns `None`
+    /// for unknown
+    /// ids.
+    #[test]
+    fn npc_registry_get_unknown_returns_none_round_134() {
+        let r = NpcRegistry::new();
+        assert!(r.get("unknown").is_none());
+    }
+
+    /// Round 134 —
+    /// `NpcRegistry::get_mut`
+    /// returns a
+    /// mutable
+    /// reference for
+    /// the requested
+    /// id.
+    #[test]
+    fn npc_registry_get_mut_allows_state_mutation_round_134() {
+        let mut r = NpcRegistry::new();
+        r.insert(NpcMind::new("a", None::<&str>));
+        // Mutate the mind's disposition via get_mut.
+        r.get_mut("a").unwrap().shift_disposition(0.5, 0.0, 0.0);
+        assert_eq!(r.get("a").unwrap().disposition().friendly, 0.5);
+    }
+
+    /// Round 134 —
+    /// `NpcRegistry::iter`
+    /// yields every
+    /// mind in
+    /// insertion
+    /// order.
+    #[test]
+    fn npc_registry_iter_yields_in_insertion_order_round_134() {
+        let mut r = NpcRegistry::new();
+        r.insert(NpcMind::new("a", None::<&str>));
+        r.insert(NpcMind::new("b", None::<&str>));
+        r.insert(NpcMind::new("c", None::<&str>));
+        let ids: Vec<&str> = r.iter().map(|m| m.id()).collect();
+        assert_eq!(ids, vec!["a", "b", "c"]);
+    }
+
+    /// Round 134 —
+    /// `NpcRegistry::broadcast`
+    /// appends the
+    /// same memory
+    /// to every NPC.
+    #[test]
+    fn npc_registry_broadcast_records_in_every_mind_round_134() {
+        let mut r = NpcRegistry::new();
+        r.insert(NpcMind::new("a", None::<&str>));
+        r.insert(NpcMind::new("b", None::<&str>));
+        r.broadcast(entry(NpcMemoryKind::HeardAboutDimension, "entered_dim", 1, 0.5));
+        // Both minds got the broadcast.
+        for m in r.iter() {
+            assert_eq!(m.len(), 1);
+            assert_eq!(m.recall_by_kind(NpcMemoryKind::HeardAboutDimension).len(), 1);
+        }
+    }
+
+    /// Round 134 —
+    /// `NpcRegistry::average_disposition`
+    /// returns the
+    /// mean of every
+    /// mind's
+    /// disposition
+    /// (per-axis
+    /// average).
+    #[test]
+    fn npc_registry_average_disposition_returns_mean_round_134() {
+        let mut r = NpcRegistry::new();
+        let mut a = NpcMind::new("a", None::<&str>);
+        a.shift_disposition(1.0, 0.0, 0.0);
+        let mut b = NpcMind::new("b", None::<&str>);
+        b.shift_disposition(0.0, 1.0, 0.0);
+        r.insert(a);
+        r.insert(b);
+        let avg = r.average_disposition();
+        assert_eq!(avg.friendly, 0.5);
+        assert_eq!(avg.fear,     0.5);
+        assert_eq!(avg.trust,    0.0);
+    }
+
+    /// Round 134 —
+    /// `NpcRegistry::average_disposition`
+    /// returns the
+    /// default
+    /// disposition
+    /// when the
+    /// registry is
+    /// empty.
+    #[test]
+    fn npc_registry_average_disposition_empty_returns_default_round_134() {
+        let r = NpcRegistry::new();
+        assert_eq!(r.average_disposition(), NpcDisposition::default());
+    }
+
+    /// Round 134 —
+    /// `NpcRegistry::load_from_snapshots`
+    /// fully replaces
+    /// any existing
+    /// minds.
+    #[test]
+    fn npc_registry_load_from_snapshots_replaces_existing_round_134() {
+        let mut r = NpcRegistry::new();
+        r.insert(NpcMind::new("old", None::<&str>));
+        let snap = NpcMindSnapshot {
+            id: "new".to_string(),
+            archetype: Some("mage".to_string()),
+            disposition: NpcDisposition::default(),
+            entries: vec![],
+        };
+        let r2 = NpcRegistry::load_from_snapshots(vec![snap]);
+        // r still has "old".
+        assert_eq!(r.len(), 1);
+        // r2 is fully replaced (no "old").
+        assert_eq!(r2.len(), 1);
+        assert!(r2.get("old").is_none());
+        assert!(r2.get("new").is_some());
+    }
+
+    /// Round 134 —
+    /// `NpcRegistry::load_from_snapshots_into`
+    /// is idempotent
+    /// (running twice
+    /// with the same
+    /// input produces
+    /// the same
+    /// registry).
+    #[test]
+    fn npc_registry_load_from_snapshots_into_is_idempotent_round_134() {
+        let mut r = NpcRegistry::new();
+        let snap = NpcMindSnapshot {
+            id: "a".to_string(),
+            archetype: None,
+            disposition: NpcDisposition::default(),
+            entries: vec![],
+        };
+        r.load_from_snapshots_into(vec![snap.clone()]);
+        r.load_from_snapshots_into(vec![snap.clone()]);
+        // Still 1 entry (the second call cleared the first).
+        assert_eq!(r.len(), 1);
+    }
+}
