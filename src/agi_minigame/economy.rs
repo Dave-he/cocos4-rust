@@ -412,4 +412,357 @@ mod tests {
         assert_eq!(item.quantity, 10);
         assert!(item.is_full());
     }
+
+    // -----------------------------------------------------------------
+    // Round 126 — helper-level
+    // tests for the
+    // Currency / CurrencyType
+    // / Transaction / Wallet
+    // / InventoryItem /
+    // Inventory gaps that
+    // the pre-round-126
+    // 7 tests didn't cover:
+    //   - Currency::add cap
+    //     already reached
+    //     (returns cap, not
+    //     new_amount)
+    //   - Currency::spend
+    //     returns false on
+    //     insufficient funds
+    //     (preserves balance)
+    //   - Currency::spend
+    //     returns true on
+    //     exact-match
+    //   - Currency::can_afford
+    //     with 0 amount
+    //   - Currency::get_cap
+    //     for un-capped
+    //     currency (returns
+    //     u64::MAX)
+    //   - Currency::new
+    //     initial state
+    //   - CurrencyType::name()
+    //     for all 5 variants
+    //     + Custom returns
+    //     "custom" (variant id
+    //     not used in name)
+    //   - Transaction builder
+    //     pattern (multiple
+    //     gain/cost chained)
+    //   - Transaction::total_gains
+    //     / total_costs filter
+    //     by currency_type
+    //   - Wallet::execute
+    //     multi-entry mixed
+    //     gain/cost
+    //   - Wallet::execute
+    //     respects max_log_size
+    //     (rolls over oldest)
+    //   - Wallet::can_execute
+    //     doesn't mutate
+    //   - InventoryItem::new
+    //     default state
+    //     (quantity=1,
+    //     max_stack=99)
+    //   - InventoryItem::remove
+    //     amount > quantity
+    //   - Inventory::remove_item
+    //     for non-existent id
+    //     (returns 0)
+    //   - Inventory::get_item /
+    //     get_item_mut /
+    //     has_item for
+    //     non-existent id
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn test_currency_add_respects_cap_when_already_reached_round_126() {
+        // Defense: a regression that dropped
+        // the `.min(cap)` would silently
+        // overflow past the cap. Pin: cap
+        // already reached → add returns
+        // cap (not current + added). Use
+        // Gold (starts at 0 in new())
+        // to avoid the Energy=100 default
+        // complication.
+        let mut c = Currency::new();
+        c.set_cap(CurrencyType::Gold, 100);
+        let after_first = c.add(CurrencyType::Gold, 80);
+        assert_eq!(after_first, 80);
+        let after_overflow = c.add(CurrencyType::Gold, 100);
+        assert_eq!(after_overflow, 100, "add should clamp to cap, not overflow");
+        assert_eq!(c.get(CurrencyType::Gold), 100);
+    }
+
+    #[test]
+    fn test_currency_spend_preserves_balance_on_failure_round_126() {
+        // spend returns false on insufficient
+        // funds AND the balance is unchanged.
+        // The pre-round-126 test_currency_basic
+        // checked the false return but not the
+        // preserved balance.
+        let mut c = Currency::new();
+        c.add(CurrencyType::Gold, 50);
+        let result = c.spend(CurrencyType::Gold, 100);
+        assert!(!result);
+        assert_eq!(c.get(CurrencyType::Gold), 50, "balance must be preserved on failure");
+    }
+
+    #[test]
+    fn test_currency_spend_exact_match_returns_true_round_126() {
+        // Boundary: spend exactly the balance
+        // → returns true + balance = 0.
+        let mut c = Currency::new();
+        c.add(CurrencyType::Gold, 50);
+        let result = c.spend(CurrencyType::Gold, 50);
+        assert!(result);
+        assert_eq!(c.get(CurrencyType::Gold), 0);
+    }
+
+    #[test]
+    fn test_currency_can_afford_zero_amount_always_true_round_126() {
+        // can_afford(X, 0) is always true (you
+        // can always "afford" to spend 0). The
+        // implementation uses `>=`, so 0 ≥ 0
+        // is true.
+        let c = Currency::new();
+        assert!(c.can_afford(CurrencyType::Gold, 0));
+        assert!(c.can_afford(CurrencyType::Gem, 0));
+        assert!(c.can_afford(CurrencyType::Energy, 0));
+    }
+
+    #[test]
+    fn test_currency_get_cap_for_uncapped_currency_returns_max_round_126() {
+        // Gold + Gem are uncapped in `new()`
+        // (no entry in caps HashMap).
+        // get_cap returns u64::MAX for these.
+        let c = Currency::new();
+        assert_eq!(c.get_cap(CurrencyType::Gold), u64::MAX);
+        assert_eq!(c.get_cap(CurrencyType::Gem), u64::MAX);
+        // Energy has a cap (200 from new()).
+        assert_eq!(c.get_cap(CurrencyType::Energy), 200);
+        // A never-seen currency (Token)
+        // also returns u64::MAX.
+        assert_eq!(c.get_cap(CurrencyType::Token), u64::MAX);
+    }
+
+    #[test]
+    fn test_currency_new_initial_state_round_126() {
+        // Pin the constructor defaults:
+        // Gold=0, Gem=0, Energy=100
+        // (from the `amounts` HashMap
+        // init in `new()`).
+        let c = Currency::new();
+        assert_eq!(c.get(CurrencyType::Gold), 0);
+        assert_eq!(c.get(CurrencyType::Gem), 0);
+        assert_eq!(c.get(CurrencyType::Energy), 100);
+        // Caps: Gold=MAX, Gem=MAX, Energy=200.
+        assert_eq!(c.get_cap(CurrencyType::Gold), u64::MAX);
+        assert_eq!(c.get_cap(CurrencyType::Gem), u64::MAX);
+        assert_eq!(c.get_cap(CurrencyType::Energy), 200);
+    }
+
+    #[test]
+    fn test_currency_type_name_all_5_variants_round_126() {
+        // Pin all 5 variants' name() output.
+        // The pre-round-126 tests never
+        // touched CurrencyType::name().
+        assert_eq!(CurrencyType::Gold.name(), "gold");
+        assert_eq!(CurrencyType::Gem.name(), "gem");
+        assert_eq!(CurrencyType::Energy.name(), "energy");
+        assert_eq!(CurrencyType::Token.name(), "token");
+        // Custom returns "custom" (the
+        // variant id is intentionally NOT
+        // used in the name — the Currency
+        // uses Custom as a catch-all).
+        assert_eq!(CurrencyType::Custom(42).name(), "custom");
+        assert_eq!(CurrencyType::Custom(0).name(), "custom");
+        assert_eq!(CurrencyType::Custom(u32::MAX).name(), "custom");
+    }
+
+    #[test]
+    fn test_transaction_builder_chains_multiple_gain_cost_round_126() {
+        // Pin the builder pattern: Transaction
+        // supports chaining gain() + cost()
+        // in any order, accumulating into
+        // entries.
+        let tx = Transaction::new("tx_multi", "complex purchase")
+            .gain(CurrencyType::Gold, 100)
+            .cost(CurrencyType::Gold, 30)
+            .gain(CurrencyType::Token, 1)
+            .cost(CurrencyType::Energy, 10)
+            .with_timestamp(12345);
+        assert_eq!(tx.id, "tx_multi");
+        assert_eq!(tx.description, "complex purchase");
+        assert_eq!(tx.timestamp, 12345);
+        assert_eq!(tx.entries.len(), 4);
+        // Verify each entry.
+        assert_eq!(tx.entries[0].currency_type, CurrencyType::Gold);
+        assert_eq!(tx.entries[0].amount, 100);
+        assert!(tx.entries[0].is_gain);
+        assert_eq!(tx.entries[1].currency_type, CurrencyType::Gold);
+        assert_eq!(tx.entries[1].amount, 30);
+        assert!(!tx.entries[1].is_gain);
+        assert_eq!(tx.entries[2].currency_type, CurrencyType::Token);
+        assert!(tx.entries[2].is_gain);
+        assert_eq!(tx.entries[3].currency_type, CurrencyType::Energy);
+        assert!(!tx.entries[3].is_gain);
+    }
+
+    #[test]
+    fn test_transaction_total_gains_costs_filters_by_currency_round_126() {
+        // total_gains / total_costs filter by
+        // both currency_type AND is_gain
+        // direction. Mixed transactions must
+        // produce per-currency totals.
+        let tx = Transaction::new("tx_mix", "mixed")
+            .gain(CurrencyType::Gold, 100)
+            .cost(CurrencyType::Gold, 30)
+            .gain(CurrencyType::Gold, 50) // 2 gains of gold
+            .gain(CurrencyType::Gem, 5)
+            .cost(CurrencyType::Gem, 2); // 1 gain + 1 cost of gem
+        // Gold: gains=100+50=150, costs=30.
+        assert_eq!(tx.total_gains(CurrencyType::Gold), 150);
+        assert_eq!(tx.total_costs(CurrencyType::Gold), 30);
+        // Gem: gains=5, costs=2.
+        assert_eq!(tx.total_gains(CurrencyType::Gem), 5);
+        assert_eq!(tx.total_costs(CurrencyType::Gem), 2);
+        // Energy: not in entries → both 0.
+        assert_eq!(tx.total_gains(CurrencyType::Energy), 0);
+        assert_eq!(tx.total_costs(CurrencyType::Energy), 0);
+    }
+
+    #[test]
+    fn test_wallet_execute_multi_entry_atomic_round_126() {
+        // Wallet::execute is atomic: if ANY
+        // cost entry is unaffordable, the
+        // ENTIRE transaction is rejected
+        // (no partial execution).
+        let mut wallet = Wallet::new();
+        wallet.currency.add(CurrencyType::Gold, 100);
+        wallet.currency.add(CurrencyType::Gem, 0);
+        let tx = Transaction::new("tx_atomic", "atomic test")
+            .cost(CurrencyType::Gold, 50)
+            .cost(CurrencyType::Gem, 5); // unaffordable
+        assert!(!wallet.execute(tx));
+        // Atomicity: gold balance unchanged
+        // (not deducted 50 partially).
+        assert_eq!(wallet.get_balance(CurrencyType::Gold), 100);
+    }
+
+    #[test]
+    fn test_wallet_execute_respects_max_log_size_round_126() {
+        // The transaction_log is capped at
+        // max_log_size=1000 (default). When
+        // a new transaction pushes it past
+        // 1000, the OLDEST is removed via
+        // `transaction_log.remove(0)`. Pin
+        // this rollover behavior.
+        let mut wallet = Wallet::new();
+        wallet.max_log_size = 3; // shrink for test visibility
+        wallet.currency.add(CurrencyType::Gold, 1_000_000);
+        // Add 5 transactions; only the last 3
+        // should remain (the first 2 are
+        // evicted by remove(0)).
+        for i in 0..5 {
+            let tx = Transaction::new(&format!("tx_{i}"), "filler")
+                .cost(CurrencyType::Gold, 1);
+            wallet.execute(tx);
+        }
+        // Log size is capped at 3.
+        assert_eq!(wallet.transaction_log.len(), 3);
+        // The first 2 (tx_0, tx_1) are evicted.
+        // The last 3 (tx_2, tx_3, tx_4) remain.
+        assert_eq!(wallet.transaction_log[0].id, "tx_2");
+        assert_eq!(wallet.transaction_log[1].id, "tx_3");
+        assert_eq!(wallet.transaction_log[2].id, "tx_4");
+        // Total gold spent: 5 transactions
+        // × 1 = 5.
+        assert_eq!(wallet.get_balance(CurrencyType::Gold), 1_000_000 - 5);
+    }
+
+    #[test]
+    fn test_wallet_can_execute_does_not_mutate_round_126() {
+        // can_execute is the readonly preview
+        // of execute — must NOT mutate the
+        // wallet state (no balance change,
+        // no log append).
+        let mut wallet = Wallet::new();
+        wallet.currency.add(CurrencyType::Gold, 100);
+        let tx = Transaction::new("tx_preview", "preview")
+            .cost(CurrencyType::Gold, 50);
+        let log_len_before = wallet.transaction_log.len();
+        let balance_before = wallet.get_balance(CurrencyType::Gold);
+        assert!(wallet.can_execute(&tx));
+        assert_eq!(wallet.get_balance(CurrencyType::Gold), balance_before);
+        assert_eq!(wallet.transaction_log.len(), log_len_before);
+        // Now test can_execute with an
+        // unaffordable transaction.
+        let tx_bad = Transaction::new("tx_preview_bad", "preview bad")
+            .cost(CurrencyType::Gold, 9999);
+        assert!(!wallet.can_execute(&tx_bad));
+        // Still no mutation.
+        assert_eq!(wallet.get_balance(CurrencyType::Gold), balance_before);
+        assert_eq!(wallet.transaction_log.len(), log_len_before);
+    }
+
+    #[test]
+    fn test_inventory_item_new_default_state_round_126() {
+        // Pin the InventoryItem::new defaults:
+        // quantity=1, max_stack=99, empty
+        // metadata. The pre-round-126
+        // test_inventory always used
+        // .with_quantity(1) so the default
+        // wasn't pinned.
+        let item = InventoryItem::new("scroll", "Ancient Scroll");
+        assert_eq!(item.item_id, "scroll");
+        assert_eq!(item.name, "Ancient Scroll");
+        assert_eq!(item.quantity, 1, "default quantity should be 1");
+        assert_eq!(item.max_stack, 99, "default max_stack should be 99");
+        assert!(item.metadata.is_empty(), "default metadata should be empty");
+        assert!(!item.is_empty());
+        assert!(!item.is_full(), "default quantity 1 is not full at max_stack 99");
+    }
+
+    #[test]
+    fn test_inventory_item_remove_overflow_returns_quantity_round_126() {
+        // remove(amount > quantity) returns
+        // the actual quantity (not the
+        // requested amount) + sets quantity=0.
+        let mut item = InventoryItem::new("arrow", "Arrow").with_quantity(5);
+        let removed = item.remove(100);
+        assert_eq!(removed, 5, "remove should return the actual quantity, not requested amount");
+        assert_eq!(item.quantity, 0);
+        assert!(item.is_empty());
+    }
+
+    #[test]
+    fn test_inventory_get_item_remove_has_item_for_missing_id_round_126() {
+        // 3 accessors, 1 expected behavior
+        // each: non-existent item → None /
+        // None / false. Split into 2 tests
+        // because get_item_mut requires
+        // mutable binding + the other
+        // accessors don't.
+        let inv = Inventory::new(10);
+        assert!(inv.get_item("missing").is_none());
+        assert!(!inv.has_item("missing", 1));
+        assert!(!inv.has_item("missing", 0), "missing items are NOT in the inventory even at min=0");
+        // Empty inventory → count=0, is_full=false (capacity=10).
+        assert_eq!(inv.count(), 0);
+        assert!(!inv.is_full());
+        // Mutable accessor: get_item_mut on missing id → None.
+        let mut inv2 = Inventory::new(10);
+        assert!(inv2.get_item_mut("missing").is_none());
+    }
+
+    #[test]
+    fn test_inventory_remove_item_for_non_existent_id_returns_zero_round_126() {
+        // remove_item("missing", N) returns
+        // 0 (no-op, no panic) regardless of N.
+        let mut inv = Inventory::new(10);
+        assert_eq!(inv.remove_item("missing", 1), 0);
+        assert_eq!(inv.remove_item("missing", 100), 0);
+        assert_eq!(inv.count(), 0);
+    }
 }
