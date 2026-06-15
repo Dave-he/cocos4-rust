@@ -2343,4 +2343,198 @@ mod tests {
         let actual4 = round_to(1.234567, 4);
         assert!((actual4 - 1.2346).abs() < 0.0001);
     }
+
+    // --- round 127: extended round_to / distance_to_segment_squared / ---
+    // --- RuntimeRng / RuntimeBiome::id + title helper-level coverage   ---
+
+    #[test]
+    fn round_to_handles_negative_input_round_127() {
+        // (-3.14159, 2) → -3.14 (rounding is sign-preserving)
+        let neg = round_to(-3.14159, 2);
+        assert!((neg - (-3.14)).abs() < 0.001, "got {neg}");
+        // (-2.5, 0) → -3.0 (half-away-from-zero on negative side too)
+        assert_eq!(round_to(-2.5, 0), -3.0);
+        // (-0.0, 3) → -0.0 (sign preserved on negative zero)
+        let neg_zero = round_to(-0.0, 3);
+        assert_eq!(neg_zero, 0.0);
+    }
+
+    #[test]
+    fn round_to_handles_large_digits_round_127() {
+        // digits=6 should preserve 6 decimal places
+        let actual = round_to(1.2345678, 6);
+        assert!((actual - 1.234568).abs() < 1e-5, "got {actual}");
+        // digits=1 — single decimal place
+        assert!((round_to(0.49, 1) - 0.5).abs() < 1e-6);
+        // digits=0 with negative rounds away from zero
+        assert_eq!(round_to(-0.5, 0), -1.0);
+    }
+
+    #[test]
+    fn round_to_handles_zero_and_integer_inputs_round_127() {
+        // 0.0 rounds to 0.0 at any precision
+        assert_eq!(round_to(0.0, 0), 0.0);
+        assert_eq!(round_to(0.0, 5), 0.0);
+        // Integer input should pass through unchanged
+        assert_eq!(round_to(42.0, 0), 42.0);
+        assert_eq!(round_to(-7.0, 3), -7.0);
+    }
+
+    #[test]
+    fn distance_to_segment_squared_point_on_segment_round_127() {
+        // Point exactly on the segment midpoint → distance = 0
+        let start = Vec2 { x: 0.0, z: 0.0 };
+        let end = Vec2 { x: 10.0, z: 0.0 };
+        let mid = Vec2 { x: 5.0, z: 0.0 };
+        let d = distance_to_segment_squared(&mid, &start, &end);
+        assert!(d.abs() < 1e-6, "midpoint distance must be ~0, got {d}");
+
+        // Point at the start endpoint → distance = 0
+        let at_start = Vec2 { x: 0.0, z: 0.0 };
+        assert!(distance_to_segment_squared(&at_start, &start, &end).abs() < 1e-6);
+
+        // Point at the end endpoint → distance = 0
+        let at_end = Vec2 { x: 10.0, z: 0.0 };
+        assert!(distance_to_segment_squared(&at_end, &start, &end).abs() < 1e-6);
+    }
+
+    #[test]
+    fn distance_to_segment_squared_point_perpendicular_round_127() {
+        // Horizontal segment from (0,0) to (10,0); point at (5, 3) is
+        // 3 units above midpoint → squared distance = 9
+        let start = Vec2 { x: 0.0, z: 0.0 };
+        let end = Vec2 { x: 10.0, z: 0.0 };
+        let above = Vec2 { x: 5.0, z: 3.0 };
+        let d = distance_to_segment_squared(&above, &start, &end);
+        assert!((d - 9.0).abs() < 1e-4, "expected 9.0, got {d}");
+
+        // Point at (5, -4) → squared distance = 16
+        let below = Vec2 { x: 5.0, z: -4.0 };
+        let d2 = distance_to_segment_squared(&below, &start, &end);
+        assert!((d2 - 16.0).abs() < 1e-4, "expected 16.0, got {d2}");
+    }
+
+    #[test]
+    fn distance_to_segment_squared_clamped_beyond_endpoints_round_127() {
+        // Diagonal segment from (0,0) to (5,5). Clamping t to [0, 1]
+        // picks the closer endpoint as the projection, so the squared
+        // distance is the point-to-endpoint distance (NOT zero, since
+        // the point is offset from the endpoint).
+        let start = Vec2 { x: 0.0, z: 0.0 };
+        let end = Vec2 { x: 5.0, z: 5.0 };
+
+        // Point (10, 10) is collinear with the segment but BEYOND end.
+        // Unclamped t = 2.0 → clamp to 1.0 → projection (5, 5).
+        // Distance² from (10, 10) to (5, 5) = 25 + 25 = 50.
+        let beyond = Vec2 { x: 10.0, z: 10.0 };
+        let d_beyond = distance_to_segment_squared(&beyond, &start, &end);
+        assert!((d_beyond - 50.0).abs() < 1e-4,
+            "beyond-endpoint distance² expected 50, got {d_beyond}");
+
+        // Point (−5, −5) is BEFORE start → clamp t to 0 → projection (0, 0).
+        // Distance² from (−5, −5) to (0, 0) = 25 + 25 = 50.
+        let before = Vec2 { x: -5.0, z: -5.0 };
+        let d_before = distance_to_segment_squared(&before, &start, &end);
+        assert!((d_before - 50.0).abs() < 1e-4,
+            "before-start distance² expected 50, got {d_before}");
+
+        // Sanity: a point exactly at the endpoint IS the projection →
+        // distance² = 0 regardless of clamping.
+        let at_end = Vec2 { x: 5.0, z: 5.0 };
+        let d_end = distance_to_segment_squared(&at_end, &start, &end);
+        assert!(d_end.abs() < 1e-6,
+            "point at endpoint expected 0, got {d_end}");
+    }
+
+    #[test]
+    fn distance_to_segment_squared_zero_length_segment_round_127() {
+        // Zero-length segment at (2, 3): distance² = (px-2)² + (pz-3)²
+        let p = Vec2 { x: 2.0, z: 3.0 };
+        let d0 = distance_to_segment_squared(&p, &p, &p);
+        assert!(d0.abs() < 1e-6, "point on degenerate segment: {d0}");
+
+        let q = Vec2 { x: 5.0, z: 7.0 };
+        // (5-2)² + (7-3)² = 9 + 16 = 25
+        let d1 = distance_to_segment_squared(&q, &p, &p);
+        assert!((d1 - 25.0).abs() < 1e-4, "expected 25.0, got {d1}");
+    }
+
+    #[test]
+    fn runtime_rng_deterministic_for_same_seed_round_127() {
+        // Same seed → same sequence of f32 values
+        let mut a = RuntimeRng::new(123);
+        let mut b = RuntimeRng::new(123);
+        for _ in 0..32 {
+            assert_eq!(a.next_f32(), b.next_f32());
+        }
+    }
+
+    #[test]
+    fn runtime_rng_different_seeds_diverge_round_127() {
+        let mut a = RuntimeRng::new(1);
+        let mut b = RuntimeRng::new(2);
+        let mut same_count = 0;
+        for _ in 0..64 {
+            if a.next_f32() == b.next_f32() {
+                same_count += 1;
+            }
+        }
+        // xorshift output should differ for almost every step.
+        assert!(same_count < 5, "expected divergence, got {same_count} matches");
+    }
+
+    #[test]
+    fn runtime_rng_output_in_unit_interval_round_127() {
+        // next_f32 must always return a value in [0, 1)
+        let mut rng = RuntimeRng::new(0xDEADBEEF);
+        for i in 0..1024 {
+            let v = rng.next_f32();
+            assert!(v >= 0.0, "step {i}: negative value {v}");
+            assert!(v < 1.0, "step {i}: value >= 1.0: {v}");
+        }
+    }
+
+    #[test]
+    fn runtime_biome_id_returns_distinct_slugs_round_127() {
+        // All 4 biomes must have non-empty, kebab-case-ish, distinct slugs.
+        let slugs = [
+            RuntimeBiome::NeonHarbor.id(),
+            RuntimeBiome::VerdantRuins.id(),
+            RuntimeBiome::SunforgeBazaar.id(),
+            RuntimeBiome::OrbitalGarden.id(),
+        ];
+        for slug in slugs {
+            assert!(!slug.is_empty(), "id must not be empty");
+            assert!(slug.chars().all(|c| c.is_ascii_lowercase() || c == '-' || c.is_ascii_digit()),
+                "id must be kebab-case, got {slug:?}");
+        }
+        // Uniqueness — no two biomes share an id
+        let unique: std::collections::HashSet<&str> = slugs.iter().copied().collect();
+        assert_eq!(unique.len(), slugs.len(), "biome ids must be unique");
+        // Pin the exact slugs (defense vs accidental rename)
+        assert_eq!(RuntimeBiome::NeonHarbor.id(), "neon-harbor");
+        assert_eq!(RuntimeBiome::VerdantRuins.id(), "verdant-ruins");
+        assert_eq!(RuntimeBiome::SunforgeBazaar.id(), "sunforge-bazaar");
+        assert_eq!(RuntimeBiome::OrbitalGarden.id(), "orbital-garden");
+    }
+
+    #[test]
+    fn runtime_biome_title_returns_display_strings_round_127() {
+        // Titles are the human-readable English names surfaced in HUD
+        let titles = [
+            RuntimeBiome::NeonHarbor.title(),
+            RuntimeBiome::VerdantRuins.title(),
+            RuntimeBiome::SunforgeBazaar.title(),
+            RuntimeBiome::OrbitalGarden.title(),
+        ];
+        for t in titles {
+            assert!(!t.is_empty(), "title must not be empty");
+            // Each must contain a space (two-word English name)
+            assert!(t.contains(' '), "title must be two words: {t:?}");
+        }
+        assert_eq!(RuntimeBiome::NeonHarbor.title(), "Neon Harbor");
+        assert_eq!(RuntimeBiome::VerdantRuins.title(), "Verdant Ruins");
+        assert_eq!(RuntimeBiome::SunforgeBazaar.title(), "Sunforge Bazaar");
+        assert_eq!(RuntimeBiome::OrbitalGarden.title(), "Orbital Garden");
+    }
 }
