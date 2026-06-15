@@ -338,4 +338,291 @@ mod tests {
         assert_eq!(mood_branch(&hated_mood()), 2);
         assert_eq!(mood_branch(&neutral_mood()), 3);
     }
+
+    // -----------------------------------------------------------------
+    // Round 125 — helper-level
+    // tests for the 4
+    // boundary conditions
+    // (mood_branch at the
+    // exact threshold) + the
+    // 2 back-compat single-
+    // sentence accessors
+    // (`mood_4th_sentence`
+    // pool[0] for non-
+    // neutral + the
+    // 4th-sentence-for
+    // empty-pool guard) +
+    // fnv1a edge cases +
+    // build_sentences
+    // empty-base + multiple-
+    // call independence.
+    //
+    // The pre-round-125
+    // tests covered:
+    //   - base_intro
+    //     sentence count = 3
+    //   - mood_branch for
+    //     all 4 named moods
+    //   - fear-takes-
+    //     priority over
+    //     friendly+trust
+    //   - build_sentences
+    //     no-mood +
+    //     neutral-mood +
+    //     fear/friendly/
+    //     hostile happy path
+    //   - mood_4th_
+    //     sentence_pool
+    //     has ≥3 per active
+    //     branch + neutral
+    //     is empty
+    //   - mood_4th_
+    //     sentence_for is
+    //     deterministic +
+    //     variety across
+    //     ids + neutral
+    //     branch returns
+    //     None
+    //   - fnv1a stability
+    //     (same → same,
+    //     different →
+    //     different)
+    //   - mood_4th_
+    //     sentence neutral
+    //     returns None
+    //   - cross-branch
+    //     priority matches
+    //     mood_palette
+    //
+    // Round 125 closes
+    // the coverage gap
+    // for:
+    //   - mood_branch
+    //     boundary
+    //     conditions
+    //     (fear=0.5,
+    //     friendly=0.5,
+    //     trust=0.3,
+    //     friendly=-0.3 —
+    //     pin the
+    //     `>` vs `>=`
+    //     contract)
+    //   - mood_tag for
+    //     all 4 branches
+    //     + the catch-
+    //     all `_ => "neutral"`
+    //     for out-of-range
+    //     branches (5, 255)
+    //   - mood_4th_sentence
+    //     returns Some for
+    //     non-neutral
+    //     branches (the
+    //     back-compat
+    //     pool[0] accessor)
+    //   - mood_4th_sentence_for
+    //     with empty
+    //     blueprint_id
+    //     (valid input,
+    //     valid pick)
+    //   - fnv1a with empty
+    //     string + unicode
+    //     + ASCII vs
+    //     non-ASCII
+    //   - build_sentences
+    //     with empty base
+    //     vec + any mood
+    //     (returns empty
+    //     or 1-elem vec
+    //     depending on
+    //     branch)
+    //   - build_sentences
+    //     called twice in
+    //     a row is
+    //     independent
+    //     (no state leak
+    //     between calls)
+    //   - mood_4th_
+    //     sentence_for
+    //     picks a member
+    //     of the pool
+    //     (not arbitrary
+    //     text) for each
+    //     active branch
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn mood_branch_fear_boundary_uses_strict_greater_than_round_125() {
+        // Pin the `>` (not `>=`) contract: fear=0.5 does NOT fire
+        // the fear branch (only fear > 0.5 does). The pre-round-125
+        // tests only covered fear=0.8.
+        let at_threshold = NpcDisposition { friendly: 0.0, fear: 0.5, trust: 0.0 };
+        assert_eq!(mood_branch(&at_threshold), 3, "fear=0.5 should NOT fire fear branch (uses `>`)");
+        // fear=0.5001 → fires fear.
+        let just_above = NpcDisposition { friendly: 0.0, fear: 0.5001, trust: 0.0 };
+        assert_eq!(mood_branch(&just_above), 0, "fear=0.5001 should fire fear branch");
+    }
+
+    #[test]
+    fn mood_branch_friendly_boundary_uses_strict_greater_than_round_125() {
+        // Pin the `friendly > 0.5` contract: friendly=0.5 does
+        // NOT fire the friendly+trust branch (would need trust
+        // > 0.3 too, but the friendly gate fails first).
+        let at_threshold = NpcDisposition { friendly: 0.5, fear: 0.0, trust: 0.5 };
+        assert_eq!(mood_branch(&at_threshold), 3, "friendly=0.5 should NOT fire friendly+trust (uses `>`)");
+        let just_above = NpcDisposition { friendly: 0.5001, fear: 0.0, trust: 0.5 };
+        assert_eq!(mood_branch(&just_above), 1, "friendly=0.5001 should fire friendly+trust");
+    }
+
+    #[test]
+    fn mood_branch_trust_boundary_uses_strict_greater_than_round_125() {
+        // Pin the `trust > 0.3` contract: trust=0.3 does NOT
+        // fire the friendly+trust branch (the trust gate fails
+        // even when friendly > 0.5).
+        let at_threshold = NpcDisposition { friendly: 0.7, fear: 0.0, trust: 0.3 };
+        assert_eq!(mood_branch(&at_threshold), 3, "trust=0.3 should NOT fire friendly+trust (uses `>`)");
+        let just_above = NpcDisposition { friendly: 0.7, fear: 0.0, trust: 0.3001 };
+        assert_eq!(mood_branch(&just_above), 1, "trust=0.3001 should fire friendly+trust");
+    }
+
+    #[test]
+    fn mood_branch_hostile_boundary_uses_strict_less_than_round_125() {
+        // Pin the `friendly < -0.3` contract: friendly=-0.3 does
+        // NOT fire the hostile branch.
+        let at_threshold = NpcDisposition { friendly: -0.3, fear: 0.0, trust: 0.0 };
+        assert_eq!(mood_branch(&at_threshold), 3, "friendly=-0.3 should NOT fire hostile (uses `<`)");
+        let just_below = NpcDisposition { friendly: -0.3001, fear: 0.0, trust: 0.0 };
+        assert_eq!(mood_branch(&just_below), 2, "friendly=-0.3001 should fire hostile");
+    }
+
+    #[test]
+    fn mood_tag_returns_canonical_label_for_all_4_branches_round_125() {
+        // The pre-round-125 tests only checked mood_tag
+        // transitively (inside the mood_branch tests). Round 125
+        // pins mood_tag directly for all 4 branches.
+        assert_eq!(mood_tag(0), "fear");
+        assert_eq!(mood_tag(1), "friendly");
+        assert_eq!(mood_tag(2), "hostile");
+        assert_eq!(mood_tag(3), "neutral");
+    }
+
+    #[test]
+    fn mood_tag_out_of_range_branch_falls_back_to_neutral_round_125() {
+        // The match arm `_ => "neutral"` is the catch-all for any
+        // u8 value outside 0..=3 (e.g. 4, 5, 100, 255). Pin the
+        // contract.
+        assert_eq!(mood_tag(4), "neutral");
+        assert_eq!(mood_tag(5), "neutral");
+        assert_eq!(mood_tag(100), "neutral");
+        assert_eq!(mood_tag(255), "neutral");
+    }
+
+    #[test]
+    fn mood_4th_sentence_back_compat_returns_pool_first_round_125() {
+        // The pre-round-125 test only checked the neutral
+        // branch (returns None). Round 125 pins the
+        // non-neutral branches: pool[0] is returned.
+        assert_eq!(mood_4th_sentence(0).unwrap(), mood_4th_sentence_pool(0)[0]);
+        assert_eq!(mood_4th_sentence(1).unwrap(), mood_4th_sentence_pool(1)[0]);
+        assert_eq!(mood_4th_sentence(2).unwrap(), mood_4th_sentence_pool(2)[0]);
+        // Neutral → None.
+        assert!(mood_4th_sentence(3).is_none());
+    }
+
+    #[test]
+    fn mood_4th_sentence_for_empty_blueprint_id_is_valid_round_125() {
+        // Defense: a regression that early-returned on empty
+        // string would silently drop the 4th sentence for
+        // blueprints with no id. Empty string is a valid
+        // blueprint_id (FNV-1a returns 2166136261 = the offset
+        // basis; pool[2166136261 % 4] is a valid pick).
+        let s = mood_4th_sentence_for(0, "");
+        assert!(s.is_some());
+        // Pick must be a member of the fear pool.
+        let pool = mood_4th_sentence_pool(0);
+        assert!(pool.contains(&s.unwrap()));
+    }
+
+    #[test]
+    fn fnv1a_empty_string_returns_offset_basis_round_125() {
+        // FNV-1a of "" is the 32-bit offset basis (2166136261).
+        // This is the canonical "empty string" check from the
+        // FNV reference test vectors.
+        assert_eq!(fnv1a(""), 2166136261);
+    }
+
+    #[test]
+    fn fnv1a_unicode_stable_and_distinct_round_125() {
+        // Unicode input must hash deterministically and
+        // produce different hashes for different strings.
+        let a = fnv1a("维度_α");
+        let b = fnv1a("维度_α");
+        assert_eq!(a, b, "same unicode input should produce same hash");
+        // Different unicode strings → different hashes (with
+        // overwhelming probability).
+        assert_ne!(fnv1a("α"), fnv1a("β"));
+        assert_ne!(fnv1a("中"), fnv1a("文"));
+    }
+
+    #[test]
+    fn build_sentences_empty_base_with_fear_mood_returns_one_4th_sentence_round_125() {
+        // An empty base vec with a fear mood still appends
+        // a 4th sentence (the mood branch's pool[hash % len]).
+        // Total length = 1.
+        let out = build_sentences(vec![], Some(&fear_mood()), "dim_x");
+        assert_eq!(out.len(), 1);
+        let pool = mood_4th_sentence_pool(0);
+        assert!(pool.contains(&out[0].as_str()));
+    }
+
+    #[test]
+    fn build_sentences_empty_base_with_neutral_mood_returns_empty_round_125() {
+        // Empty base + neutral mood → no 4th sentence
+        // appended → empty result.
+        let out = build_sentences(vec![], Some(&neutral_mood()), "dim_x");
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn build_sentences_two_sequential_calls_are_independent_round_125() {
+        // Defense: a regression that cached the 4th-sentence
+        // pick across calls would cause the second
+        // build_sentences to ignore its base + mood inputs.
+        // Pin the independence: 2 calls with different inputs
+        // produce different outputs.
+        let base1 = vec!["a1".to_string(), "b1".to_string()];
+        let base2 = vec!["a2".to_string(), "b2".to_string()];
+        let out1 = build_sentences(base1.clone(), Some(&fear_mood()), "dim_x");
+        let out2 = build_sentences(base2.clone(), Some(&loved_mood()), "dim_y");
+        // Each call returns its OWN base + 4th (no cross-
+        // contamination).
+        assert_eq!(out1[0], "a1");
+        assert_eq!(out1[1], "b1");
+        assert_eq!(out2[0], "a2");
+        assert_eq!(out2[1], "b2");
+        // Lengths are both 3 (base 2 + 1 fourth).
+        assert_eq!(out1.len(), 3);
+        assert_eq!(out2.len(), 3);
+    }
+
+    #[test]
+    fn mood_4th_sentence_for_active_branch_picks_pool_member_round_125() {
+        // Pin the contract: every active branch's
+        // mood_4th_sentence_for(...) returns a member of
+        // that branch's pool (not arbitrary text). The
+        // pre-round-125 tests only checked the variety +
+        // neutrality paths.
+        for branch in 0u8..=2 {
+            let pool = mood_4th_sentence_pool(branch);
+            // Try 10 different blueprint ids — each must
+            // return a pool member.
+            for i in 0..10 {
+                let id = format!("dim_test_{branch}_{i}");
+                let s = mood_4th_sentence_for(branch, &id).unwrap();
+                assert!(
+                    pool.contains(&s),
+                    "branch {branch} id {id} returned {s} which is not in the pool",
+                );
+            }
+        }
+    }
 }
