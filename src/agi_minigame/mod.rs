@@ -9,6 +9,7 @@ pub mod atoms;
 pub mod dsl;
 pub mod vault;
 pub mod npc;
+pub mod runtime_scene;
 pub mod scene_gen;
 pub mod narration;
 
@@ -28,6 +29,15 @@ pub use world_state::{UnifiedWorldState, SharedWorld, WorldEvent, PlayerStats};
 pub use atoms::register_all_atoms;
 pub use vault::{DimensionOutcome, DimensionVault, VaultEntry, VaultStats};
 pub use npc::{NpcDisposition, NpcId, NpcMemoryEntry, NpcMemoryKind, NpcMind, NpcMood, NpcRegistry};
+pub use runtime_scene::{
+    generate_runtime_scene, RuntimeAtmospherePlan, RuntimeBiome, RuntimeCameraTuning,
+    RuntimeBossPlan, RuntimeBuildHint, RuntimeCommandPlan, RuntimeCombatPlan, RuntimeControlPlan, RuntimeDecoration, RuntimeDirectorEvent,
+    RuntimeEnemyArchetype, RuntimeLane, RuntimeLaneSignal, RuntimeLightingTuning, RuntimeObjectivePlan, RuntimePalette,
+    RuntimeRulePlan, RuntimeScoringPlan, RuntimeSetPiece, RuntimeTowerArchetype, RuntimeWavePlan,
+    RuntimeSceneBlueprint, RuntimeSceneRequest, RuntimeSpawnTuning, RuntimeSupportNode,
+    RuntimeTacticalField,
+    Vec2 as RuntimeVec2,
+};
 pub use scene_gen::{
     build_generation_config_with_mood, mood_promoted_atoms,
     mood_palette, palette_accent, palette_background,

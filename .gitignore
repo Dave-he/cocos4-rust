@@ -1,5 +1,12 @@
 /target
 
+# Phase 1 — Bazel (Bazelisk-managed toolchain).
+# user.bazelrc holds the BuildBuddy API key from $BUILDBUDDY_API_KEY
+# and is NEVER committed. bazel-* symlinks are Bazelisk's local
+# installation cache.
+/bazel-*
+/user.bazelrc
+
 # Stray bare-repository artifacts accidentally exploded into the worktree.
 # These are git internals (see config: `bare = true`) and must never be committed.
 /HEAD
