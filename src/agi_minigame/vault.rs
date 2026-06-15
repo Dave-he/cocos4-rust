@@ -475,3 +475,222 @@ mod round20_tests {
         assert!(!DimensionOutcome::Abandoned.is_success());
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 129 — vault.rs helper-level unit tests.
+// Mirrors the round-110b / 122 / 123 / 124 / 125 / 126 / 127 / 128
+// pattern: pin behavior of the small public helpers
+// (`DEFAULT_CAPACITY`, `len`, `is_empty`, `capacity`,
+// `recent` edge cases, `recent_themes` ordering, `suggest_next`
+// determinism, `VaultEntry::new` field copy, `VaultStats::completion_rate`)
+// so refactors can't silently change the contract.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round129_tests {
+    use super::*;
+    use crate::agi_minigame::ai_engine::DimensionTheme;
+
+    fn make_blueprint(id: &str, theme: &str) -> DimensionBlueprint {
+        DimensionBlueprint {
+            id: id.to_string(),
+            name: format!("{id} name"),
+            description: format!("{id} desc"),
+            atom_ids: vec!["match3".to_string()],
+            atom_weights: std::collections::HashMap::new(),
+            difficulty: 0.5,
+            rules: Vec::<crate::agi_minigame::ai_engine::GeneratedRule>::new(),
+            rewards: Vec::new(),
+            theme: DimensionTheme {
+                name: theme.to_string(),
+                visual_style: format!("{theme}-style"),
+                music_mood: "neutral".to_string(),
+                color_palette: vec!["#000".to_string()],
+            },
+            time_limit_secs: Some(60),
+            objectives: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn default_capacity_is_64() {
+        // The DEFAULT_CAPACITY constant is part of the
+        // public API — pinned here so a refactor that
+        // changes it to (say) 128 doesn't silently
+        // double the memory footprint of every App.
+        assert_eq!(DimensionVault::DEFAULT_CAPACITY, 64);
+        let v = DimensionVault::new();
+        assert_eq!(v.capacity(), 64);
+    }
+
+    #[test]
+    fn with_capacity_honors_non_default_value() {
+        // A non-default capacity (e.g. 5 for short
+        // test runs) should be reflected by `capacity()`
+        // and should NOT trigger ring drop until 6
+        // entries are inserted.
+        let mut v = DimensionVault::with_capacity(5);
+        assert_eq!(v.capacity(), 5);
+        for i in 0..5 {
+            v.record(&make_blueprint(&format!("d{i}"), "t"), DimensionOutcome::Completed, i as u64);
+        }
+        assert_eq!(v.len(), 5);
+        // The 6th insert triggers the ring drop.
+        v.record(&make_blueprint("d5", "t"), DimensionOutcome::Completed, 5);
+        assert_eq!(v.len(), 5);
+        assert_eq!(v.recent(10).first().unwrap().blueprint_id, "d1");
+    }
+
+    #[test]
+    fn recent_zero_returns_empty() {
+        // A `limit == 0` request should yield an empty
+        // vec — the doc says so but the implementation
+        // must be pinned.
+        let mut v = DimensionVault::new();
+        v.record(&make_blueprint("a", "t"), DimensionOutcome::Completed, 1);
+        assert!(v.recent(0).is_empty());
+    }
+
+    #[test]
+    fn recent_with_limit_greater_than_len_returns_everything_in_chronological_order() {
+        // `recent(100)` on a 3-entry vault should give
+        // back exactly 3 entries in insertion order
+        // (oldest first, newest last).
+        let mut v = DimensionVault::with_capacity(8);
+        v.record(&make_blueprint("a", "t"), DimensionOutcome::Completed, 1);
+        v.record(&make_blueprint("b", "t"), DimensionOutcome::Completed, 2);
+        v.record(&make_blueprint("c", "t"), DimensionOutcome::Completed, 3);
+        let recent = v.recent(100);
+        assert_eq!(recent.len(), 3);
+        assert_eq!(recent[0].blueprint_id, "a");
+        assert_eq!(recent[1].blueprint_id, "b");
+        assert_eq!(recent[2].blueprint_id, "c");
+    }
+
+    #[test]
+    fn recent_themes_zero_returns_empty() {
+        // Mirrors `recent(0)`.
+        let mut v = DimensionVault::new();
+        v.record(&make_blueprint("a", "ice"), DimensionOutcome::Completed, 1);
+        assert!(v.recent_themes(0).is_empty());
+    }
+
+    #[test]
+    fn recent_themes_returns_most_recent_first_and_caps_at_n() {
+        // 5 entries (themes: ice, fire, ice, wind, fire).
+        // recent_themes(3) should yield [fire, wind, ice]
+        // (the 3 most recent themes, in newest-first order).
+        let mut v = DimensionVault::with_capacity(8);
+        v.record(&make_blueprint("a", "ice"),  DimensionOutcome::Completed, 1);
+        v.record(&make_blueprint("b", "fire"), DimensionOutcome::Completed, 2);
+        v.record(&make_blueprint("c", "ice"),  DimensionOutcome::Completed, 3);
+        v.record(&make_blueprint("d", "wind"), DimensionOutcome::Completed, 4);
+        v.record(&make_blueprint("e", "fire"), DimensionOutcome::Completed, 5);
+        let themes = v.recent_themes(3);
+        assert_eq!(themes, vec!["fire".to_string(), "wind".to_string(), "ice".to_string()]);
+    }
+
+    #[test]
+    fn suggest_next_seed_changes_deterministic_pick_from_fresh_pool() {
+        // When a fresh pool has 2+ candidates, the
+        // suggested pick should be a deterministic
+        // function of `seed` (`fresh[seed as usize % fresh.len()]`)
+        // so a regression that swaps to RNG or
+        // hash-based picking fails this test.
+        let mut v = DimensionVault::with_capacity(4);
+        let a = make_blueprint("a", "t");
+        v.record(&a, DimensionOutcome::Completed, 1);
+        let pool = vec![
+            make_blueprint("a", "t"), // seen — not fresh
+            make_blueprint("b", "t"), // fresh
+            make_blueprint("c", "t"), // fresh
+        ];
+        // With seed=0, pick = fresh[0 % 2] = 1 (b).
+        // With seed=1, pick = fresh[1 % 2] = 2 (c).
+        assert_eq!(v.suggest_next(&pool, 1, 0), Some(1));
+        assert_eq!(v.suggest_next(&pool, 1, 1), Some(2));
+        // With seed=2, pick = fresh[2 % 2] = 0 (b).
+        assert_eq!(v.suggest_next(&pool, 1, 2), Some(1));
+    }
+
+    #[test]
+    fn last_outcome_for_after_clear_returns_none() {
+        // `clear()` wipes the entries; `last_outcome_for`
+        // for any id (including a previously-inserted
+        // one) should now return None.
+        let mut v = DimensionVault::new();
+        let a = make_blueprint("a", "t");
+        v.record(&a, DimensionOutcome::Failed, 1);
+        assert_eq!(v.last_outcome_for("a"), Some(DimensionOutcome::Failed));
+        v.clear();
+        assert_eq!(v.last_outcome_for("a"), None);
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn vault_entry_new_copies_blueprint_fields() {
+        // `VaultEntry::new` must copy all 6 source
+        // fields (id, name, theme.name, theme.visual_style,
+        // difficulty) — a regression that forgot any
+        // would show up here.
+        let bp = DimensionBlueprint {
+            id: "bp1".to_string(),
+            name: "BP Name".to_string(),
+            description: "ignored".to_string(),
+            atom_ids: vec!["a1".to_string()],
+            atom_weights: std::collections::HashMap::new(),
+            difficulty: 0.73,
+            rules: Vec::new(),
+            rewards: Vec::new(),
+            theme: DimensionTheme {
+                name: "lava".to_string(),
+                visual_style: "lava-style".to_string(),
+                music_mood: "epic".to_string(),
+                color_palette: vec!["#f00".to_string()],
+            },
+            time_limit_secs: Some(120),
+            objectives: Vec::new(),
+        };
+        let entry = VaultEntry::new(&bp, DimensionOutcome::Completed, 999);
+        assert_eq!(entry.blueprint_id, "bp1");
+        assert_eq!(entry.blueprint_name, "BP Name");
+        assert_eq!(entry.theme_name, "lava");
+        assert_eq!(entry.visual_style, "lava-style");
+        assert!((entry.difficulty - 0.73).abs() < 1e-6);
+        assert_eq!(entry.outcome, DimensionOutcome::Completed);
+        assert_eq!(entry.timestamp_ms, 999);
+    }
+
+    #[test]
+    fn completion_rate_is_one_for_all_completed_vault() {
+        // Pinned the upper boundary (was only the 0.0
+        // boundary tested before).
+        let mut v = DimensionVault::with_capacity(4);
+        for i in 0..3 {
+            v.record(
+                &make_blueprint(&format!("d{i}"), "t"),
+                DimensionOutcome::Completed,
+                i as u64,
+            );
+        }
+        let s = v.stats();
+        assert_eq!(s.completion_rate(), 1.0);
+        assert_eq!(s.completed, 3);
+        assert_eq!(s.failed, 0);
+        assert_eq!(s.abandoned, 0);
+    }
+
+    #[test]
+    fn stats_distinct_themes_counts_unique_names() {
+        // 4 entries with 3 distinct themes → distinct_themes == 3.
+        let mut v = DimensionVault::with_capacity(8);
+        v.record(&make_blueprint("a", "ice"),  DimensionOutcome::Completed, 1);
+        v.record(&make_blueprint("b", "fire"), DimensionOutcome::Failed, 2);
+        v.record(&make_blueprint("c", "ice"),  DimensionOutcome::Completed, 3);
+        v.record(&make_blueprint("d", "wind"), DimensionOutcome::Completed, 4);
+        let s = v.stats();
+        assert_eq!(s.total_visits, 4);
+        assert_eq!(s.distinct_themes, 3);
+        assert_eq!(s.distinct_blueprints, 4);
+    }
+}

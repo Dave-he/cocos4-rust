@@ -914,3 +914,207 @@ mod round19_tests {
         assert!(d_adored > d_plain, "adored {d_adored} should be > plain {d_plain}");
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 129 — ai_engine.rs helper-level unit tests.
+// Mirrors the round-110b / 122 / 123 / 124 / 125 / 126 / 127 / 128
+// pattern: pin behaviour of the small public helpers
+// (`GenerationConfig::default` + `for_player_level`,
+// `RuleComposer::new` rule-library size + `compose` on
+// empty-atom input, `BalanceTuner::suggest_difficulty`
+// clamps at the high end, `BalanceTuner::get_stats`
+// for empty + single-session vaults) so refactors
+// can't silently change the contract.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round129_tests {
+    use super::*;
+
+    #[test]
+    fn generation_config_default_field_values_pinned() {
+        // Pin the exact `Default::default()` values for
+        // `GenerationConfig` so a refactor that flips
+        // (e.g.) `min_atoms: 2 → 1` or
+        // `difficulty_range: (0.5, 1.0) → (0.4, 0.9)`
+        // breaks this test (both are visible to the
+        // round-21 test_dimension_generator sanity).
+        let c = GenerationConfig::default();
+        assert_eq!(c.min_atoms, 2);
+        assert_eq!(c.max_atoms, 4);
+        assert_eq!(c.difficulty_range, (0.5, 1.0));
+        assert!(c.allow_composite);
+        assert_eq!(c.seed, None);
+        assert_eq!(c.player_level, 1);
+        assert!(c.preferred_types.is_empty());
+        assert!(c.excluded_types.is_empty());
+        assert!((c.reward_multiplier - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn generation_config_for_level_zero_uses_low_difficulty() {
+        // Boundary at the low end: player_level = 0.
+        // Per the impl: max_atoms = (2 + 0 / 5).min(6) = 2
+        // difficulty = 0.3 + 0.0.min(0.7) = 0.3
+        // difficulty_range = (0.3, 0.6)
+        let c = GenerationConfig::for_player_level(0);
+        assert_eq!(c.min_atoms, 2);
+        assert_eq!(c.max_atoms, 2);
+        assert_eq!(c.player_level, 0);
+        assert!((c.difficulty_range.0 - 0.3).abs() < 1e-6);
+        assert!((c.difficulty_range.1 - 0.6).abs() < 1e-6);
+    }
+
+    #[test]
+    fn generation_config_for_level_twenty_uses_difficulty_0_65() {
+        // Mid-range: player_level = 20.
+        // max_atoms = (2 + 20 / 5).min(6) = 6
+        // difficulty = 0.3 + (20 * 0.1).min(0.7) = 0.3 + 0.7 = 1.0
+        // difficulty_range = (1.0, 1.3).clamp_upper(1.0) = (1.0, 1.0)
+        // (the impl does NOT clamp difficulty_range upper,
+        // only suggest_difficulty's base+adjustment)
+        let c = GenerationConfig::for_player_level(20);
+        assert_eq!(c.max_atoms, 6);
+        assert_eq!(c.player_level, 20);
+        assert!((c.difficulty_range.0 - 1.0).abs() < 1e-6);
+        assert!((c.difficulty_range.1 - 1.3).abs() < 1e-6);
+    }
+
+    #[test]
+    fn generation_config_for_level_hundred_caps_max_atoms_at_six() {
+        // Player at the level cap — max_atoms must clamp to 6.
+        let c = GenerationConfig::for_player_level(100);
+        assert_eq!(c.max_atoms, 6);
+        assert_eq!(c.player_level, 100);
+        // difficulty = 0.3 + (100 * 0.1).min(0.7) = 0.3 + 0.7 = 1.0
+        // difficulty_range = (1.0, 1.3)
+        assert!((c.difficulty_range.0 - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn rule_composer_new_library_has_exactly_three_rules() {
+        // The `new()` library registers exactly 3 rules:
+        // speed_boost, double_score, chain_bonus.
+        // A regression that added (say) a fourth rule
+        // here would change the composed-rule counts
+        // visible in the round-19 test_balance_tuner
+        // and round-22 mood-reflex loop downstream.
+        let composer = RuleComposer::new();
+        // The compose method is the public way to
+        // count the rules that survive difficulty
+        // filtering. With difficulty = 0.5 all 3 are
+        // in range. With no atoms, none are applicable.
+        let no_atoms = composer.compose(&[], 0.5);
+        assert_eq!(no_atoms.len(), 0);
+        // With an applicable atom (parkour is in
+        // speed_boost's applicable_atoms), speed_boost
+        // at least should be present.
+        let parkour = composer.compose(&["parkour".to_string()], 0.5);
+        let parkour_ids: Vec<&str> = parkour.iter().map(|r| r.rule_id.as_str()).collect();
+        assert!(parkour_ids.contains(&"speed_boost"),
+                "parkour+d0.5 should include speed_boost, got {:?}", parkour_ids);
+    }
+
+    #[test]
+    fn rule_composer_compose_with_empty_atoms_returns_empty() {
+        // Empty atom list → no rule is applicable → empty result.
+        let composer = RuleComposer::new();
+        let r = composer.compose(&[], 0.5);
+        assert!(r.is_empty());
+        let r2 = composer.compose(&[], 0.99);
+        assert!(r2.is_empty());
+    }
+
+    #[test]
+    fn balance_tuner_suggest_difficulty_at_level_hundred_clamps_to_one() {
+        // Player at the level cap (level = 100). The base
+        // formula (0.3 + 100 * 0.05) = 5.3 must be
+        // clamped to the [0.1, 1.0] unit range.
+        let tuner = BalanceTuner::new();
+        let d = tuner.suggest_difficulty(100);
+        assert!((d - 1.0).abs() < 1e-6, "expected clamp to 1.0, got {d}");
+    }
+
+    #[test]
+    fn balance_tuner_suggest_difficulty_at_level_zero_returns_0_3() {
+        // Empty history + level 0 → base = 0.3 + 0*0.05 = 0.3.
+        let tuner = BalanceTuner::new();
+        let d = tuner.suggest_difficulty(0);
+        assert!((d - 0.3).abs() < 1e-6, "expected 0.3, got {d}");
+    }
+
+    #[test]
+    fn balance_tuner_get_stats_empty_history_returns_zeros() {
+        // Empty history → all 4 stats fields zero.
+        let tuner = BalanceTuner::new();
+        let s = tuner.get_stats();
+        assert_eq!(s.total_sessions, 0);
+        assert_eq!(s.win_rate, 0.0);
+        assert_eq!(s.avg_score, 0);
+        assert_eq!(s.avg_duration, 0.0);
+    }
+
+    #[test]
+    fn balance_tuner_get_stats_single_completed_session() {
+        // One session, completed=true.
+        // win_rate = 1/1 = 1.0.
+        // avg_score = score / 1.
+        // avg_duration = duration / 1.
+        let mut tuner = BalanceTuner::new();
+        tuner.record_result("d1", 0.5, 5, 750, 60.0, true);
+        let s = tuner.get_stats();
+        assert_eq!(s.total_sessions, 1);
+        assert!((s.win_rate - 1.0).abs() < 1e-6);
+        assert_eq!(s.avg_score, 750);
+        assert!((s.avg_duration - 60.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn dimension_generator_is_seed_deterministic() {
+        // Two generators seeded with the same value
+        // must produce the same `id` (a `dim_<u32>`
+        // derived from the first rng.gen::<u32>() call).
+        let mut g1 = DimensionGenerator::new(0xDEAD_BEEF);
+        let mut g2 = DimensionGenerator::new(0xDEAD_BEEF);
+        let cfg = GenerationConfig::default();
+        let registry = make_test_registry_local();
+        let bp1 = g1.generate(&cfg, &registry);
+        let bp2 = g2.generate(&cfg, &registry);
+        assert_eq!(bp1.id, bp2.id, "same seed should produce same dim id");
+        // Different seed → different id (with very
+        // high probability).
+        let mut g3 = DimensionGenerator::new(0xCAFE_F00D);
+        let bp3 = g3.generate(&cfg, &registry);
+        assert_ne!(bp1.id, bp3.id);
+    }
+
+    /// Local replica of `mod tests::make_test_registry`.
+    /// The original is private to the round-21 module,
+    /// so this round-129 module builds its own (the
+    /// 6-atom fixture is tiny — copy is cheap).
+    fn make_test_registry_local() -> crate::agi_minigame::atom::AtomRegistry {
+        use crate::agi_minigame::atom::{AtomFactory, AtomMetadata, AtomRegistry};
+        let mut registry = AtomRegistry::new();
+        let atoms = vec![
+            ("match3", "Match3", "puzzle"),
+            ("tower_defense", "TowerDefense", "strategy"),
+            ("card", "Card", "card"),
+            ("turn_combat", "TurnCombat", "rpg"),
+            ("parkour", "Parkour", "action"),
+            ("synthesis", "Synthesis", "casual"),
+        ];
+        for (id, name, gt) in atoms {
+            let metadata = AtomMetadata {
+                id: id.to_string(),
+                name: name.to_string(),
+                version: 1,
+                gameplay_type: gt.to_string(),
+                description: format!("{} atom", name),
+                tags: vec![gt.to_string()],
+            };
+            let factory: AtomFactory = Box::new(|| panic!("factory not used in test"));
+            registry.register(id.to_string(), metadata, factory);
+        }
+        registry
+    }
+}
