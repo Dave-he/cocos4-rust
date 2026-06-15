@@ -765,4 +765,358 @@ mod tests {
         assert_eq!(inv.remove_item("missing", 100), 0);
         assert_eq!(inv.count(), 0);
     }
+
+    // -----------------------------------------------------------------
+    // Round 131 — additional
+    // `Inventory` + `InventoryItem`
+    // edge-case helper tests.
+    // Mirrors the round-110b /
+    // 122 / 123 / 124 / 125 / 126
+    // / 127 / 128 / 129 / 130
+    // pattern: pin the small
+    // public helpers' contracts
+    // (initial state / capacity
+    // boundaries / stack
+    // clamping / missing-key
+    // accessors) so a refactor
+    // can't silently change the
+    // inventory behaviour that
+    // the App + UI rely on.
+    //
+    // Closes the gaps:
+    //   - Inventory::is_full
+    //     boundary (>= not >)
+    //   - Inventory::add_item
+    //     new-id-at-capacity
+    //     returns 0
+    //   - Inventory::add_item
+    //     merges with existing
+    //     (delegates to
+    //     InventoryItem::add)
+    //   - InventoryItem::add
+    //     saturates + clamps to
+    //     max_stack
+    //   - InventoryItem::add
+    //     return value = actual
+    //     added (clamped)
+    //   - InventoryItem::is_empty
+    //     at quantity 0
+    //   - InventoryItem::is_full
+    //     at quantity == max
+    //   - Inventory::items()
+    //     iterates all entries
+    //   - Inventory::has_item
+    //     with min_quantity=0
+    //     returns true if
+    //     present, false if
+    //     missing
+    //   - Inventory::remove_item
+    //     exact-amount drops
+    //     the entry
+    //   - Inventory::remove_item
+    //     over-remove returns
+    //     only what was present
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn inventory_new_initial_state_round_131() {
+        // A fresh Inventory
+        // is empty + has
+        // the capacity
+        // the caller
+        // asked for.
+        let inv = Inventory::new(8);
+        assert_eq!(inv.count(), 0);
+        assert!(!inv.is_full());
+        assert_eq!(inv.items().count(), 0);
+    }
+
+    #[test]
+    fn inventory_is_full_at_exactly_capacity_round_131() {
+        // is_full is `>=`,
+        // not `>`: full
+        // at exactly
+        // capacity, not
+        // capacity+1.
+        let mut inv = Inventory::new(2);
+        inv.add_item(InventoryItem::new("a", "A"));
+        assert!(!inv.is_full());
+        inv.add_item(InventoryItem::new("b", "B"));
+        assert!(inv.is_full());
+    }
+
+    #[test]
+    fn inventory_add_item_with_quantity_zero_still_inserts_round_131() {
+        // add_item with
+        // quantity=0 still
+        // inserts the
+        // item — capacity
+        // check runs
+        // first. Returns
+        // 0 since no
+        // quantity was
+        // actually added.
+        let mut inv = Inventory::new(5);
+        let added = inv.add_item(InventoryItem::new("a", "A").with_quantity(0));
+        assert_eq!(added, 0);
+        assert_eq!(inv.count(), 1);
+        // The item IS
+        // present, just
+        // at quantity 0.
+        assert!(inv.has_item("a", 0));
+        // But has_item
+        // with min=1
+        // returns false
+        // since quantity
+        // is 0, not 1.
+        assert!(!inv.has_item("a", 1));
+    }
+
+    #[test]
+    fn inventory_add_item_returns_zero_when_full_with_new_id_round_131() {
+        // At capacity +
+        // a new (non-
+        // existing) id →
+        // the add is
+        // dropped + 0
+        // returned. (An
+        // existing-id
+        // add still
+        // succeeds via
+        // the merge
+        // path, since it
+        // doesn't grow
+        // the map.)
+        let mut inv = Inventory::new(1);
+        inv.add_item(InventoryItem::new("a", "A"));
+        assert!(inv.is_full());
+        // New id at
+        // capacity →
+        // dropped.
+        let added = inv.add_item(InventoryItem::new("b", "B"));
+        assert_eq!(added, 0);
+        assert_eq!(inv.count(), 1);
+    }
+
+    #[test]
+    fn inventory_add_item_merges_with_existing_at_full_capacity_round_131() {
+        // The merge
+        // path doesn't
+        // grow the map,
+        // so a re-add
+        // of an existing
+        // id succeeds
+        // even when
+        // capacity is
+        // full.
+        let mut inv = Inventory::new(1);
+        inv.add_item(InventoryItem::new("a", "A").with_quantity(3));
+        assert!(inv.is_full());
+        // Existing id →
+        // merge, not
+        // grow.
+        let added = inv.add_item(InventoryItem::new("a", "A").with_quantity(5));
+        assert_eq!(added, 5);
+        assert_eq!(inv.get_item("a").unwrap().quantity, 8);
+    }
+
+    #[test]
+    fn inventory_count_tracks_distinct_item_ids_round_131() {
+        // count() is the
+        // number of
+        // distinct ids,
+        // not the
+        // quantity sum.
+        let mut inv = Inventory::new(5);
+        inv.add_item(InventoryItem::new("a", "A").with_quantity(10));
+        inv.add_item(InventoryItem::new("a", "A").with_quantity(5));
+        inv.add_item(InventoryItem::new("b", "B").with_quantity(3));
+        // 2 distinct ids.
+        assert_eq!(inv.count(), 2);
+        // a's quantity
+        // is the sum.
+        assert_eq!(inv.get_item("a").unwrap().quantity, 15);
+    }
+
+    #[test]
+    fn inventory_items_iterates_all_entries_round_131() {
+        // items() returns
+        // a ref-iterator
+        // over all
+        // stored items.
+        let mut inv = Inventory::new(5);
+        inv.add_item(InventoryItem::new("a", "A"));
+        inv.add_item(InventoryItem::new("b", "B"));
+        inv.add_item(InventoryItem::new("c", "C"));
+        let mut ids: Vec<&str> = inv.items().map(|i| i.item_id.as_str()).collect();
+        ids.sort();
+        assert_eq!(ids, vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn inventory_has_item_min_quantity_zero_is_presence_check_round_131() {
+        // has_item(id, 0)
+        // returns true
+        // for any
+        // present id
+        // (even at
+        // quantity 0)
+        // and false for
+        // any missing
+        // id.
+        let mut inv = Inventory::new(5);
+        inv.add_item(InventoryItem::new("a", "A").with_quantity(0));
+        assert!(inv.has_item("a", 0));
+        assert!(!inv.has_item("missing", 0));
+        // min_quantity
+        // 1 against a
+        // quantity-0
+        // entry →
+        // false.
+        assert!(!inv.has_item("a", 1));
+    }
+
+    #[test]
+    fn inventory_has_item_min_quantity_exact_match_round_131() {
+        // The check is
+        // `>=` not
+        // `>`: a min
+        // quantity
+        // exactly equal
+        // to the
+        // current
+        // quantity
+        // returns true.
+        let mut inv = Inventory::new(5);
+        inv.add_item(InventoryItem::new("a", "A").with_quantity(7));
+        assert!(inv.has_item("a", 7));
+        assert!(inv.has_item("a", 6));
+        assert!(!inv.has_item("a", 8));
+    }
+
+    #[test]
+    fn inventory_remove_item_exact_amount_drops_entry_round_131() {
+        // Removing the
+        // exact
+        // quantity of
+        // an item
+        // removes the
+        // entire entry
+        // from the map
+        // (so count
+        // drops by 1).
+        let mut inv = Inventory::new(5);
+        inv.add_item(InventoryItem::new("a", "A").with_quantity(5));
+        assert_eq!(inv.count(), 1);
+        let removed = inv.remove_item("a", 5);
+        assert_eq!(removed, 5);
+        assert_eq!(inv.count(), 0);
+        assert!(inv.get_item("a").is_none());
+    }
+
+    #[test]
+    fn inventory_remove_item_over_remove_clamps_to_current_quantity_round_131() {
+        // remove_item
+        // saturates:
+        // removing
+        // more than the
+        // current
+        // quantity
+        // removes
+        // whatever is
+        // there and
+        // returns only
+        // that amount.
+        let mut inv = Inventory::new(5);
+        inv.add_item(InventoryItem::new("a", "A").with_quantity(3));
+        let removed = inv.remove_item("a", 100);
+        assert_eq!(removed, 3);
+        assert!(inv.get_item("a").is_none());
+    }
+
+    #[test]
+    fn inventory_item_add_clamps_to_max_stack_round_131() {
+        // add() saturates
+        // and clamps to
+        // max_stack.
+        // Returned value
+        // is the actual
+        // amount added
+        // (not the
+        // requested).
+        let mut item = InventoryItem::new("a", "A")
+            .with_quantity(90)
+            .with_max_stack(99);
+        // Request +20,
+        // can only add
+        // 9 (90 + 9 =
+        // 99).
+        let added = item.add(20);
+        assert_eq!(added, 9);
+        assert_eq!(item.quantity, 99);
+        assert!(item.is_full());
+    }
+
+    #[test]
+    fn inventory_item_add_saturates_on_u32_overflow_round_131() {
+        // saturating_add
+        // prevents
+        // u32 overflow
+        // for absurd
+        // requests.
+        let mut item = InventoryItem::new("a", "A")
+            .with_quantity(50)
+            .with_max_stack(u32::MAX);
+        // Request u32::MAX
+        // → saturates to
+        // u32::MAX,
+        // result = MAX
+        // (added saturates
+        // to MAX-50).
+        let added = item.add(u32::MAX);
+        assert_eq!(item.quantity, u32::MAX);
+        assert_eq!(added, u32::MAX - 50);
+    }
+
+    #[test]
+    fn inventory_item_is_empty_at_quantity_zero_round_131() {
+        // is_empty is
+        // `== 0` —
+        // quantity 0
+        // counts as
+        // empty
+        // regardless of
+        // max_stack. (Note
+        // InventoryItem::
+        // new() defaults
+        // quantity to 1,
+        // not 0, so we
+        // must use the
+        // with_quantity
+        // builder.)
+        let mut item = InventoryItem::new("a", "A").with_quantity(0);
+        assert!(item.is_empty());
+        item.quantity = 1;
+        assert!(!item.is_empty());
+        item.quantity = 0;
+        assert!(item.is_empty());
+    }
+
+    #[test]
+    fn inventory_item_is_full_at_exactly_max_stack_round_131() {
+        // is_full is
+        // `>= max_stack`:
+        // at exactly
+        // max_stack
+        // counts as
+        // full.
+        let mut item = InventoryItem::new("a", "A").with_max_stack(5);
+        assert!(!item.is_full());
+        item.quantity = 4;
+        assert!(!item.is_full());
+        item.quantity = 5;
+        assert!(item.is_full());
+        item.quantity = 6;
+        assert!(item.is_full());
+    }
 }

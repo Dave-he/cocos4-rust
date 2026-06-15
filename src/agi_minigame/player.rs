@@ -593,4 +593,235 @@ mod tests {
         assert_eq!(account.last_login,     0);
         assert!(account.is_online);
     }
+
+    // -----------------------------------------------------------------
+    // Round 131 — additional
+    // `PlayerProgression` edge-
+    // case helper tests. Mirrors
+    // the round-110b / 122 / 123
+    // pattern: pin the small
+    // public helpers' contracts
+    // (initial state / idempotency
+    // / boundary / missing-key
+    // accessors) so a refactor
+    // can't silently change the
+    // progression-state behaviour
+    // that the App + UI rely on.
+    //
+    // Closes the gaps:
+    //   - record_dimension_visit
+    //     idempotency
+    //   - record_dimension_complete
+    //     highest_score update
+    //     logic
+    //   - get_atom_mastery
+    //     missing-key
+    //   - is_atom_unlocked
+    //     missing-key
+    //   - record_atom_play level
+    //     0 / 1 / 5 boundaries
+    //   - record_atom_play
+    //     play_count increments
+    //     on repeat plays
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn player_progression_new_initial_state_round_131() {
+        // A freshly-constructed
+        // `PlayerProgression`
+        // has all 6 scalar
+        // counters at 0 +
+        // empty atom_mastery +
+        // empty unlocked
+        // vectors.
+        let p = PlayerProgression::new();
+        assert_eq!(p.dimensions_visited,   0);
+        assert_eq!(p.dimensions_completed, 0);
+        assert_eq!(p.total_score,          0);
+        assert_eq!(p.highest_score,        0);
+        assert_eq!(p.total_playtime_secs,  0);
+        assert!(p.atom_mastery.is_empty());
+        assert!(p.unlocked_atoms.is_empty());
+        assert!(p.unlocked_dimensions.is_empty());
+    }
+
+    #[test]
+    fn player_progression_default_matches_new_round_131() {
+        // `Default::default()`
+        // should produce the
+        // same empty state as
+        // `new()`.
+        let p: PlayerProgression = Default::default();
+        assert_eq!(p.dimensions_visited, 0);
+        assert!(p.atom_mastery.is_empty());
+    }
+
+    #[test]
+    fn record_dimension_visit_increments_count_and_unlocks_id_round_131() {
+        // First visit of a
+        // new dimension id
+        // increments
+        // `dimensions_visited`
+        // + adds the id to
+        // `unlocked_dimensions`.
+        let mut p = PlayerProgression::new();
+        p.record_dimension_visit("dim_1");
+        assert_eq!(p.dimensions_visited, 1);
+        assert!(p.unlocked_dimensions.contains(&"dim_1".to_string()));
+    }
+
+    #[test]
+    fn record_dimension_visit_is_idempotent_for_same_id_round_131() {
+        // Re-visiting the
+        // same dimension id
+        // increments
+        // `dimensions_visited`
+        // (the counter
+        // captures visit
+        // frequency) but
+        // does NOT
+        // duplicate the id
+        // in
+        // `unlocked_dimensions`
+        // (the unlock list
+        // is a set, not a
+        // log).
+        let mut p = PlayerProgression::new();
+        p.record_dimension_visit("dim_1");
+        p.record_dimension_visit("dim_1");
+        p.record_dimension_visit("dim_1");
+        assert_eq!(p.dimensions_visited, 3);
+        assert_eq!(p.unlocked_dimensions.len(), 1);
+        assert!(p.unlocked_dimensions.contains(&"dim_1".to_string()));
+    }
+
+    #[test]
+    fn record_dimension_complete_updates_highest_score_only_when_greater_round_131() {
+        // `record_dimension_complete`
+        // adds to `total_score`
+        // always, but updates
+        // `highest_score` only
+        // when the new score
+        // is strictly greater
+        // (not >=).
+        let mut p = PlayerProgression::new();
+        p.record_dimension_complete(500);
+        assert_eq!(p.highest_score, 500);
+        // Lower score → highest
+        // unchanged.
+        p.record_dimension_complete(200);
+        assert_eq!(p.highest_score, 500);
+        // Equal score → highest
+        // unchanged (strictly
+        // greater).
+        p.record_dimension_complete(500);
+        assert_eq!(p.highest_score, 500);
+        // Higher score →
+        // highest updates.
+        p.record_dimension_complete(1000);
+        assert_eq!(p.highest_score, 1000);
+    }
+
+    #[test]
+    fn record_dimension_complete_accumulates_total_score_round_131() {
+        // `total_score` sums
+        // every score
+        // regardless of
+        // highest.
+        let mut p = PlayerProgression::new();
+        p.record_dimension_complete(100);
+        p.record_dimension_complete(200);
+        p.record_dimension_complete(50);
+        assert_eq!(p.total_score, 350);
+        assert_eq!(p.highest_score, 200);
+        assert_eq!(p.dimensions_completed, 3);
+    }
+
+    #[test]
+    fn get_atom_mastery_returns_none_for_unknown_atom_round_131() {
+        // Defensive: getting
+        // mastery for an
+        // atom that was
+        // never played
+        // returns None (not
+        // a panic).
+        let p = PlayerProgression::new();
+        assert!(p.get_atom_mastery("nonexistent").is_none());
+        assert!(p.get_atom_mastery("").is_none());
+    }
+
+    #[test]
+    fn is_atom_unlocked_returns_false_for_unknown_atom_round_131() {
+        // Same defensive
+        // contract for
+        // `is_atom_unlocked`.
+        let p = PlayerProgression::new();
+        assert!(!p.is_atom_unlocked("nonexistent"));
+        assert!(!p.is_atom_unlocked(""));
+    }
+
+    #[test]
+    fn record_atom_play_mastery_level_is_experience_divided_by_1000_round_131() {
+        // The mastery level
+        // formula is
+        // `experience /
+        // 1000`. Pins the
+        // contract for
+        // level 0 (< 1000
+        // exp) + level 1
+        // (1000-1999) +
+        // level 5 (5000-5999).
+        let mut p = PlayerProgression::new();
+        p.record_atom_play("match3", 500);
+        // 500 < 1000 → level 0.
+        assert_eq!(p.get_atom_mastery("match3").unwrap().level, 0);
+        // Add 600 more → total
+        // 1100, level 1.
+        p.record_atom_play("match3", 600);
+        assert_eq!(p.get_atom_mastery("match3").unwrap().level, 1);
+        // Add 4900 more →
+        // total 6000, level 6.
+        p.record_atom_play("match3", 4900);
+        assert_eq!(p.get_atom_mastery("match3").unwrap().level, 6);
+    }
+
+    #[test]
+    fn record_atom_play_increments_play_count_on_repeat_round_131() {
+        // Each call to
+        // `record_atom_play`
+        // for the same atom
+        // increments
+        // `play_count` by 1.
+        let mut p = PlayerProgression::new();
+        p.record_atom_play("match3", 100);
+        p.record_atom_play("match3", 200);
+        p.record_atom_play("match3", 300);
+        let mastery = p.get_atom_mastery("match3").unwrap();
+        assert_eq!(mastery.play_count, 3);
+        // The total experience
+        // is the sum of all
+        // 3 scores.
+        assert_eq!(mastery.experience, 600);
+        // The best score is
+        // the max of the 3
+        // scores.
+        assert_eq!(mastery.best_score, 300);
+    }
+
+    #[test]
+    fn record_atom_play_does_not_duplicate_unlocked_atom_round_131() {
+        // The
+        // `unlocked_atoms`
+        // list is a set,
+        // not a log — the
+        // same atom played
+        // 3 times still
+        // appears once.
+        let mut p = PlayerProgression::new();
+        p.record_atom_play("match3", 100);
+        p.record_atom_play("match3", 200);
+        p.record_atom_play("match3", 300);
+        assert_eq!(p.unlocked_atoms.len(), 1);
+        assert!(p.unlocked_atoms.contains(&"match3".to_string()));
+    }
 }
