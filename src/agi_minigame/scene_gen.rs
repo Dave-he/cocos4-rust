@@ -829,4 +829,176 @@ mod tests {
                        "sentinel — see SceneGen.test.ts for the canonical pins");
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Round 128 — mood_palette boundary conditions + palette helper pins +
+    // visual_style_table coverage. Round 110b / 122 / 123 / 124 / 125 /
+    // 126 / 127 helper-test pattern extended to scene_gen.rs.
+    //
+    // The pre-round-128 mood_palette tests covered the basic branch
+    // behavior (fear / friendly+trust / hostile / neutral) but not
+    // the boundary conditions at exactly 0.5 / 0.3 / -0.3 (where the
+    // `>` vs `>=` and `<` vs `<=` contract matters). A regression
+    // flipping `>` to `>=` would silently shift which palette fires
+    // at the threshold — closing that gap with boundary tests.
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn mood_palette_boundary_fear_at_exactly_half_does_not_fire_round_128() {
+        // Strict `>` at 0.5: fear=0.5 falls through to other branches.
+        // All other branches fail too → NEUTRAL.
+        let at_half = NpcDisposition { friendly: 0.0, fear: 0.5, trust: 0.0 };
+        assert_eq!(mood_palette(&at_half), NEUTRAL_PALETTE);
+        // Just above half → FEAR_PALETTE (proves the comparison is `>`)
+        let just_above = NpcDisposition { friendly: 0.0, fear: 0.5001, trust: 0.0 };
+        assert_eq!(mood_palette(&just_above), FEAR_PALETTE);
+    }
+
+    #[test]
+    fn mood_palette_boundary_friendly_at_exactly_half_does_not_fire_round_128() {
+        // friendly=0.5 with high trust doesn't fire the friendly
+        // branch (need `> 0.5`). Falls through to NEUTRAL.
+        let at_half = NpcDisposition { friendly: 0.5, fear: 0.0, trust: 0.5 };
+        assert_eq!(mood_palette(&at_half), NEUTRAL_PALETTE);
+        // Just above half → FRIENDLY_PALETTE
+        let just_above = NpcDisposition { friendly: 0.5001, fear: 0.0, trust: 0.5 };
+        assert_eq!(mood_palette(&just_above), FRIENDLY_PALETTE);
+    }
+
+    #[test]
+    fn mood_palette_boundary_trust_at_exactly_three_tenths_does_not_fire_round_128() {
+        // The friendly branch needs BOTH `friendly > 0.5` AND
+        // `trust > 0.3`. trust=0.3 falls through even with high
+        // friendly. The `> 0.3` contract matters.
+        let trust_at_third = NpcDisposition { friendly: 0.9, fear: 0.0, trust: 0.3 };
+        assert_eq!(mood_palette(&trust_at_third), NEUTRAL_PALETTE);
+        // Just above third → FRIENDLY_PALETTE
+        let trust_above = NpcDisposition { friendly: 0.9, fear: 0.0, trust: 0.3001 };
+        assert_eq!(mood_palette(&trust_above), FRIENDLY_PALETTE);
+    }
+
+    #[test]
+    fn mood_palette_boundary_hostile_at_exactly_negative_three_tenths_does_not_fire_round_128() {
+        // The hostile branch needs `friendly < -0.3`. friendly=-0.3
+        // falls through to NEUTRAL. The `< -0.3` contract matters.
+        let at_neg_third = NpcDisposition { friendly: -0.3, fear: 0.0, trust: 0.0 };
+        assert_eq!(mood_palette(&at_neg_third), NEUTRAL_PALETTE);
+        // Just below → HOSTILE_PALETTE
+        let just_below = NpcDisposition { friendly: -0.3001, fear: 0.0, trust: 0.0 };
+        assert_eq!(mood_palette(&just_below), HOSTILE_PALETTE);
+    }
+
+    #[test]
+    fn mood_palette_default_npc_disposition_returns_neutral_round_128() {
+        // NpcDisposition::default() has all-zero fields. No branch
+        // fires → NEUTRAL. The pre-round-128 tests cover this
+        // indirectly via `neutral()` but not via `default()`.
+        let def = NpcDisposition::default();
+        assert_eq!(mood_palette(&def), NEUTRAL_PALETTE);
+    }
+
+    #[test]
+    fn palette_background_and_accent_pin_specific_hex_values_round_128() {
+        // Pin the exact hex values so a refactor that picks a
+        // different shade is caught at test time. The pre-round-128
+        // test only verified `background == p[0]` / `accent == p[2]`,
+        // not the specific colors.
+        let fear = NpcDisposition { friendly: 0.0, fear: 0.9, trust: 0.0 };
+        assert_eq!(palette_background(mood_palette(&fear)), "#0A1A2F");
+        assert_eq!(palette_accent(mood_palette(&fear)), "#CAE9FF");
+
+        let loved = NpcDisposition { friendly: 0.9, fear: 0.0, trust: 0.5 };
+        assert_eq!(palette_background(mood_palette(&loved)), "#FF6B35");
+        assert_eq!(palette_accent(mood_palette(&loved)), "#FFFAEB");
+
+        let hated = NpcDisposition { friendly: -0.5, fear: 0.0, trust: 0.0 };
+        assert_eq!(palette_background(mood_palette(&hated)), "#6A040F");
+        assert_eq!(palette_accent(mood_palette(&hated)), "#FFBA08");
+
+        // NEUTRAL's accent is the famous "hot pink" used by the
+        // round-22 reflexive-loop HUD signature.
+        let default = NpcDisposition::default();
+        assert_eq!(palette_background(mood_palette(&default)), "#3A0CA3");
+        assert_eq!(palette_accent(mood_palette(&default)), "#F72585");
+    }
+
+    #[test]
+    fn all_palettes_have_3_distinct_hex_colors_round_128() {
+        // Defense: a palette is meant to be 3 distinct color stops
+        // (background / mid / accent). A duplicate would break
+        // 3-stop gradients downstream.
+        for p in ALL_PALETTES {
+            assert_ne!(p[0], p[1], "palette[0]==palette[1]: {:?}", p);
+            assert_ne!(p[1], p[2], "palette[1]==palette[2]: {:?}", p);
+            assert_ne!(p[0], p[2], "palette[0]==palette[2]: {:?}", p);
+            for color in p {
+                assert!(color.starts_with('#'), "color must start with '#': {color}");
+                assert_eq!(color.len(), 7, "color must be 7 chars (#RRGGBB): {color}");
+            }
+        }
+    }
+
+    #[test]
+    fn default_wfc_weights_pin_exact_8_tuple_round_128() {
+        // The pre-round-128 tests verify the WFC index semantics
+        // (e.g. floor=6, wall=3) but not the exact 8-tuple ordering.
+        // Pin the full array so any swap is caught.
+        assert_eq!(
+            default_wfc_weights(),
+            [6, 3, 1, 1, 0, 0, 1, 1],
+            "WFC tile weights order is [FLOOR, WALL, DOOR, CHEST, SPAWN, GOAL, TRAP, SHRINE]"
+        );
+    }
+
+    #[test]
+    fn visual_style_table_maps_to_distinct_biomes_per_style_round_128() {
+        // Every VisualStyle must map to a distinct BiomeId. The
+        // pre-round-128 tests cover individual biome mappings
+        // (Cyberpunk→Cyberpunk, Underwater→Ice, Desert→Desert) but
+        // don't verify the 6→6 mapping is bijective.
+        let styles = [
+            VisualStyle::Cyberpunk,
+            VisualStyle::Fantasy,
+            VisualStyle::Space,
+            VisualStyle::Underwater,
+            VisualStyle::Desert,
+            VisualStyle::Dungeon,
+        ];
+        let mut biomes: Vec<BiomeId> = styles.iter().map(|s| {
+            let (_, biome, _, _, _) = visual_style_table(*s);
+            biome
+        }).collect();
+        biomes.sort_by_key(|b| *b as u8);
+        biomes.dedup();
+        assert_eq!(biomes.len(), styles.len(),
+            "each VisualStyle must map to a distinct BiomeId; got {:?}", biomes);
+    }
+
+    #[test]
+    fn visual_style_table_returns_non_empty_archetypes_per_style_round_128() {
+        // Each style must have at least 1 NPC archetype hint. A
+        // regression that returns `&[]` would leave dimensions with
+        // 0 NPCs (the round-22 baseline is ≥1).
+        let styles = [
+            VisualStyle::Cyberpunk,
+            VisualStyle::Fantasy,
+            VisualStyle::Space,
+            VisualStyle::Underwater,
+            VisualStyle::Desert,
+            VisualStyle::Dungeon,
+        ];
+        for s in styles {
+            let (_, _, _, _, archetypes) = visual_style_table(s);
+            assert!(!archetypes.is_empty(),
+                "style {:?} returned empty archetype list", s);
+        }
+        // Cyberpunk has exactly 1 archetype (Robot). Fantasy / Space /
+        // Underwater / Desert / Dungeon each have 2. Pin the count.
+        assert_eq!(visual_style_table(VisualStyle::Cyberpunk).4.len(), 1);
+        assert_eq!(visual_style_table(VisualStyle::Fantasy).4.len(), 2);
+        assert_eq!(visual_style_table(VisualStyle::Space).4.len(), 2);
+        assert_eq!(visual_style_table(VisualStyle::Underwater).4.len(), 2);
+        assert_eq!(visual_style_table(VisualStyle::Desert).4.len(), 2);
+        assert_eq!(visual_style_table(VisualStyle::Dungeon).4.len(), 2);
+    }
 }
