@@ -392,4 +392,614 @@ mod tests {
         let r = parse("On(Collide) -> Apply(Spawn, \"\", 1)").unwrap();
         assert_eq!(r.actions[0].args, vec![Arg::Str("".to_string()), Arg::Number(1.0)]);
     }
+
+    // --- Round 133 — helper-level
+    // tests for the Parser
+    // struct's private
+    // helpers. The
+    // public `parse()`
+    // function is
+    // already heavily
+    // tested above; this
+    // block exercises the
+    // lower-level
+    // primitives
+    // (`expect` /
+    // `read_ident` /
+    // `read_string` /
+    // `read_arg` /
+    // `parse_event` /
+    // `parse_action` /
+    // `parse_actions`)
+    // so a future refactor
+    // that breaks a
+    // helper is caught
+    // at the unit level
+    // (rather than only
+    // failing an
+    // end-to-end parse).
+    // Mirrors the
+    // round-110b / 122
+    // / 123 / 124 / 125
+    // / 126 / 127 / 128
+    // / 129 / 130 / 131
+    // / 132 helper-test
+    // pattern.
+    // -------------------------------------------------------------------
+
+    /// Round 133 —
+    /// `parse_event`
+    /// returns the
+    /// expected
+    /// `Event` shape
+    /// for a known
+    /// event kind
+    /// (no arg).
+    #[test]
+    fn parse_event_no_arg_round_133() {
+        let mut p = Parser::new("On(Collide)");
+        let e = p.parse_event().unwrap();
+        assert_eq!(e.kind, EventKind::Collide);
+        assert_eq!(e.arg, None);
+        // The parser
+        // consumed the
+        // whole
+        // expression.
+        p.skip_ws();
+        assert!(p.is_eof());
+    }
+
+    /// Round 133 —
+    /// `parse_event`
+    /// returns the
+    /// expected
+    /// `Event` shape
+    /// for a known
+    /// event kind
+    /// with a
+    /// numeric arg.
+    #[test]
+    fn parse_event_with_number_arg_round_133() {
+        let mut p = Parser::new("On(Timer, 7)");
+        let e = p.parse_event().unwrap();
+        assert_eq!(e.kind, EventKind::Timer);
+        assert_eq!(e.arg, Some(Arg::Number(7.0)));
+    }
+
+    /// Round 133 —
+    /// `parse_event`
+    /// surfaces
+    /// "unknown
+    /// event kind"
+    /// for an
+    /// unknown
+    /// event (e.g.
+    /// `On(Foo)`).
+    #[test]
+    fn parse_event_unknown_kind_is_error_round_133() {
+        let mut p = Parser::new("On(Foo)");
+        let err = p.parse_event().unwrap_err();
+        assert!(err.contains("unknown event kind"), "got: {}", err);
+        assert!(err.contains("Foo"), "got: {}", err);
+    }
+
+    /// Round 133 —
+    /// `parse_event`
+    /// rejects a
+    /// non-`On`
+    /// head (e.g.
+    /// `When(...)`).
+    #[test]
+    fn parse_event_non_on_head_is_error_round_133() {
+        let mut p = Parser::new("When(Collide)");
+        let err = p.parse_event().unwrap_err();
+        assert!(err.contains("expected event to start with 'On('"), "got: {}", err);
+    }
+
+    /// Round 133 —
+    /// `parse_event`
+    /// surfaces a
+    /// missing
+    /// closing `)`.
+    #[test]
+    fn parse_event_unterminated_paren_is_error_round_133() {
+        let mut p = Parser::new("On(Collide");
+        let err = p.parse_event().unwrap_err();
+        // The error
+        // should
+        // mention the
+        // expected `)`
+        // char + the
+        // EOF.
+        assert!(err.contains(')'), "got: {}", err);
+    }
+
+    /// Round 133 —
+    /// `parse_actions`
+    /// returns a
+    /// single
+    /// action for a
+    /// no-comma
+    /// input.
+    #[test]
+    fn parse_actions_single_action_round_133() {
+        let mut p = Parser::new("Apply(Damage, 10)");
+        let acts = p.parse_actions().unwrap();
+        assert_eq!(acts.len(), 1);
+        assert_eq!(acts[0].kind, ActionKind::Damage);
+        assert_eq!(acts[0].args, vec![Arg::Number(10.0)]);
+    }
+
+    /// Round 133 —
+    /// `parse_actions`
+    /// returns
+    /// multiple
+    /// actions for a
+    /// comma-
+    /// separated
+    /// input.
+    #[test]
+    fn parse_actions_multi_action_comma_separated_round_133() {
+        let mut p = Parser::new("Apply(Damage, 5), Apply(Heal, 3)");
+        let acts = p.parse_actions().unwrap();
+        assert_eq!(acts.len(), 2);
+        assert_eq!(acts[0].kind, ActionKind::Damage);
+        assert_eq!(acts[1].kind, ActionKind::Heal);
+    }
+
+    /// Round 133 —
+    /// `parse_action`
+    /// accepts the
+    /// `Apply(...)`
+    /// wrapper form
+    /// with
+    /// multiple
+    /// args.
+    #[test]
+    fn parse_action_apply_wrapper_multi_arg_round_133() {
+        let mut p = Parser::new("Apply(Spawn, \"Fireball\", 5)");
+        let a = p.parse_action().unwrap();
+        assert_eq!(a.kind, ActionKind::Spawn);
+        assert_eq!(
+            a.args,
+            vec![Arg::Str("Fireball".to_string()), Arg::Number(5.0)]
+        );
+    }
+
+    /// Round 133 —
+    /// `parse_action`
+    /// accepts the
+    /// bare
+    /// `<Kind>(<args>)`
+    /// form.
+    #[test]
+    fn parse_action_bare_form_multi_arg_round_133() {
+        let mut p = Parser::new("Spawn(\"X\", 3)");
+        let a = p.parse_action().unwrap();
+        assert_eq!(a.kind, ActionKind::Spawn);
+        assert_eq!(a.args, vec![Arg::Str("X".to_string()), Arg::Number(3.0)]);
+    }
+
+    /// Round 133 —
+    /// `parse_action`
+    /// accepts the
+    /// bare form
+    /// with NO
+    /// args (`()`).
+    #[test]
+    fn parse_action_bare_form_zero_args_round_133() {
+        let mut p = Parser::new("Heal()");
+        let a = p.parse_action().unwrap();
+        assert_eq!(a.kind, ActionKind::Heal);
+        assert!(a.args.is_empty());
+    }
+
+    /// Round 133 —
+    /// `parse_action`
+    /// surfaces
+    /// "unknown
+    /// action kind"
+    /// for an
+    /// unknown
+    /// action.
+    #[test]
+    fn parse_action_unknown_kind_is_error_round_133() {
+        let mut p = Parser::new("Explode(1)");
+        let err = p.parse_action().unwrap_err();
+        assert!(err.contains("unknown action kind"), "got: {}", err);
+        assert!(err.contains("Explode"), "got: {}", err);
+    }
+
+    /// Round 133 —
+    /// `parse_rule`
+    /// returns a
+    /// `Rule` with
+    /// the event +
+    /// actions
+    /// joined by
+    /// `->`.
+    #[test]
+    fn parse_rule_event_to_action_round_133() {
+        let mut p = Parser::new("On(Collide) -> Apply(Damage, 10)");
+        let r = p.parse_rule().unwrap();
+        assert_eq!(r.event.kind, EventKind::Collide);
+        assert_eq!(r.actions.len(), 1);
+        assert_eq!(r.actions[0].kind, ActionKind::Damage);
+        assert_eq!(r.actions[0].args, vec![Arg::Number(10.0)]);
+    }
+
+    /// Round 133 —
+    /// `parse`
+    /// strips
+    /// trailing
+    /// semicolons
+    /// (a single
+    /// trailing `;`
+    /// is allowed
+    /// by the
+    /// public
+    /// contract).
+    #[test]
+    fn parse_strips_trailing_semicolon_round_133() {
+        let r = parse("On(Collide) -> Apply(Damage, 10);").unwrap();
+        assert_eq!(r.event.kind, EventKind::Collide);
+        assert_eq!(r.actions[0].kind, ActionKind::Damage);
+    }
+
+    /// Round 133 —
+    /// `parse`
+    /// trims
+    /// leading /
+    /// trailing
+    /// whitespace
+    /// before
+    /// parsing.
+    #[test]
+    fn parse_trims_whitespace_round_133() {
+        let r = parse("   \t  On(Collide) -> Damage(1)  \n").unwrap();
+        assert_eq!(r.event.kind, EventKind::Collide);
+        assert_eq!(r.actions[0].kind, ActionKind::Damage);
+    }
+
+    /// Round 133 —
+    /// `parse`
+    /// rejects
+    /// trailing
+    /// garbage
+    /// after a
+    /// valid rule
+    /// (e.g. a
+    /// second
+    /// `->`).
+    #[test]
+    fn parse_rejects_trailing_garbage_round_133() {
+        let err = parse("On(Collide) -> Damage(1) -> Heal(2)").unwrap_err();
+        assert!(err.contains("unexpected trailing input"), "got: {}", err);
+    }
+
+    /// Round 133 —
+    /// `parse`
+    /// rejects
+    /// missing
+    /// `->`
+    /// between
+    /// event and
+    /// actions.
+    #[test]
+    fn parse_rejects_missing_arrow_round_133() {
+        let err = parse("On(Collide) Apply(Damage, 1)").unwrap_err();
+        // The error
+        // should
+        // mention the
+        // expected
+        // `-` char.
+        // The actual
+        // error format
+        // is `expected
+        // '-' at column
+        // N but found
+        // ...` so we
+        // assert on the
+        // word
+        // "expected"
+        // + the literal
+        // `-` (not `->`).
+        assert!(err.contains("expected"), "got: {}", err);
+        assert!(err.contains("'-'"), "got: {}", err);
+    }
+
+    /// Round 133 —
+    /// `Parser::new`
+    /// initializes
+    /// `pos = 0`
+    /// (fresh
+    /// cursor at
+    /// start of
+    /// input).
+    #[test]
+    fn parser_new_initializes_pos_at_zero_round_133() {
+        let p = Parser::new("On(Collide)");
+        assert_eq!(p.pos, 0);
+        assert!(!p.is_eof());
+    }
+
+    /// Round 133 —
+    /// `is_eof`
+    /// returns
+    /// `true` only
+    /// when `pos`
+    /// is at or
+    /// past the
+    /// end of the
+    /// input.
+    #[test]
+    fn parser_is_eof_round_133() {
+        let mut p = Parser::new("");
+        assert!(p.is_eof());
+        p = Parser::new("On");
+        assert!(!p.is_eof());
+        p.pos = 2;
+        assert!(p.is_eof());
+    }
+
+    /// Round 133 —
+    /// `peek`
+    /// returns the
+    /// next char
+    /// without
+    /// consuming
+    /// it.
+    #[test]
+    fn parser_peek_does_not_consume_round_133() {
+        let p = Parser::new("On(Collide)");
+        assert_eq!(p.peek(), Some('O'));
+        // The `pos`
+        // is still 0.
+        assert_eq!(p.pos, 0);
+    }
+
+    /// Round 133 —
+    /// `peek`
+    /// returns
+    /// `None` at
+    /// EOF.
+    #[test]
+    fn parser_peek_at_eof_returns_none_round_133() {
+        let p = Parser::new("");
+        assert_eq!(p.peek(), None);
+    }
+
+    /// Round 133 —
+    /// `skip_ws`
+    /// advances the
+    /// cursor past
+    /// any leading
+    /// whitespace.
+    #[test]
+    fn parser_skip_ws_round_133() {
+        let mut p = Parser::new("   \tOn");
+        p.skip_ws();
+        // The cursor
+        // is now
+        // pointing at
+        // 'O'.
+        assert_eq!(p.peek(), Some('O'));
+    }
+
+    /// Round 133 —
+    /// `read_ident`
+    /// returns the
+    /// next
+    /// identifier
+    /// (alphanumeric
+    /// + `_`).
+    #[test]
+    fn parser_read_ident_round_133() {
+        let mut p = Parser::new("Collide, 10");
+        let id = p.read_ident().unwrap();
+        assert_eq!(id, "Collide");
+        // The cursor
+        // is now
+        // pointing at
+        // the `,`.
+        assert_eq!(p.peek(), Some(','));
+    }
+
+    /// Round 133 —
+    /// `read_ident`
+    /// returns an
+    /// error when
+    /// the next
+    /// char is not
+    /// alphanumeric.
+    #[test]
+    fn parser_read_ident_non_alpha_is_error_round_133() {
+        let mut p = Parser::new("(Collide)");
+        let err = p.read_ident().unwrap_err();
+        assert!(err.contains("expected identifier"), "got: {}", err);
+    }
+
+    /// Round 133 —
+    /// `read_string`
+    /// extracts the
+    /// string
+    /// between
+    /// matching
+    /// `"..."`
+    /// quotes.
+    #[test]
+    fn parser_read_string_round_133() {
+        let mut p = Parser::new("\"Fireball\", 3");
+        let s = p.read_string().unwrap();
+        assert_eq!(s, "Fireball");
+        // The cursor
+        // is now
+        // pointing at
+        // the `,`.
+        assert_eq!(p.peek(), Some(','));
+    }
+
+    /// Round 133 —
+    /// `read_string`
+    /// returns an
+    /// error when
+    /// the input
+    /// doesn't
+    /// start with
+    /// `"`.
+    #[test]
+    fn parser_read_string_missing_quote_is_error_round_133() {
+        let mut p = Parser::new("Fireball");
+        let err = p.read_string().unwrap_err();
+        assert!(err.contains("expected string"), "got: {}", err);
+    }
+
+    /// Round 133 —
+    /// `read_string`
+    /// returns an
+    /// error when
+    /// the string
+    /// is
+    /// unterminated
+    /// (no closing
+    /// `"`).
+    #[test]
+    fn parser_read_string_unterminated_is_error_round_133() {
+        let mut p = Parser::new("\"Fireball");
+        let err = p.read_string().unwrap_err();
+        assert!(err.contains("unterminated string"), "got: {}", err);
+    }
+
+    /// Round 133 —
+    /// `read_arg`
+    /// returns an
+    /// `Arg::Number`
+    /// for a bare
+    /// number.
+    #[test]
+    fn parser_read_arg_number_round_133() {
+        let mut p = Parser::new("42");
+        let arg = p.read_arg().unwrap();
+        assert_eq!(arg, Arg::Number(42.0));
+    }
+
+    /// Round 133 —
+    /// `read_arg`
+    /// returns an
+    /// `Arg::Str`
+    /// for a
+    /// quoted
+    /// string.
+    #[test]
+    fn parser_read_arg_string_round_133() {
+        let mut p = Parser::new("\"hi\"");
+        let arg = p.read_arg().unwrap();
+        assert_eq!(arg, Arg::Str("hi".to_string()));
+    }
+
+    /// Round 133 —
+    /// `read_arg`
+    /// returns an
+    /// error for a
+    /// non-numeric
+    /// non-string
+    /// input.
+    #[test]
+    fn parser_read_arg_non_numeric_is_error_round_133() {
+        let mut p = Parser::new("Collide");
+        let err = p.read_arg().unwrap_err();
+        // The error
+        // should
+        // mention
+        // either
+        // "number" or
+        // "string".
+        assert!(
+            err.contains("number") || err.contains("string"),
+            "got: {}",
+            err
+        );
+    }
+
+    /// Round 133 —
+    /// `expect`
+    /// advances
+    /// the cursor
+    /// when the
+    /// next char
+    /// matches.
+    #[test]
+    fn parser_expect_matches_round_133() {
+        let mut p = Parser::new("->");
+        p.expect('-').unwrap();
+        // The cursor
+        // is now at
+        // '>'.
+        assert_eq!(p.peek(), Some('>'));
+    }
+
+    /// Round 133 —
+    /// `expect`
+    /// returns an
+    /// error when
+    /// the next
+    /// char
+    /// doesn't
+    /// match.
+    #[test]
+    fn parser_expect_mismatch_is_error_round_133() {
+        let mut p = Parser::new("On(Collide)");
+        let err = p.expect('X').unwrap_err();
+        assert!(err.contains("expected"), "got: {}", err);
+        assert!(err.contains("'X'"), "got: {}", err);
+    }
+
+    /// Round 133 —
+    /// `parse`
+    /// accepts a
+    /// `Timer`
+    /// event with
+    /// a `0` arg
+    /// (boundary
+    /// case at the
+    /// 0
+    /// threshold).
+    #[test]
+    fn parse_timer_with_zero_arg_round_133() {
+        let r = parse("On(Timer, 0) -> Apply(Damage, 1)").unwrap();
+        assert_eq!(r.event.arg, Some(Arg::Number(0.0)));
+    }
+
+    /// Round 133 —
+    /// `parse`
+    /// accepts a
+    /// `0`-arg
+    /// bare-form
+    /// action
+    /// (`Heal()`).
+    #[test]
+    fn parse_bare_form_zero_arg_action_round_133() {
+        let r = parse("On(Collide) -> Heal()").unwrap();
+        assert_eq!(r.actions[0].kind, ActionKind::Heal);
+        assert!(r.actions[0].args.is_empty());
+    }
+
+    /// Round 133 —
+    /// `parse`
+    /// accepts a
+    /// 3-action
+    /// rule with
+    /// both
+    /// `Apply()`
+    /// and bare
+    /// forms
+    /// mixed.
+    #[test]
+    fn parse_mixed_apply_and_bare_forms_round_133() {
+        let r = parse("On(Collide) -> Apply(Damage, 5), Heal(3), Spawn(\"X\")").unwrap();
+        assert_eq!(r.actions.len(), 3);
+        assert_eq!(r.actions[0].kind, ActionKind::Damage);
+        assert_eq!(r.actions[1].kind, ActionKind::Heal);
+        assert_eq!(r.actions[2].kind, ActionKind::Spawn);
+    }
 }
