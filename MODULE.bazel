@@ -1,0 +1,25 @@
+"""Phase 1 — minimum-viable Bazel scaffold for cocos4-rust.
+
+This module is intentionally tiny. Phase 2 will register `rules_rust`
+and add a `rust_library` target per Cargo crate. Until then, Bazel
+only knows how to build a single `hello` sh_binary — cargo remains
+the primary build/test tool.
+
+Per the round-55 → Phase 0 deep research synthesis (2026-06-08):
+- Pin Bazel 7.x via .bazelversion (Bazelisk auto-downloads)
+- Use bzlmod (the Bazel 7+ default) — no WORKSPACE needed
+- aspect_rules_js v1.36.0 is the recommended line for the
+  AGI-miniGame side (Phase 3); not registered here since
+  cocos4-rust is Rust-only
+- rules_rust is NOT registered yet — that's Phase 2's job
+"""
+
+module(
+    name = "cocos4_rust",
+    version = "0.1.0",
+)
+
+# No toolchain registrations yet. Phase 2 will add:
+#   bazel_dep(name = "rules_rust", version = "0.62.0")
+#   rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
+#   rust.toolchain(edition = "2024")

@@ -1,0 +1,35 @@
+# Phase 1 — minimum-viable .bazelrc for cocos4-rust.
+#
+# Scope: enable bzlmod, disable legacy WORKSPACE, declare the
+# build:remote profile for BuildBuddy RBE (used by Phase 4).
+#
+# IMPORTANT: the BuildBuddy API key is read from
+# `$BUILDBUDDY_API_KEY` (env var) and is NEVER written to this
+# file or any committed file. The key the user shared in chat
+# must be rotated before being used; the new key should be set
+# via:
+#     export BUILDBUDDY_API_KEY=...new_key...
+# in the developer's shell profile (not in this repo).
+
+# --- bzlmod (Bazel 7+ default) ---
+common --enable_bzlmod
+common --noenable_workspace
+
+# --- Phase 4: BuildBuddy remote-execution profile ---
+# Use with: `bazel build/test --config=remote //...`
+# Without this flag, Bazel builds locally (and the existing
+# `cargo test --workspace` / `cargo build --target wasm32...`
+# workflows are completely unaffected).
+build:remote --remote_executor=grpcs://remote.buildbuddy.io
+build:remote --remote_cache=grpcs://remote.buildbuddy.io
+build:remote --remote_header=x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}
+build:remote --bes_results_url=https://app.buildbuddy.io/invocation/
+build:remote --remote_timeout=600
+
+# Default: local-only. The remote profile is opt-in.
+common --noexperimental_remote_downloader
+
+# --- Output hygiene ---
+common --curses=no
+common --show_progress_rate_limit=5
+test --test_output=errors

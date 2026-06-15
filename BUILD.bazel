@@ -1,0 +1,15 @@
+# Phase 1 — minimum-viable BUILD file for cocos4-rust.
+#
+# Single sh_binary that proves Bazel works on this repo.
+# cargo remains the primary build/test tool; rules_rust +
+# rust_library targets come in Phase 2.
+
+sh_binary(
+    name = "hello",
+    srcs = ["hello.sh"],
+)
+
+sh_test(
+    name = "hello_test",
+    srcs = ["hello_test.sh"],
+)
