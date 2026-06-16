@@ -2538,3 +2538,319 @@ mod tests {
         assert_eq!(RuntimeBiome::OrbitalGarden.title(), "Orbital Garden");
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 143 — `runtime_scene.rs` helper-level tests.
+// `runtime_scene.rs` is the largest `agi_minigame` file (92K) and
+// has only 23 tests in the single `mod tests` block. The
+// round-127 helper suite added 5 tests for `round_to` + 2 tests
+// for `RuntimeBiome::id`/`title`; the round-127 mod (inside the
+// `tests` block) is mixed in. This round is a separate `mod
+// round143_tests` block focused on the `generate_runtime_scene`
+// entry-point's contracts: edge-case inputs, biome keyword
+// dispatch, lane/anchor count formulas, archetype invariants,
+// and the per-call sanity checks the host's runtime loop relies
+// on (no div-by-zero, difficulty clamping, module
+// back-compat).
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round143_tests {
+    use super::*;
+
+    fn request(seed: u64, difficulty: u32, theme_hint: &str) -> RuntimeSceneRequest {
+        RuntimeSceneRequest {
+            seed,
+            player_level: 6,
+            difficulty,
+            theme_hint: theme_hint.to_string(),
+            modules: vec!["tower_defense".to_string(), "parkour".to_string()],
+        }
+    }
+
+    fn request_with_modules(seed: u64, difficulty: u32, modules: Vec<String>) -> RuntimeSceneRequest {
+        RuntimeSceneRequest {
+            seed,
+            player_level: 6,
+            difficulty,
+            theme_hint: "space nebula".to_string(),
+            modules,
+        }
+    }
+
+    #[test]
+    fn round143_seed_zero_gets_bumped_to_one() {
+        // `seed == 0` would be a div-by-zero risk in the RNG;
+        // the entry point bumps it to 1 (per source line 368).
+        // Verify the resulting blueprint's seed is non-zero.
+        let bp = generate_runtime_scene(request(0, 5, "space nebula"));
+        assert_ne!(bp.seed, 0, "seed must be bumped from 0");
+        assert_eq!(bp.seed, 1);
+    }
+
+    #[test]
+    fn round143_seed_nonzero_passes_through_unchanged() {
+        // `seed != 0` is used verbatim (no transform).
+        let bp = generate_runtime_scene(request(42, 5, "space nebula"));
+        assert_eq!(bp.seed, 42);
+    }
+
+    #[test]
+    fn round143_difficulty_below_one_clamps_to_one() {
+        // `difficulty.clamp(1, 10)` — 0 is below the floor and must
+        // become 1 (the seed/interval/enemy_speed formulas all
+        // assume difficulty >= 1).
+        let bp = generate_runtime_scene(request(7, 0, "space nebula"));
+        assert_eq!(bp.difficulty, 1);
+        // Sanity: 1 is still a valid scene (no panic).
+        assert!(!bp.title.is_empty());
+    }
+
+    #[test]
+    fn round143_difficulty_above_ten_clamps_to_ten() {
+        // 11+ clamps to 10 (the formulas cap at 10 — e.g.
+        // `low_integrity_spawn_multiplier = 1.18 + (10 - difficulty) * 0.018`).
+        let bp = generate_runtime_scene(request(7, 11, "space nebula"));
+        assert_eq!(bp.difficulty, 10);
+    }
+
+    #[test]
+    fn round143_empty_modules_uses_default_for_difficulty() {
+        // When `request.modules.is_empty()`, the entry point falls
+        // back to `default_modules(difficulty)`. For difficulty=5,
+        // that's ["tower_defense", "puzzle"] (difficulty < 8 branch).
+        let bp = generate_runtime_scene(request_with_modules(7, 5, vec![]));
+        assert_eq!(bp.modules, vec!["tower_defense".to_string(), "puzzle".to_string()]);
+    }
+
+    #[test]
+    fn round143_modules_passed_through_when_nonempty() {
+        // When the caller provides modules, they're used verbatim
+        // (no normalization, no de-duplication).
+        let mods = vec!["parkour".to_string(), "tower_defense".to_string()];
+        let bp = generate_runtime_scene(request_with_modules(7, 5, mods.clone()));
+        assert_eq!(bp.modules, mods);
+    }
+
+    #[test]
+    fn round143_pick_biome_keyword_forest_maps_to_verdant_ruins() {
+        // The pick_biome dispatcher reads the theme_hint and
+        // short-circuits to the matching biome when a known
+        // keyword is present (per source line 492-505).
+        // Each keyword must always win over the random fallback.
+        let a = generate_runtime_scene(request(1, 5, "forest"));
+        let b = generate_runtime_scene(request(1, 5, "verdant ruin"));
+        assert_eq!(a.biome, RuntimeBiome::VerdantRuins);
+        assert_eq!(b.biome, RuntimeBiome::VerdantRuins);
+    }
+
+    #[test]
+    fn round143_pick_biome_keyword_desert_maps_to_sunforge_bazaar() {
+        // "desert" / "temple" / "forge" keywords → SunforgeBazaar.
+        for hint in &["desert", "ancient temple", "sunforge forge"] {
+            let bp = generate_runtime_scene(request(1, 5, hint));
+            assert_eq!(bp.biome, RuntimeBiome::SunforgeBazaar, "hint {hint:?} must map to SunforgeBazaar");
+        }
+    }
+
+    #[test]
+    fn round143_pick_biome_keyword_space_maps_to_orbital_garden() {
+        // "space" / "orbit" / "nebula" keywords → OrbitalGarden.
+        for hint in &["space", "low orbit", "purple nebula"] {
+            let bp = generate_runtime_scene(request(1, 5, hint));
+            assert_eq!(bp.biome, RuntimeBiome::OrbitalGarden, "hint {hint:?} must map to OrbitalGarden");
+        }
+    }
+
+    #[test]
+    fn round143_pick_biome_keyword_cyber_maps_to_neon_harbor() {
+        // "cyber" / "neon" / "city" keywords → NeonHarbor.
+        for hint in &["cyber", "neon district", "the city"] {
+            let bp = generate_runtime_scene(request(1, 5, hint));
+            assert_eq!(bp.biome, RuntimeBiome::NeonHarbor, "hint {hint:?} must map to NeonHarbor");
+        }
+    }
+
+    #[test]
+    fn round143_pick_biome_keyword_case_insensitive() {
+        // The dispatcher lowercases the hint (per source line 493:
+        // `let hint = theme_hint.to_ascii_lowercase()`), so
+        // "FOREST" and "Forest" must map to VerdantRuins.
+        let a = generate_runtime_scene(request(1, 5, "FOREST"));
+        let b = generate_runtime_scene(request(1, 5, "Forest"));
+        assert_eq!(a.biome, RuntimeBiome::VerdantRuins);
+        assert_eq!(b.biome, RuntimeBiome::VerdantRuins);
+    }
+
+    #[test]
+    fn round143_pick_biome_unknown_keyword_falls_back_to_rng() {
+        // No keyword match → rng picks one of the 4 biomes. The
+        // test verifies the fallback path doesn't panic and
+        // produces a valid biome (any of the 4).
+        let bp = generate_runtime_scene(request(1, 5, "completely unknown theme xyz"));
+        let valid = matches!(bp.biome,
+            RuntimeBiome::NeonHarbor
+            | RuntimeBiome::VerdantRuins
+            | RuntimeBiome::SunforgeBazaar
+            | RuntimeBiome::OrbitalGarden);
+        assert!(valid, "fallback biome must be one of the 4 known variants");
+    }
+
+    #[test]
+    fn round143_lane_count_formula() {
+        // `lane_count = (2 + difficulty / 3).clamp(2, 5)`.
+        // We verify the formula via the public `lanes.len()` field.
+        let easy = generate_runtime_scene(request(7, 2, "forest"));
+        let mid = generate_runtime_scene(request(7, 5, "forest"));
+        let hard = generate_runtime_scene(request(7, 9, "forest"));
+        let extreme = generate_runtime_scene(request(7, 10, "forest"));
+        // difficulty 2: 2 + 2/3 = 2 + 0 = 2 lanes
+        assert_eq!(easy.lanes.len(), 2, "difficulty 2 → 2 + 0 = 2 lanes");
+        // difficulty 5: 2 + 5/3 = 2 + 1 = 3 lanes (integer division)
+        assert_eq!(mid.lanes.len(), 3, "difficulty 5 → 5/3=1, 2+1=3");
+        // difficulty 9: 2 + 9/3 = 2 + 3 = 5 (at upper bound)
+        assert_eq!(hard.lanes.len(), 5, "difficulty 9 → 9/3=3, 2+3=5 (at upper bound)");
+        // difficulty 10: 2 + 10/3 = 2 + 3 = 5 (clamped)
+        assert_eq!(extreme.lanes.len(), 5, "difficulty 10 → 10/3=3, 2+3=5 (clamped)");
+    }
+
+    #[test]
+    fn round143_enemy_speed_grows_with_difficulty_and_level() {
+        // `enemy_speed = 32 + difficulty * 4.8 + level * 0.55`.
+        // Verify monotonicity: same level, higher difficulty → higher
+        // speed; same difficulty, higher level → higher speed.
+        let low_d_low_l = generate_runtime_scene(RuntimeSceneRequest {
+            seed: 1, player_level: 1, difficulty: 1, theme_hint: "x".to_string(), modules: vec!["tower_defense".to_string()],
+        });
+        let low_d_high_l = generate_runtime_scene(RuntimeSceneRequest {
+            seed: 1, player_level: 10, difficulty: 1, theme_hint: "x".to_string(), modules: vec!["tower_defense".to_string()],
+        });
+        let high_d_low_l = generate_runtime_scene(RuntimeSceneRequest {
+            seed: 1, player_level: 1, difficulty: 10, theme_hint: "x".to_string(), modules: vec!["tower_defense".to_string()],
+        });
+        assert!(low_d_high_l.spawn.enemy_speed > low_d_low_l.spawn.enemy_speed, "level must scale speed up");
+        assert!(high_d_low_l.spawn.enemy_speed > low_d_low_l.spawn.enemy_speed, "difficulty must scale speed up");
+    }
+
+    #[test]
+    fn round143_spawn_interval_shrinks_with_difficulty() {
+        // `interval = (2.35 - difficulty * 0.13 - level * 0.01).max(0.75)`.
+        // Higher difficulty → smaller interval (faster spawns).
+        let easy = generate_runtime_scene(request(1, 1, "x"));
+        let hard = generate_runtime_scene(request(1, 10, "x"));
+        assert!(hard.spawn.interval < easy.spawn.interval, "interval must shrink with difficulty");
+        assert!(hard.spawn.interval >= 0.75, "interval must never drop below 0.75 floor");
+    }
+
+    #[test]
+    fn round143_tower_archetypes_count_invariant() {
+        // `build_tower_archetypes` always produces 3 archetypes
+        // (basic / advanced / elite) — pin the count so a refactor
+        // can't silently drop a tier.
+        let bp = generate_runtime_scene(request(1, 5, "x"));
+        assert_eq!(bp.tower_archetypes.len(), 3, "always 3 tower archetypes");
+    }
+
+    #[test]
+    fn round143_enemy_archetypes_count_invariant() {
+        // Same as tower_archetypes — always 3 enemy archetypes.
+        let bp = generate_runtime_scene(request(1, 5, "x"));
+        assert_eq!(bp.enemy_archetypes.len(), 3, "always 3 enemy archetypes");
+    }
+
+    #[test]
+    fn round143_commands_count_invariant() {
+        // `build_command_plan` always produces 3 commands.
+        let bp = generate_runtime_scene(request(1, 5, "x"));
+        assert_eq!(bp.commands.len(), 3, "always 3 commands");
+    }
+
+    #[test]
+    fn round143_lane_signals_match_lane_count() {
+        // `build_lane_signals` produces one signal per lane.
+        let bp = generate_runtime_scene(request(1, 5, "x"));
+        assert_eq!(bp.lane_signals.len(), bp.lanes.len(), "one lane_signal per lane");
+    }
+
+    #[test]
+    fn round143_build_hints_match_anchor_count() {
+        // `build_build_hints` produces one hint per tower_anchor.
+        let bp = generate_runtime_scene(request(1, 5, "x"));
+        assert_eq!(bp.build_hints.len(), bp.tower_anchors.len(), "one build_hint per anchor");
+    }
+
+    #[test]
+    fn round143_build_hints_reference_real_archetype_ids() {
+        // Each `build_hint.tower_archetype_id` must match a real
+        // entry in `tower_archetypes` (no dangling refs that the
+        // runtime can't resolve at instantiation time).
+        let bp = generate_runtime_scene(request(1, 5, "x"));
+        for hint in &bp.build_hints {
+            assert!(
+                bp.tower_archetypes.iter().any(|a| a.id == hint.tower_archetype_id),
+                "build_hint references unknown archetype {}",
+                hint.tower_archetype_id
+            );
+        }
+    }
+
+    #[test]
+    fn round143_starter_tower_enabled_reflects_module() {
+        // `rules.starter_tower_enabled` is true iff "tower_defense"
+        // is in the modules list. The runtime uses this to decide
+        // whether to spawn the initial turret at scene entry.
+        let with_td = generate_runtime_scene(request_with_modules(
+            1, 5, vec!["tower_defense".to_string(), "parkour".to_string()]
+        ));
+        let without_td = generate_runtime_scene(request_with_modules(
+            1, 5, vec!["parkour".to_string(), "puzzle".to_string()]
+        ));
+        assert!(with_td.rules.starter_tower_enabled, "tower_defense module → starter tower on");
+        assert!(!without_td.rules.starter_tower_enabled, "no tower_defense module → starter tower off");
+    }
+
+    #[test]
+    fn round143_max_towers_bonus_for_tower_defense_module() {
+        // `max_towers = (3 + difficulty/2 + 2 if tower_defense else 0).clamp(3, 9)`.
+        let with_td = generate_runtime_scene(request_with_modules(
+            1, 5, vec!["tower_defense".to_string(), "parkour".to_string()]
+        ));
+        let without_td = generate_runtime_scene(request_with_modules(
+            1, 5, vec!["parkour".to_string(), "puzzle".to_string()]
+        ));
+        assert!(with_td.rules.max_towers >= without_td.rules.max_towers,
+            "tower_defense module must not reduce max_towers");
+        // For difficulty=5: 3 + 2 (5/2) = 5, +2 for tower_defense = 7.
+        assert_eq!(with_td.rules.max_towers, 7, "difficulty 5 + tower_defense → 7");
+        assert_eq!(without_td.rules.max_towers, 5, "difficulty 5 without tower_defense → 5");
+    }
+
+    #[test]
+    fn round143_blueprint_id_format() {
+        // `id = format!("runtime_{}_{}_{}", seed, biome.id(), difficulty)`.
+        // Pin the format so the host's asset lookup is stable.
+        let bp = generate_runtime_scene(request(42, 5, "space nebula"));
+        assert!(bp.id.starts_with("runtime_42_orbital-garden_5"),
+            "id must follow runtime_42_orbital-garden_5 format, got {:?}", bp.id);
+    }
+
+    #[test]
+    fn round143_blueprint_logic_source_mentions_runtime() {
+        // The host's debug overlay greps `logic_source` for the
+        // substring "Generated runtime logic" to identify a
+        // runtime-generated scene vs. a hand-authored one.
+        let bp = generate_runtime_scene(request(1, 5, "x"));
+        assert!(bp.logic_source.contains("Generated runtime logic"),
+            "logic_source must contain 'Generated runtime logic', got {:?}", bp.logic_source);
+    }
+
+    #[test]
+    fn round143_generate_runtime_scene_is_deterministic() {
+        // Two identical requests → identical blueprints. This is
+        // the reproducibility contract the host relies on for
+        // server-side replay validation.
+        let a = generate_runtime_scene(request(99, 7, "desert temple"));
+        let b = generate_runtime_scene(request(99, 7, "desert temple"));
+        assert_eq!(a, b);
+    }
+}
