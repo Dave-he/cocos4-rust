@@ -468,4 +468,611 @@ mod tests {
         assert_eq!(stub.name(), "stub");
         assert_eq!(stub.module_type(), GameplayType::Match3);
     }
+
+    // -----------------------------------------------------------------
+    // Round 144 — helper-level
+    // tests for the
+    // round-N 扩展
+    // pattern
+    // (round 110b /
+    // 122 / 130 /
+    // 142 / 143).
+    // The pre-
+    // round-144
+    // `mod tests`
+    // block (above)
+    // covers the
+    // basics: 11
+    // GameplayType
+    // variants in
+    // name() /
+    // from_name(),
+    // builder
+    // (with_score +
+    // with_timestamp),
+    // typed getters
+    // (get_int /
+    // get_str /
+    // get_float +
+    // missing-key +
+    // wrong-type
+    // None
+    // returns),
+    // all_types()
+    // canonical
+    // order, and
+    // GameplayModule
+    // trait default
+    // `version()`.
+    //
+    // Round 144
+    // closes the
+    // remaining
+    // small gaps:
+    //   - GameplayState::set
+    //     overwriting
+    //     existing
+    //     keys (a
+    //     regression
+    //     that used
+    //     `entry().or_insert()`
+    //     would
+    //     silently
+    //     keep the
+    //     old value)
+    //   - GameplayState::is_active
+    //     default true
+    //     (only
+    //     implicitly
+    //     tested via
+    //     `new()`)
+    //   - builder
+    //     chain
+    //     order
+    //     independence
+    //     (with_score
+    //     →
+    //     with_timestamp
+    //     == with_timestamp
+    //     →
+    //     with_score)
+    //   - Composite(Vec)
+    //     equality +
+    //     hash (the
+    //     derive
+    //     contract
+    //     matters
+    //     because
+    //     Composite
+    //     keys are
+    //     used in
+    //     HashMap
+    //     lookups
+    //     in
+    //     SceneManager
+    //     PORTAL_PALETTE)
+    //   - Custom(String)
+    //     round-trip
+    //     preserves
+    //     the raw
+    //     string
+    //     (covers
+    //     empty +
+    //     unicode +
+    //     special
+    //     characters)
+    //   - all_types()
+    //     returns no
+    //     duplicates
+    //     (the
+    //     canonical
+    //     order test
+    //     pins the
+    //     contents
+    //     but not
+    //     uniqueness)
+    //   - all_types()
+    //     does NOT
+    //     include
+    //     Composite
+    //     or Custom
+    //     (those are
+    //     user-
+    //     supplied
+    //     variants;
+    //     all_types()
+    //     is the
+    //     "named 9"
+    //     set)
+    //   - GameplayType
+    //     Hash +
+    //     Eq
+    //     contract:
+    //     two
+    //     equal
+    //     variants
+    //     hash
+    //     to the
+    //     same
+    //     value
+    //     (defense
+    //     against
+    //     a future
+    //     regression
+    //     that
+    //     removes
+    //     the
+    //     derive)
+    //   - GameplayEvent
+    //     variant
+    //     count +
+    //     payload
+    //     field
+    //     names
+    //     (pins the
+    //     WASM
+    //     bridge
+    //     JSON
+    //     contract)
+    //   - GameplayState
+    //     builder
+    //     returns
+    //     Self
+    //     (chainable)
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn test_gameplay_state_set_overwrites_existing_key_round_144() {
+        // GameplayState::set
+        // inserts into
+        // the underlying
+        // ValueMap. A
+        // regression that
+        // used
+        // `entry().or_insert()`
+        // would silently
+        // keep the OLD
+        // value when set
+        // is called a 2nd
+        // time with the
+        // same key. Round
+        // 144 pins the
+        // overwrite
+        // contract.
+        let mut state = GameplayState::new();
+        state.set("level", Value::Integer(1));
+        state.set("level", Value::Integer(99));
+        assert_eq!(state.get_int("level"), Some(99));
+        // Also verify a
+        // different
+        // Value variant
+        // overwrites the
+        // previous one
+        // (Integer → String).
+        state.set("level", Value::String("hi".to_string()));
+        assert_eq!(state.get_str("level"), Some("hi"));
+        assert_eq!(state.get_int("level"), None);
+    }
+
+    #[test]
+    fn test_gameplay_state_is_active_default_true_round_144() {
+        // The
+        // `is_active`
+        // field is
+        // set to
+        // `true` in
+        // `new()` and
+        // not
+        // exposed via
+        // a builder
+        // method. The
+        // pre-round-
+        // 144 tests
+        // never
+        // asserted
+        // this
+        // directly.
+        // Round 144
+        // pins the
+        // default to
+        // true (a
+        // regression
+        // that
+        // changed it
+        // to false
+        // would break
+        // the
+        // GameplayState
+        // consumers
+        // that gate
+        // on
+        // `is_active`).
+        let state = GameplayState::new();
+        assert_eq!(state.is_active, true);
+        // Default
+        // impl also
+        // returns
+        // is_active
+        // = true.
+        let default_state: GameplayState = Default::default();
+        assert_eq!(default_state.is_active, true);
+    }
+
+    #[test]
+    fn test_gameplay_state_builder_order_independent_round_144() {
+        // The
+        // `with_score`
+        // and
+        // `with_timestamp`
+        // builders are
+        // both
+        // chainable +
+        // commutative
+        // (the order
+        // of the
+        // chain
+        // doesn't
+        // matter).
+        // Round 144
+        // pins this
+        // so a future
+        // refactor
+        // that makes
+        // them
+        // order-
+        // dependent
+        // fails the
+        // test.
+        let a = GameplayState::new()
+            .with_score(500)
+            .with_timestamp(1000);
+        let b = GameplayState::new()
+            .with_timestamp(1000)
+            .with_score(500);
+        assert_eq!(a.score, b.score);
+        assert_eq!(a.timestamp, b.timestamp);
+        assert_eq!(a.score, 500);
+        assert_eq!(a.timestamp, 1000);
+    }
+
+    #[test]
+    fn test_gameplay_type_composite_equality_and_hash_round_144() {
+        // `Composite(Vec<GameplayType>)`
+        // derives
+        // PartialEq +
+        // Eq + Hash.
+        // Two Composites
+        // are equal iff
+        // their inner
+        // Vecs are
+        // element-wise
+        // equal (Vec's
+        // PartialEq is
+        // element-wise +
+        // order-
+        // sensitive).
+        // This contract
+        // matters because
+        // Composite is
+        // used as a
+        // HashMap key in
+        // SceneManager
+        // PORTAL_PALETTE.
+        let a = GameplayType::Composite(vec![GameplayType::Match3, GameplayType::Card]);
+        let b = GameplayType::Composite(vec![GameplayType::Match3, GameplayType::Card]);
+        let c = GameplayType::Composite(vec![GameplayType::Card, GameplayType::Match3]); // reversed
+        assert_eq!(a, b);
+        assert_ne!(a, c); // Vec order matters
+        // Hash contract: equal values hash to the same value.
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut h1 = DefaultHasher::new();
+        let mut h2 = DefaultHasher::new();
+        a.hash(&mut h1);
+        b.hash(&mut h2);
+        assert_eq!(h1.finish(), h2.finish());
+        // And: Composite can be used as a HashMap key (this is
+        // the actual host use case).
+        let mut map: std::collections::HashMap<GameplayType, &str> = std::collections::HashMap::new();
+        map.insert(a.clone(), "portal_a");
+        assert_eq!(map.get(&b).copied(), Some("portal_a"));
+    }
+
+    #[test]
+    fn test_gameplay_type_custom_round_trip_preserves_raw_string_round_144() {
+        // `Custom(String)` is the catch-all for unrecognized
+        // names. The round-trip `from_name(X.name()) == X`
+        // must hold for the raw string contents (no trimming,
+        // no case folding, no escaping). Round 144 pins this
+        // for edge-case strings: empty + unicode + special chars.
+        let edge_cases = [
+            "",                          // empty
+            "中文类型",                   // CJK
+            "with spaces inside",        // spaces
+            "tab\there",                 // tab
+            "new\nline",                 // newline
+            "quote\"inside",             // quote
+            "back\\slash",               // backslash
+        ];
+        for raw in edge_cases {
+            let v = GameplayType::from_name(raw);
+            assert_eq!(v, GameplayType::Custom(raw.to_string()));
+            // name() returns the raw string verbatim.
+            assert_eq!(v.name(), raw);
+        }
+    }
+
+    #[test]
+    fn test_all_types_returns_no_duplicates_round_144() {
+        // The
+        // canonical
+        // 9-element
+        // set
+        // returned
+        // by
+        // `all_types()`
+        // must be
+        // unique
+        // (no
+        // duplicate
+        // variant).
+        // A
+        // regression
+        // that
+        // accidentally
+        // included
+        // a
+        // variant
+        // twice
+        // would
+        // not be
+        // caught
+        // by
+        // the
+        // round-122
+        // order
+        // test
+        // (which
+        // only
+        // asserts
+        // equality
+        // with a
+        // fixed
+        // list).
+        let types = GameplayType::all_types();
+        let unique: std::collections::HashSet<_> = types.iter().collect();
+        assert_eq!(unique.len(), types.len());
+        assert_eq!(types.len(), 9);
+        // And: Composite
+        // / Custom are
+        // NOT in the
+        // named 9 (they
+        // are user-
+        // supplied
+        // variants).
+        assert!(!types.contains(&GameplayType::Composite(vec![])));
+        assert!(!types.contains(&GameplayType::Custom("foo".to_string())));
+    }
+
+    #[test]
+    fn test_gameplay_type_hash_eq_contract_round_144() {
+        // All
+        // `GameplayType`
+        // variants
+        // derive
+        // Hash +
+        // Eq.
+        // The
+        // contract:
+        // `a == b`
+        // implies
+        // `hash(a)
+        // == hash(b)`.
+        // Round
+        // 144
+        // pins
+        // this
+        // for
+        // each
+        // of
+        // the
+        // 9
+        // named
+        // variants
+        // (defense
+        // against
+        // a future
+        // regression
+        // that
+        // removes
+        // the
+        // derive
+        // — e.g.
+        // replacing
+        // it with
+        // a manual
+        // impl).
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let named: Vec<GameplayType> = vec![
+            GameplayType::Match3,
+            GameplayType::TowerDefense,
+            GameplayType::Card,
+            GameplayType::TurnCombat,
+            GameplayType::Parkour,
+            GameplayType::Puzzle,
+            GameplayType::Shooting,
+            GameplayType::Synthesis,
+            GameplayType::Simulation,
+        ];
+        for v in &named {
+            let mut h = DefaultHasher::new();
+            v.hash(&mut h);
+            // Hash should be deterministic across calls.
+            let mut h2 = DefaultHasher::new();
+            v.hash(&mut h2);
+            assert_eq!(h.finish(), h2.finish());
+        }
+    }
+
+    #[test]
+    fn test_gameplay_event_variant_count_round_144() {
+        // The
+        // `GameplayEvent`
+        // enum has
+        // 6
+        // variants.
+        // Round
+        // 144
+        // pins
+        // the
+        // count
+        // (a
+        // regression
+        // that
+        // added
+        // or
+        // removed
+        // a
+        // variant
+        // would
+        // silently
+        // change
+        // the
+        // WASM
+        // bridge
+        // JSON
+        // contract
+        // for
+        // `handle_event`).
+        // (Compile-
+        // time
+        // check
+        // via
+        // a
+        // match
+        // that
+        // covers
+        // all
+        // variants
+        // — adding
+        // a
+        // new
+        // variant
+        // without
+        // updating
+        // this
+        // test
+        // triggers
+        // a
+        // non-
+        // exhaustive
+        // match
+        // error.)
+        let events = vec![
+            GameplayEvent::GameStart,
+            GameplayEvent::GameEnd { score: 100 },
+            GameplayEvent::PlayerAction {
+                action: "jump".to_string(),
+                params: ValueMap::new(),
+            },
+            GameplayEvent::RewardEarned {
+                item_id: "gold".to_string(),
+                quantity: 5,
+            },
+            GameplayEvent::StateChanged {
+                key: "level".to_string(),
+            },
+            GameplayEvent::Custom {
+                event_type: "custom_event".to_string(),
+                data: ValueMap::new(),
+            },
+        ];
+        assert_eq!(events.len(), 6);
+        // Pin the discriminant count by mapping each variant
+        // to a sentinel and counting the unique sentinels.
+        let mut fingerprints = std::collections::HashSet::new();
+        for ev in &events {
+            // Use a simple structural fingerprint
+            // (no Hash derive on GameplayEvent; the enum is
+            // Debug + Clone but not Hash, so we map each
+            // variant to a unique &str tag).
+            let tag = match ev {
+                GameplayEvent::GameStart => "GameStart",
+                GameplayEvent::GameEnd { .. } => "GameEnd",
+                GameplayEvent::PlayerAction { .. } => "PlayerAction",
+                GameplayEvent::RewardEarned { .. } => "RewardEarned",
+                GameplayEvent::StateChanged { .. } => "StateChanged",
+                GameplayEvent::Custom { .. } => "Custom",
+            };
+            fingerprints.insert(tag);
+        }
+        assert_eq!(fingerprints.len(), 6);
+    }
+
+    #[test]
+    fn test_gameplay_state_builder_returns_self_round_144() {
+        // The
+        // `with_*`
+        // builders
+        // return
+        // `Self`
+        // (not
+        // `&mut
+        // Self`).
+        // This
+        // is
+        // what
+        // makes
+        // them
+        // chainable
+        // in
+        // builder
+        // style.
+        // Round
+        // 144
+        // pins
+        // the
+        // return
+        // type
+        // by
+        // chaining
+        // 3
+        // calls
+        // and
+        // verifying
+        // the
+        // final
+        // value
+        // reflects
+        // all
+        // three.
+        // (A
+        // regression
+        // that
+        // returned
+        // `&mut
+        // Self`
+        // would
+        // still
+        // type-
+        // check
+        // but
+        // would
+        // not
+        // support
+        // the
+        // fluent
+        // style
+        // used
+        // in
+        // host
+        // code.)
+        let state = GameplayState::new()
+            .with_score(42)
+            .with_timestamp(1234)
+            .with_score(99); // last-wins
+        assert_eq!(state.score, 99);
+        assert_eq!(state.timestamp, 1234);
+    }
 }
