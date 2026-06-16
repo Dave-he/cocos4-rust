@@ -2030,3 +2030,258 @@ mod round134_tests {
         assert_eq!(r.len(), 1);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 154 helper-level tests for `npc.rs`.
+//
+// Round 154 closes surface-area gaps left after the
+// round-37 / round-48 / round-134 sweep — specifically
+// the per-field boundary contracts that the existing
+// tests don't pin (weight clamping on NpcMemoryEntry,
+// per-axis clamping on NpcDisposition::shift,
+// capacity=0 black-hole behavior on NpcMind,
+// registry insert-overwrite idempotency, etc.).
+//
+// Each test is fully self-contained: it builds its
+// own NpcMind / NpcRegistry / NpcDisposition via
+// local helpers, so a regression in one fixture
+// doesn't poison the others.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round154_tests {
+    use super::*;
+
+    // -----------------------------------------------------------------
+    // NpcMemoryEntry::new — weight clamping + field preservation.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn npc_memory_entry_new_clamps_weight_above_one_round154() {
+        // NpcMemoryEntry::new calls
+        // `weight.clamp(-1.0, 1.0)` so a
+        // caller-supplied weight of 5.0
+        // must end up at 1.0 (regression
+        // that dropped the clamp would
+        // produce a disposition shift
+        // scaled beyond the [-1, 1] axis
+        // and silently corrupt
+        // NpcDisposition values).
+        let e = NpcMemoryEntry::new(
+            NpcMemoryKind::Dialogue,
+            "huge positive weight",
+            1,
+            5.0,
+        );
+        assert!((e.weight - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn npc_memory_entry_new_clamps_weight_below_neg_one_round154() {
+        // Symmetric clamp: a negative
+        // weight of -99.0 must end up
+        // at -1.0.
+        let e = NpcMemoryEntry::new(
+            NpcMemoryKind::Hostility,
+            "huge negative weight",
+            1,
+            -99.0,
+        );
+        assert!((e.weight - -1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn npc_memory_entry_new_preserves_kind_summary_and_turn_round154() {
+        // `new` only clamps weight;
+        // kind / summary / turn must
+        // round-trip verbatim. The
+        // `.into()` conversion on
+        // summary takes &str → String,
+        // so an &str input must
+        // produce an owned String.
+        let e = NpcMemoryEntry::new(
+            NpcMemoryKind::ReceivedGift,
+            "player gave a sword",
+            42,
+            0.7,
+        );
+        assert_eq!(e.kind, NpcMemoryKind::ReceivedGift);
+        assert_eq!(e.summary, "player gave a sword");
+        assert_eq!(e.turn, 42);
+        // Weight inside [-1, 1] stays as-is.
+        assert!((e.weight - 0.7).abs() < 1e-6);
+    }
+
+    // -----------------------------------------------------------------
+    // NpcDisposition::shift — per-axis clamping + immutability.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn npc_disposition_shift_clamps_each_axis_independently_round154() {
+        // shift() must clamp each axis
+        // to [-1.0, 1.0] independently.
+        // A single shift that pushes
+        // friendly past 1.0 must
+        // saturate at 1.0 without
+        // affecting fear/trust (and
+        // vice versa).
+        let d = NpcDisposition { friendly: 0.9, fear: 0.9, trust: 0.9 };
+        let shifted = d.shift(5.0, -5.0, 0.0);
+        assert!((shifted.friendly - 1.0).abs() < 1e-6);
+        assert!((shifted.fear - -1.0).abs() < 1e-6);
+        // trust unchanged (delta was 0).
+        assert!((shifted.trust - 0.9).abs() < 1e-6);
+    }
+
+    #[test]
+    fn npc_disposition_shift_returns_new_value_not_in_place_round154() {
+        // shift() must NOT mutate the
+        // receiver (it takes `self` by
+        // value, returning a new
+        // NpcDisposition). A regression
+        // that took `&mut self` would
+        // silently mutate shared state.
+        let d = NpcDisposition { friendly: 0.5, fear: 0.0, trust: -0.5 };
+        let shifted = d.shift(0.1, 0.0, 0.0);
+        // Original is untouched.
+        assert!((d.friendly - 0.5).abs() < 1e-6);
+        assert!((d.trust - -0.5).abs() < 1e-6);
+        // New value reflects the delta.
+        assert!((shifted.friendly - 0.6).abs() < 1e-6);
+    }
+
+    // -----------------------------------------------------------------
+    // NpcMind — capacity=0, recent(), recall_by_kind.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn npc_mind_capacity_zero_makes_remember_a_no_op_round154() {
+        // `with_capacity(0)` is allowed
+        // per the doc-comment and
+        // `remember` must short-circuit
+        // (no panic, no growth, len
+        // stays 0, disposition stays at
+        // default). Regression: a future
+        // refactor that always pushes
+        // would panic on capacity-0
+        // VecDeque::with_capacity.
+        let mut mind = NpcMind::with_capacity("zero_cap", 0, None::<&str>);
+        assert_eq!(mind.capacity(), 0);
+        assert!(mind.is_empty());
+        mind.remember(NpcMemoryEntry::new(
+            NpcMemoryKind::Dialogue,
+            "should be ignored",
+            1,
+            0.5,
+        ));
+        // No-op: still empty + still
+        // at default disposition
+        // (remember bails BEFORE the
+        // disposition shift).
+        assert!(mind.is_empty());
+        let d = mind.disposition();
+        assert_eq!(d.friendly, 0.0);
+        assert_eq!(d.fear, 0.0);
+        assert_eq!(d.trust, 0.0);
+    }
+
+    #[test]
+    fn npc_mind_recent_with_limit_greater_than_len_returns_all_round154() {
+        // recent(limit) must clamp to
+        // the actual ring size (no
+        // panic, no off-by-one, no
+        // spurious empties).
+        let mut mind = NpcMind::with_capacity("recent_big", 8, None::<&str>);
+        mind.remember(NpcMemoryEntry::new(
+            NpcMemoryKind::Dialogue, "a", 1, 0.1));
+        mind.remember(NpcMemoryEntry::new(
+            NpcMemoryKind::WitnessedEvent, "b", 2, 0.1));
+        // limit=10 > ring size 2 → all 2 returned.
+        let r = mind.recent(10);
+        assert_eq!(r.len(), 2);
+        assert_eq!(r[0].summary, "a");
+        assert_eq!(r[1].summary, "b");
+    }
+
+    #[test]
+    fn npc_mind_recall_by_kind_filters_correctly_round154() {
+        // recall_by_kind must return
+        // only entries whose kind
+        // matches the argument.
+        let mut mind = NpcMind::with_capacity("recall_filter", 8, None::<&str>);
+        mind.remember(NpcMemoryEntry::new(
+            NpcMemoryKind::Dialogue, "d1", 1, 0.1));
+        mind.remember(NpcMemoryEntry::new(
+            NpcMemoryKind::WitnessedEvent, "w1", 2, 0.1));
+        mind.remember(NpcMemoryEntry::new(
+            NpcMemoryKind::Dialogue, "d2", 3, 0.1));
+        let dialogues = mind.recall_by_kind(NpcMemoryKind::Dialogue);
+        assert_eq!(dialogues.len(), 2);
+        let witnessed = mind.recall_by_kind(NpcMemoryKind::WitnessedEvent);
+        assert_eq!(witnessed.len(), 1);
+        // A kind with zero matches returns empty.
+        let gifts = mind.recall_by_kind(NpcMemoryKind::ReceivedGift);
+        assert!(gifts.is_empty());
+    }
+
+    #[test]
+    fn npc_mind_mood_happy_requires_fear_at_or_below_threshold_round154() {
+        // mood()'s Happy branch is
+        // `friendly >= 0.40 && fear <= 0.30`.
+        // A friendly=0.5 / fear=0.5
+        // disposition must NOT be
+        // Happy (fear is too high);
+        // it should fall through to
+        // Uneasy (`fear >= 0.30`).
+        let mut mind = NpcMind::with_capacity("mood_boundary", 4, None::<&str>);
+        mind.shift_disposition(0.5, 0.5, 0.0);
+        // friendly=0.5 / fear=0.5:
+        // not Happy (fear too high),
+        // not Hostile (friendly not <=0),
+        // so Uneasy.
+        assert_eq!(mind.mood(), NpcMood::Uneasy);
+    }
+
+    // -----------------------------------------------------------------
+    // NpcRegistry — insert overwrite, get / get_mut None semantics.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn npc_registry_insert_overwrites_existing_id_round154() {
+        // insert() with a duplicate id
+        // must REPLACE the existing
+        // mind (per the doc-comment).
+        // Regression: a future refactor
+        // that appended without
+        // checking would silently
+        // duplicate the same NPC.
+        let mut r = NpcRegistry::new();
+        r.insert(NpcMind::with_capacity("dup", 4, None::<&str>));
+        assert_eq!(r.len(), 1);
+        // Replace with a different capacity.
+        r.insert(NpcMind::with_capacity("dup", 8, None::<&str>));
+        assert_eq!(
+            r.len(),
+            1,
+            "duplicate id must overwrite, not append"
+        );
+        // The replacement wins: capacity is now 8.
+        assert_eq!(r.get("dup").unwrap().capacity(), 8);
+    }
+
+    #[test]
+    fn npc_registry_get_unknown_id_returns_none_round154() {
+        // Both get() and get_mut() must
+        // return None for unknown ids
+        // (not panic, not a default
+        // placeholder).
+        let mut r = NpcRegistry::new();
+        r.insert(NpcMind::with_capacity("known", 4, None::<&str>));
+        assert!(r.get("nope").is_none());
+        assert!(r.get_mut("nope").is_none());
+        // The known id is still findable
+        // through both paths.
+        assert!(r.get("known").is_some());
+        assert!(r.get_mut("known").is_some());
+    }
+}
