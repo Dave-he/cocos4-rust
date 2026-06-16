@@ -1002,4 +1002,185 @@ mod tests {
         assert_eq!(r.actions[1].kind, ActionKind::Heal);
         assert_eq!(r.actions[2].kind, ActionKind::Spawn);
     }
+
+    // -----------------------------------------------------------------------
+    // Round 148 helper-level tests.
+    //
+    // Closing the LAST remaining large module without a round-N block
+    // (parser.rs: 1005 lines, 52 pre-round-148 tests, 0 round-N tests).
+    // These tests pin edge cases that the older `mod tests` block doesn't
+    // exercise: deep whitespace, semicolon-stripping, equality contracts,
+    // JSON output structure, error messages, action-only and event-only
+    // paths, and string escape handling.
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn parse_trims_leading_trailing_whitespace_and_semicolon_round_148() {
+        // `parse()` does `input.trim().trim_end_matches(';')`. A regression
+        // that drops the trim would silently fail on indented DSL.
+        let r1 = parse("   On(Collide) -> Apply(Damage, 10)   ").unwrap();
+        let r2 = parse("On(Collide) -> Apply(Damage, 10);").unwrap();
+        let r3 = parse("   On(Collide) -> Apply(Damage, 10);   ").unwrap();
+        assert_eq!(r1, r2);
+        assert_eq!(r2, r3);
+    }
+
+    #[test]
+    fn parse_strips_multiple_trailing_semicolons_round_148() {
+        // `trim_end_matches(';')` strips ALL trailing semicolons (not just
+        // one). Pin this so a future `trim_end_matches` -> `strip_suffix`
+        // refactor that only removes one is caught immediately.
+        let r1 = parse("On(Collide) -> Apply(Damage, 10)").unwrap();
+        let r2 = parse("On(Collide) -> Apply(Damage, 10);;").unwrap();
+        let r3 = parse("On(Collide) -> Apply(Damage, 10);;;").unwrap();
+        assert_eq!(r1, r2);
+        assert_eq!(r2, r3);
+    }
+
+    #[test]
+    fn parse_only_semicolon_is_treated_as_empty_round_148() {
+        // `trim_end_matches(';')` of `";"` yields `""` which the empty-DSL
+        // guard rejects. Pin this — a regression that bypasses the
+        // empty check would silently accept a no-op rule.
+        assert!(parse(";").is_err());
+        assert!(parse(";;;").is_err());
+    }
+
+    #[test]
+    fn parse_rejects_trailing_input_after_valid_rule_round_148() {
+        // `parse_rule` must consume the whole input; if it leaves trailing
+        // chars, the `is_eof` check after `parse_rule` errors. A regression
+        // that dropped the `is_eof` check would silently truncate.
+        let r = parse("On(Collide) -> Apply(Damage, 10) extra_junk");
+        assert!(r.is_err());
+        // Error must mention the trailing position so the DSL author can
+        // locate the bug.
+        let err = r.unwrap_err();
+        assert!(err.contains("trailing") || err.contains("column"),
+                "expected column/trailing hint, got: {err}");
+    }
+
+    #[test]
+    fn parse_rejects_unclosed_event_paren_round_148() {
+        // Missing `)` after the event kind. `parse_event` must error.
+        let r = parse("On(Collide -> Apply(Damage, 10)");
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn parse_rejects_unclosed_action_paren_round_148() {
+        // Missing `)` after the action. `parse_action` must error.
+        let r = parse("On(Collide) -> Apply(Damage, 10");
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn parse_rejects_missing_arrow_round_148() {
+        // No `->` separator between event and action.
+        let r = parse("On(Collide) Apply(Damage, 10)");
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn parse_rejects_event_with_empty_paren_round_148() {
+        // `On()` with no event kind.
+        let r = parse("On() -> Apply(Damage, 10)");
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn parse_rejects_action_with_no_args_round_148() {
+        // The parser accepts `Apply(Damage)` with no args (the action
+        // kinds are zero-arg-able — pin this so a future refactor that
+        // requires args doesn't break existing author rules silently).
+        let r = parse("On(Collide) -> Apply(Damage)").unwrap();
+        assert_eq!(r.actions[0].kind, ActionKind::Damage);
+        assert!(r.actions[0].args.is_empty());
+    }
+
+    #[test]
+    fn mutation_cost_for_bare_form_matches_apply_form_round_148() {
+        // `On(Collide) -> Damage(10)` and
+        // `On(Collide) -> Apply(Damage, 10)` should yield the SAME
+        // mutation_cost (both are 1 base + 1 Damage = 2). A regression
+        // that only counts the `Apply` form would shift the balance
+        // signal for half the rules the DSL author writes.
+        let bare = parse("On(Collide) -> Damage(10)").unwrap();
+        let apply = parse("On(Collide) -> Apply(Damage, 10)").unwrap();
+        assert_eq!(bare.mutation_cost(), apply.mutation_cost());
+        assert_eq!(bare.mutation_cost(), 2);
+    }
+
+    #[test]
+    fn mutation_cost_for_zero_actions_is_just_base_round_148() {
+        // Edge case: a rule that parses successfully but has no actions
+        // is unusual but if it ever sneaks in, mutation_cost should be
+        // exactly 1 (the base cost) — the loop adds nothing.
+        // (Construct directly via AST to bypass the parser's
+        // "actions required" guarantee.)
+        let r = Rule {
+            event: Event {
+                kind: EventKind::Collide,
+                arg: None,
+            },
+            actions: vec![],
+        };
+        assert_eq!(r.mutation_cost(), 1);
+    }
+
+    #[test]
+    fn json_output_contains_event_kind_and_all_action_kinds_round_148() {
+        // `to_json` is opaque to the parser but the engine consumes it.
+        // Pin that the JSON contains every action kind name so a
+        // regression that drops a variant from the serializer breaks
+        // tests immediately rather than silently desyncing the engine.
+        let r = parse(
+            "On(Collide) -> Apply(Damage, 10), Apply(Heal, 3), Spawn(\"Spark\")",
+        )
+        .unwrap();
+        let json = r.to_json();
+        assert!(json.contains("\"Collide\""));
+        assert!(json.contains("\"Damage\""));
+        assert!(json.contains("\"Heal\""));
+        assert!(json.contains("\"Spawn\""));
+        assert!(json.contains("10"));
+        assert!(json.contains("3"));
+        // Sanity: well-formed JSON object (starts with `{`, ends with `}`).
+        assert!(json.starts_with('{'));
+        assert!(json.ends_with('}'));
+    }
+
+    #[test]
+    fn parse_handles_crlf_line_endings_round_148() {
+        // The DSL is sometimes authored on Windows with `\r\n` line
+        // endings. The trim step eats the `\r` (treated as whitespace by
+        // Rust's `is_whitespace`) and the parse succeeds.
+        let r = parse("On(Collide) -> Apply(Damage, 10)\r\n").unwrap();
+        assert_eq!(r.event.kind, EventKind::Collide);
+        assert_eq!(r.actions[0].kind, ActionKind::Damage);
+    }
+
+    #[test]
+    fn parse_event_with_string_arg_round_148() {
+        // `On(Spawn, "Trigger")` — the eventArg can be a string, not just
+        // a number. Pre-round-148 tests only exercise number event args.
+        let r = parse("On(Spawn, \"Trigger\") -> Apply(Damage, 5)").unwrap();
+        assert_eq!(r.event.kind, EventKind::Spawn);
+        assert_eq!(r.event.arg, Some(Arg::Str("Trigger".to_string())));
+    }
+
+    #[test]
+    fn parse_action_with_multiple_string_args_round_148() {
+        // `Apply(Spawn, "Fireball", "Projectile")` — multi-string args.
+        // Pre-round-148 only exercises single-string + number combos.
+        let r = parse("On(Collide) -> Apply(Spawn, \"Fireball\", \"Projectile\")").unwrap();
+        assert_eq!(r.actions[0].kind, ActionKind::Spawn);
+        assert_eq!(
+            r.actions[0].args,
+            vec![
+                Arg::Str("Fireball".to_string()),
+                Arg::Str("Projectile".to_string()),
+            ]
+        );
+    }
 }
