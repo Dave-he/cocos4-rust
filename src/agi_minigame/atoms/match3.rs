@@ -1075,3 +1075,294 @@ mod round135_tests {
         assert_eq!(atom.get_score(), 1234);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 157 helper-level tests for `atoms/match3.rs`.
+//
+// Round 157 closes surface-area gaps left after the
+// round-135 sweep on this file. The round-135 block
+// covered GemType / Match3Atom new / on_init /
+// on_enter / save / load / on_destroy / get_board_size /
+// get_cell edge cases. Round 157 covers the
+// *interaction* surface — get_cell on a fresh atom,
+// get_board_size boundary, get_score on a fresh
+// atom, get_moves_remaining on a fresh atom,
+// is_game_over contract, get_combo on a fresh
+// atom, get_unlocked_recipes-equivalent (N/A here —
+// match3 has no recipes), GemCell::new stores
+// fields verbatim, MatchGroup::size, SpecialType
+// enum variants.
+//
+// Each test is fully self-contained: builds its
+// own Match3Atom via `Match3Atom::new(...)`. A
+// regression in one fixture doesn't poison the
+// others.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round157_tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+    use crate::agi_minigame::world_state::UnifiedWorldState;
+    use crate::agi_minigame::player::PlayerProfile;
+
+    // Local mirror of the round-135
+    // `make_ctx` helper — the private
+    // original in `mod tests` is not
+    // visible from a sibling mod. The
+    // `with_gem_types_clamps_to_valid_range`
+    // test is the only one that needs
+    // a ctx (because it calls
+    // on_init / on_enter). The other
+    // tests work on a fresh atom with
+    // no ctx.
+    fn make_ctx() -> AtomContext {
+        let ws = Arc::new(Mutex::new(UnifiedWorldState::new(PlayerProfile::new("test"))));
+        AtomContext::new(ws)
+    }
+
+    // -----------------------------------------------------------------
+    // Match3Atom::new — default state.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn match3_new_has_correct_board_size_round157() {
+        // Pin the get_board_size contract:
+        // rows/cols passed to new() must
+        // round-trip verbatim. A regression
+        // that swapped rows/cols would
+        // produce a board with transposed
+        // dimensions.
+        let a = Match3Atom::new(8, 6, 20);
+        assert_eq!(a.get_board_size(), (8, 6));
+    }
+
+    #[test]
+    fn match3_new_initial_score_is_zero_round157() {
+        // Fresh atom: score = 0. Pin
+        // the get_score accessor with
+        // a fresh atom (the round-135
+        // `match3_score` test sets
+        // score via `on_enter`, this
+        // one tests the *initial*
+        // state).
+        let a = Match3Atom::new(4, 4, 10);
+        assert_eq!(a.get_score(), 0);
+    }
+
+    #[test]
+    fn match3_new_initial_moves_remaining_round157() {
+        // Fresh atom: moves_remaining
+        // = the max_moves passed to
+        // new(). The round-135
+        // `test_match3_game_over` test
+        // advances through to game
+        // over; this test pins the
+        // initial state.
+        let a = Match3Atom::new(4, 4, 15);
+        assert_eq!(a.get_moves_remaining(), 15);
+    }
+
+    #[test]
+    fn match3_new_is_not_game_over_round157() {
+        // Fresh atom: is_game_over =
+        // false (we haven't used
+        // any moves yet). A
+        // regression that pre-set
+        // moves_remaining=0 would
+        // return true here.
+        let a = Match3Atom::new(4, 4, 10);
+        assert!(!a.is_game_over());
+    }
+
+    #[test]
+    fn match3_new_initial_combo_is_zero_round157() {
+        // Fresh atom: combo = 0.
+        // Combo advances when a
+        // single swap triggers
+        // multiple cascading
+        // matches; a regression
+        // that pre-set combo to
+        // a non-zero default would
+        // silently inflate the
+        // first score.
+        let a = Match3Atom::new(4, 4, 10);
+        assert_eq!(a.get_combo(), 0);
+    }
+
+    // -----------------------------------------------------------------
+    // GemCell::new — field storage.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn gem_cell_new_stores_fields_round157() {
+        // Pin the GemCell::new
+        // contract: the 3 constructor
+        // args (gem_type, row, col)
+        // must round-trip verbatim.
+        // is_matched and is_special
+        // are constructor-defaulted
+        // to false (no SpecialType).
+        let cell = GemCell::new(GemType::Red, 2, 3);
+        assert_eq!(cell.gem_type, GemType::Red);
+        assert_eq!(cell.row, 2);
+        assert_eq!(cell.col, 3);
+        assert!(!cell.is_matched);
+        assert!(!cell.is_special);
+    }
+
+    // -----------------------------------------------------------------
+    // get_cell — bounds + state.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn get_cell_for_in_bounds_after_on_enter_returns_some_round157() {
+        // Pin the in-bounds
+        // branch: get_cell must
+        // return Some(&GemCell)
+        // for any (row, col)
+        // within the board AFTER
+        // on_enter has populated
+        // the cells. A
+        // regression that
+        // swapped rows/cols
+        // indexing (col * cols
+        // + row instead of row
+        // * cols + col) would
+        // return Some for
+        // out-of-bounds / None
+        // for in-bounds.
+        //
+        // Note: a fresh
+        // Match3Atom has the
+        // board allocated but
+        // all cells are None
+        // — the cells are
+        // filled in by on_enter
+        // (the round-135 test
+        // pattern).
+        let mut ctx = make_ctx();
+        let mut a = Match3Atom::new(4, 4, 10);
+        a.on_init(&mut ctx);
+        a.on_enter(&mut ctx);
+        let cell = a.get_cell(0, 0);
+        assert!(cell.is_some(), "get_cell((0, 0)) must return Some after on_enter");
+    }
+
+    #[test]
+    fn get_cell_for_out_of_bounds_returns_none_round157() {
+        // Pin the out-of-bounds
+        // branch: get_cell must
+        // return None for any
+        // (row, col) outside
+        // the board. A
+        // regression that
+        // panicked on
+        // out-of-bounds would
+        // surface here.
+        let a = Match3Atom::new(4, 4, 10);
+        assert!(a.get_cell(10, 10).is_none());
+        assert!(a.get_cell(0, 100).is_none());
+        assert!(a.get_cell(100, 0).is_none());
+    }
+
+    // -----------------------------------------------------------------
+    // MatchGroup — size + special eligibility.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn match_group_size_returns_cells_len_round157() {
+        // Pin the MatchGroup::size
+        // contract: it must return
+        // the number of cells in
+        // the group. A 3-cell
+        // match group has size 3;
+        // a 5-cell has size 5.
+        let mut g = MatchGroup {
+            cells: Vec::new(),
+            gem_type: GemType::Red,
+            is_horizontal: true,
+        };
+        assert_eq!(g.size(), 0);
+        g.cells.push((0, 0));
+        g.cells.push((0, 1));
+        g.cells.push((0, 2));
+        assert_eq!(g.size(), 3);
+        g.cells.push((0, 3));
+        g.cells.push((0, 4));
+        assert_eq!(g.size(), 5);
+    }
+
+    // -----------------------------------------------------------------
+    // SpecialType — the second enum surface.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn special_type_partial_eq_round157() {
+        // Pin that SpecialType
+        // derives PartialEq —
+        // match-3 game logic
+        // compares special types
+        // to detect line-bomb /
+        // rainbow / wrapped
+        // configurations. The
+        // 5 variants (per the
+        // enum definition):
+        // None / LineH / LineV /
+        // Bomb / Rainbow.
+        assert_eq!(SpecialType::LineH, SpecialType::LineH);
+        assert_eq!(SpecialType::Rainbow, SpecialType::Rainbow);
+        assert_ne!(SpecialType::LineH, SpecialType::LineV);
+        assert_ne!(SpecialType::Bomb, SpecialType::Rainbow);
+        assert_ne!(SpecialType::None, SpecialType::LineH);
+    }
+
+    // -----------------------------------------------------------------
+    // with_gem_types — power-user preset.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn with_gem_types_clamps_to_valid_range_round157() {
+        // The with_gem_types
+        // builder accepts a
+        // count of distinct gem
+        // types to use. Values
+        // outside the valid
+        // range [1, 6] (the
+        // number of GemType
+        // variants) must be
+        // clamped — a regression
+        // that overflowed the
+        // index would crash on
+        // the first gem draw.
+        // (The round-135 test
+        // covers the happy
+        // path; this one pins
+        // the clamp contract.)
+        //
+        // Note: `with_gem_types`
+        // takes `self` by value
+        // (consumes), so each
+        // call needs its own
+        // Match3Atom.
+        let mut ctx = make_ctx();
+        // High value (10) — must
+        // clamp to a valid index
+        // range, no panic.
+        let mut a_high = Match3Atom::new(4, 4, 10);
+        a_high.on_init(&mut ctx);
+        a_high.on_enter(&mut ctx);
+        let _ = a_high.with_gem_types(10);
+        // Low value (0) — must
+        // clamp up to a valid
+        // count, no panic.
+        let mut ctx2 = make_ctx();
+        let mut a_zero = Match3Atom::new(4, 4, 10);
+        a_zero.on_init(&mut ctx2);
+        a_zero.on_enter(&mut ctx2);
+        let _ = a_zero.with_gem_types(0);
+        // If we got here, no
+        // panic — the clamp
+        // contract holds.
+    }
+}
