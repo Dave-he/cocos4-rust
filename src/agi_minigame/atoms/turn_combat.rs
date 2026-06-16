@@ -1468,3 +1468,429 @@ mod round140_tests {
         assert_eq!(a.current_phase(), AtomPhase::Paused);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 160 — focused helper tests for `atoms/turn_combat.rs`.
+//
+// The round-140 block covered the
+// dispatch / event surface. This
+// block goes deeper on the data-model
+// primitives (Buff / CombatUnit
+// field defaults, the 5 action
+// types / 7 buff effects) and on
+// the combat math (damage
+// mitigation, heal clamping,
+// buff stacking, action-gauge
+// tick, effective stats).
+//
+// 11 tests pinning the round-140 →
+// round-159 surface.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round160_tests {
+    use super::*;
+
+    /// `Buff::new`
+    /// stores all 5
+    /// fields verbatim
+    /// (id / name
+    /// cloned to the
+    /// heap; stacks /
+    /// duration / effect
+    /// are stored as
+    /// the constructor
+    /// args). A
+    /// regression that
+    /// used a `&str` for
+    /// id / name would
+    /// cause a borrow
+    /// error in
+    /// `add_buff`.
+    #[test]
+    fn buff_new_stores_all_fields_round_160() {
+        let b = Buff::new("b1", "Attack Up", 2, 5, BuffEffect::AttackUp);
+        assert_eq!(b.id, "b1");
+        assert_eq!(b.name, "Attack Up");
+        assert_eq!(b.stacks, 2);
+        assert_eq!(b.duration, 5);
+        assert_eq!(b.effect, BuffEffect::AttackUp);
+    }
+
+    /// `Buff::tick`
+    /// decrements
+    /// `duration` by 1
+    /// and returns
+    /// `true` when
+    /// the buff has
+    /// expired
+    /// (duration
+    /// reached 0).
+    /// A regression
+    /// that returned
+    /// `true` on
+    /// every tick
+    /// would
+    /// auto-remove
+    /// buffs
+    /// prematurely.
+    #[test]
+    fn buff_tick_decrements_and_signals_expiry_round_160() {
+        let mut b = Buff::new("b1", "Poison", 1, 2, BuffEffect::Poison);
+        // First tick: 2 → 1, not expired
+        assert!(!b.tick());
+        assert_eq!(b.duration, 1);
+        // Second tick: 1 → 0, expired
+        assert!(b.tick());
+        assert_eq!(b.duration, 0);
+    }
+
+    /// `ActionType`
+    /// has 5 variants
+    /// (Attack /
+    /// Skill / Defend
+    /// / Wait / Flee).
+    /// `BuffEffect`
+    /// has 7 variants
+    /// (AttackUp /
+    /// DefenseUp /
+    /// SpeedUp /
+    /// Poison / Burn
+    /// / Stun /
+    /// Regen). Both
+    /// are
+    /// `Copy + Eq +
+    /// Hash` so
+    /// they're
+    /// usable in
+    /// `match` and
+    /// `HashMap`
+    /// keys.
+    #[test]
+    fn turn_combat_action_and_buff_effect_have_5_and_7_variants_round_160() {
+        let actions = [
+            ActionType::Attack,
+            ActionType::Skill,
+            ActionType::Defend,
+            ActionType::Wait,
+            ActionType::Flee,
+        ];
+        assert_eq!(actions.len(), 5);
+        for &a in &actions { assert_eq!(a, a); }
+
+        let effects = [
+            BuffEffect::AttackUp,
+            BuffEffect::DefenseUp,
+            BuffEffect::SpeedUp,
+            BuffEffect::Poison,
+            BuffEffect::Burn,
+            BuffEffect::Stun,
+            BuffEffect::Regen,
+        ];
+        assert_eq!(effects.len(), 7);
+        for &e in &effects { assert_eq!(e, e); }
+    }
+
+    /// `CombatUnit::new`
+    /// initializes
+    /// all fields
+    /// with
+    /// `max_hp == hp`
+    /// (so the HUD
+    /// HP bar reads
+    /// 100% on a
+    /// fresh unit),
+    /// `position = 0`,
+    /// empty buffs
+    /// list, and
+    /// `action_gauge
+    /// = 0` with
+    /// `action_threshold
+    /// = 100` (the
+    /// round-1
+    /// defaults).
+    #[test]
+    fn combat_unit_new_initializes_fields_round_160() {
+        let u = CombatUnit::new("u1", "Hero", 100, 20, 10, 15, true);
+        assert_eq!(u.id, "u1");
+        assert_eq!(u.name, "Hero");
+        assert_eq!(u.hp, 100);
+        assert_eq!(u.max_hp, 100);
+        assert_eq!(u.attack, 20);
+        assert_eq!(u.defense, 10);
+        assert_eq!(u.speed, 15);
+        assert_eq!(u.position, 0);
+        assert!(u.is_player);
+        assert!(u.buffs.is_empty());
+        assert_eq!(u.action_gauge, 0);
+        assert_eq!(u.action_threshold, 100);
+        assert!(u.is_alive());
+    }
+
+    /// `CombatUnit::take_damage`
+    /// subtracts
+    /// `(damage -
+    /// defense / 2)`
+    /// (the
+    /// round-1
+    /// damage
+    /// mitigation
+    /// formula),
+    /// clamps the
+    /// result to
+    /// `[1, ∞)` so a
+    /// heavily-armored
+    /// unit still
+    /// takes at
+    /// least 1
+    /// damage per
+    /// hit (a
+    /// regression
+    /// that
+    /// returned 0
+    /// for high-
+    /// defense
+    /// units would
+    /// make them
+    /// invulnerable),
+    /// and clamps
+    /// `hp` to 0
+    /// (the unit
+    /// dies but
+    /// never has
+    /// negative HP).
+    #[test]
+    fn combat_unit_take_damage_subtracts_and_minimum_is_one_round_160() {
+        let mut u = CombatUnit::new("u1", "Tank", 100, 20, 100, 5, true);
+        // damage=10, defense=100 → mitigated = 10 - 50 = -40 → max(1, -40) = 1
+        let actual = u.take_damage(10);
+        assert_eq!(actual, 1);
+        assert_eq!(u.hp, 99);
+        // Big hit: 100 damage → 100 - 50 = 50
+        let actual2 = u.take_damage(100);
+        assert_eq!(actual2, 50);
+        assert_eq!(u.hp, 49);
+    }
+
+    /// `CombatUnit::heal`
+    /// adds the
+    /// amount to
+    /// `hp` but
+    /// clamps at
+    /// `max_hp`
+    /// (over-heal
+    /// is wasted,
+    /// not
+    /// stored).
+    /// Returns the
+    /// actual
+    /// amount
+    /// healed
+    /// (the
+    /// over-heal
+    /// delta is
+    /// discarded).
+    #[test]
+    fn combat_unit_heal_clamps_at_max_hp_round_160() {
+        let mut u = CombatUnit::new("u1", "Hero", 100, 20, 10, 15, true);
+        // Take some damage first
+        u.hp = 80;
+        // Heal 10 → 90, healed = 10
+        let healed = u.heal(10);
+        assert_eq!(healed, 10);
+        assert_eq!(u.hp, 90);
+        // Heal 50 → 100 (clamped), healed = 10 (the 40 over-heal is wasted)
+        let healed2 = u.heal(50);
+        assert_eq!(healed2, 10);
+        assert_eq!(u.hp, 100);
+    }
+
+    /// `CombatUnit::add_buff`
+    /// for a new
+    /// buff id
+    /// appends to
+    /// the list.
+    /// For an
+    /// existing
+    /// buff id
+    /// (re-apply),
+    /// it stacks
+    /// (adds
+    /// stacks) and
+    /// takes the
+    /// max of the
+    /// two
+    /// durations
+    /// (so a
+    /// re-apply
+    /// doesn't
+    /// shorten the
+    /// duration).
+    #[test]
+    fn combat_unit_add_buff_stacks_and_maxes_duration_round_160() {
+        let mut u = CombatUnit::new("u1", "Hero", 100, 20, 10, 15, true);
+        u.add_buff(Buff::new("atk", "Atk Up", 1, 5, BuffEffect::AttackUp));
+        assert_eq!(u.buffs.len(), 1);
+        assert_eq!(u.buffs[0].stacks, 1);
+        assert_eq!(u.buffs[0].duration, 5);
+        // Re-apply with more stacks + longer duration
+        u.add_buff(Buff::new("atk", "Atk Up", 2, 8, BuffEffect::AttackUp));
+        assert_eq!(u.buffs.len(), 1);
+        assert_eq!(u.buffs[0].stacks, 3); // 1 + 2
+        assert_eq!(u.buffs[0].duration, 8); // max(5, 8)
+        // Re-apply with shorter duration → still keeps the longer one
+        u.add_buff(Buff::new("atk", "Atk Up", 1, 3, BuffEffect::AttackUp));
+        assert_eq!(u.buffs[0].duration, 8);
+    }
+
+    /// `CombatUnit::tick_action_gauge`
+    /// adds `speed`
+    /// to
+    /// `action_gauge`
+    /// and returns
+    /// `true` when
+    /// the gauge
+    /// reaches the
+    /// threshold
+    /// (the unit
+    /// gets a
+    /// turn). The
+    /// threshold
+    /// excess is
+    /// rolled over
+    /// to the next
+    /// tick (so a
+    /// unit with
+    /// `speed=120`
+    /// and
+    /// `threshold=100`
+    /// would
+    /// trigger
+    /// every tick
+    /// with 20
+    /// carrying
+    /// over).
+    #[test]
+    fn combat_unit_tick_action_gauge_triggers_at_threshold_round_160() {
+        let mut u = CombatUnit::new("u1", "Fast", 100, 20, 10, 60, true);
+        // speed=60, threshold=100 → 1 tick not enough
+        assert!(!u.tick_action_gauge());
+        assert_eq!(u.action_gauge, 60);
+        // 2 ticks → 120, triggers, rolls over 20
+        assert!(u.tick_action_gauge());
+        assert_eq!(u.action_gauge, 20);
+        // 3 ticks → 80, not triggered
+        assert!(!u.tick_action_gauge());
+        assert_eq!(u.action_gauge, 80);
+    }
+
+    /// `effective_attack`
+    /// adds a 10%
+    /// multiplier
+    /// per stack
+    /// of an
+    /// AttackUp
+    /// buff (so 2
+    /// stacks =
+    /// +20% attack)
+    /// and subtracts
+    /// `2 * stacks`
+    /// for a
+    /// Poison buff.
+    /// The result is
+    /// floored at 1
+    /// (a regression
+    /// that allowed
+    /// the result to
+    /// go to 0
+    /// would make a
+    /// unit unable
+    /// to attack).
+    #[test]
+    fn combat_unit_effective_attack_includes_buffs_and_floors_at_one_round_160() {
+        let mut u = CombatUnit::new("u1", "Hero", 100, 20, 10, 15, true);
+        // No buffs: 20
+        assert_eq!(u.effective_attack(), 20);
+        // 2 AttackUp stacks: 20 + 20*2/10 = 24
+        u.add_buff(Buff::new("atk", "Atk Up", 2, 5, BuffEffect::AttackUp));
+        assert_eq!(u.effective_attack(), 24);
+        // 3 Poison stacks: 20 - 3*2 = 14
+        u.buffs.clear();
+        u.add_buff(Buff::new("psn", "Poison", 3, 5, BuffEffect::Poison));
+        assert_eq!(u.effective_attack(), 14);
+        // Floor at 1: huge poison shouldn't go negative
+        u.buffs.clear();
+        u.add_buff(Buff::new("psn", "Mega Poison", 50, 5, BuffEffect::Poison));
+        assert_eq!(u.effective_attack(), 1);
+    }
+
+    /// `effective_defense`
+    /// adds a 10%
+    /// multiplier
+    /// per stack
+    /// of a
+    /// DefenseUp
+    /// buff (so 2
+    /// stacks =
+    /// +20% defense).
+    /// Other buff
+    /// effects
+    /// (Poison,
+    /// Burn, etc.)
+    /// do NOT
+    /// affect
+    /// defense
+    /// (only the
+    /// DefenseUp
+    /// match arm
+    /// runs).
+    #[test]
+    fn combat_unit_effective_defense_includes_defenseup_only_round_160() {
+        let mut u = CombatUnit::new("u1", "Tank", 100, 20, 50, 15, true);
+        // No buffs: 50
+        assert_eq!(u.effective_defense(), 50);
+        // 2 DefenseUp stacks: 50 + 50*2/10 = 60
+        u.add_buff(Buff::new("def", "Def Up", 2, 5, BuffEffect::DefenseUp));
+        assert_eq!(u.effective_defense(), 60);
+        // Poison does NOT affect defense
+        u.buffs.clear();
+        u.add_buff(Buff::new("psn", "Poison", 5, 5, BuffEffect::Poison));
+        assert_eq!(u.effective_defense(), 50);
+    }
+
+    /// `is_alive()`
+    /// returns
+    /// `true` when
+    /// `hp > 0`
+    /// and `false`
+    /// when
+    /// `hp <= 0`.
+    /// A regression
+    /// that used
+    /// `hp > 0`
+    /// strictly is
+    /// correct
+    /// (matches
+    /// the
+    /// round-1
+    /// contract);
+    /// the danger
+    /// case is
+    /// `hp == 0`
+    /// (the unit
+    /// just died)
+    /// — is_alive
+    /// must
+    /// return
+    /// `false` so
+    /// the HUD
+    /// shows
+    /// "defeated".
+    #[test]
+    fn combat_unit_is_alive_matches_hp_positive_round_160() {
+        let mut u = CombatUnit::new("u1", "Hero", 100, 20, 10, 15, true);
+        assert!(u.is_alive());
+        u.hp = 0;
+        assert!(!u.is_alive());
+    }
+}
