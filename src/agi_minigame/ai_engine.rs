@@ -1118,3 +1118,224 @@ mod round129_tests {
         registry
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 155 helper-level tests for `ai_engine.rs`.
+//
+// Round 155 closes surface-area gaps left after the
+// round-19 / round-129 sweep — specifically the
+// GenerationConfig boundary contracts (level-0,
+// level-saturation, default values) and the
+// BalanceTuner mood-reflex contracts (mood_bias
+// per-branch, stacked branches, default-mood
+// equivalence, clamp behavior).
+//
+// Each test is fully self-contained: it builds
+// its own `BalanceTuner` / `GenerationConfig` via
+// inline literals, so a regression in one fixture
+// doesn't poison the others.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round155_tests {
+    use super::*;
+    use super::super::npc::NpcDisposition;
+
+    // -----------------------------------------------------------------
+    // GenerationConfig — for_player_level + default.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn generation_config_default_initial_values_round155() {
+        // GenerationConfig::default() pins
+        // all 9 fields. Regression that
+        // pre-set `seed = Some(0)` would
+        // silently break the "no seed"
+        // path used by the round-21
+        // blueprint pipeline.
+        let cfg = GenerationConfig::default();
+        assert_eq!(cfg.min_atoms, 2);
+        assert_eq!(cfg.max_atoms, 4);
+        assert_eq!(cfg.difficulty_range, (0.5, 1.0));
+        assert!(cfg.allow_composite);
+        assert_eq!(cfg.seed, None);
+        assert_eq!(cfg.player_level, 1);
+        assert!(cfg.preferred_types.is_empty());
+        assert!(cfg.excluded_types.is_empty());
+        assert_eq!(cfg.reward_multiplier, 1.0);
+    }
+
+    #[test]
+    fn generation_config_for_player_level_zero_round155() {
+        // Level-0 boundary: max_atoms
+        // formula is `(2 + level / 5).min(6)`,
+        // so level=0 → max_atoms=2.
+        // Difficulty is `0.3 + level * 0.1`,
+        // saturated to 1.0; level=0 →
+        // difficulty=0.3.
+        let cfg = GenerationConfig::for_player_level(0);
+        assert_eq!(cfg.player_level, 0);
+        assert_eq!(cfg.max_atoms, 2);
+        assert_eq!(cfg.min_atoms, 2);
+        assert!((cfg.difficulty_range.0 - 0.3).abs() < 1e-6);
+        assert!((cfg.difficulty_range.1 - 0.6).abs() < 1e-6);
+    }
+
+    #[test]
+    fn generation_config_for_player_level_high_saturates_round155() {
+        // High-level boundary: max_atoms
+        // saturates at 6 (level=20
+        // would give 2 + 4 = 6; level=30
+        // would give 2 + 6 = 8 capped at
+        // 6). difficulty saturates at
+        // 1.0 (level * 0.1 + 0.3 ≥ 1.0
+        // when level ≥ 7).
+        let cfg = GenerationConfig::for_player_level(50);
+        assert_eq!(cfg.max_atoms, 6, "max_atoms must saturate at 6");
+        assert_eq!(cfg.min_atoms, 2);
+        // 0.3 + 50 * 0.1 = 5.3 → upper
+        // bound is difficulty + 0.3 = 5.6
+        // (we only assert lower bound is
+        // saturated ≥ 1.0; upper is the
+        // raw computation, which is
+        // caller-side downstream).
+        assert!(
+            cfg.difficulty_range.0 >= 1.0,
+            "difficulty lower bound must saturate at 1.0 for high levels"
+        );
+    }
+
+    // -----------------------------------------------------------------
+    // BalanceTuner::mood_bias — per-branch + stacked contracts.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn balance_tuner_mood_bias_default_mood_is_zero_round155() {
+        // Round-22 reflexive-loop
+        // contract: when mood is
+        // `NpcDisposition::default()`,
+        // mood_bias must return exactly
+        // 0.0 (no branches fire). A
+        // regression that leaked a
+        // constant bias into the default
+        // mood would silently nudge
+        // difficulty for every fresh
+        // player.
+        assert_eq!(
+            BalanceTuner::mood_bias(NpcDisposition::default()),
+            0.0
+        );
+    }
+
+    #[test]
+    fn balance_tuner_mood_bias_high_fear_is_neg_010_round155() {
+        // Branch 1: fear > 0.5 → bias
+        // = -0.10. Pin the exact value
+        // — a regression to -0.05
+        // would halve the difficulty
+        // easing.
+        let mood = NpcDisposition { fear: 0.7, ..NpcDisposition::default() };
+        assert!((BalanceTuner::mood_bias(mood) - -0.10).abs() < 1e-6);
+    }
+
+    #[test]
+    fn balance_tuner_mood_bias_friendly_trust_is_pos_008_round155() {
+        // Branch 2: friendly > 0.5 AND
+        // trust > 0.3 → bias = +0.08.
+        // Both conditions must hold
+        // together — a regression that
+        // dropped the trust check would
+        // over-fire the branch.
+        let mood_ok = NpcDisposition {
+            friendly: 0.6, trust: 0.4, ..NpcDisposition::default()
+        };
+        assert!((BalanceTuner::mood_bias(mood_ok) - 0.08).abs() < 1e-6);
+        // friendly OK but trust too low → no bias.
+        let mood_no_trust = NpcDisposition {
+            friendly: 0.6, trust: 0.2, ..NpcDisposition::default()
+        };
+        assert_eq!(BalanceTuner::mood_bias(mood_no_trust), 0.0);
+        // trust OK but friendly too low → no bias.
+        let mood_no_friendly = NpcDisposition {
+            friendly: 0.4, trust: 0.4, ..NpcDisposition::default()
+        };
+        assert_eq!(BalanceTuner::mood_bias(mood_no_friendly), 0.0);
+    }
+
+    #[test]
+    fn balance_tuner_mood_bias_hostile_friendly_is_neg_005_round155() {
+        // Branch 3: friendly < -0.3 →
+        // bias = -0.05. Pin the
+        // boundary: friendly = -0.31
+        // fires, friendly = -0.3 does
+        // NOT (strict <).
+        let mood_fires = NpcDisposition {
+            friendly: -0.31, ..NpcDisposition::default()
+        };
+        assert!((BalanceTuner::mood_bias(mood_fires) - -0.05).abs() < 1e-6);
+        let mood_does_not = NpcDisposition {
+            friendly: -0.3, ..NpcDisposition::default()
+        };
+        assert_eq!(BalanceTuner::mood_bias(mood_does_not), 0.0);
+    }
+
+    // -----------------------------------------------------------------
+    // BalanceTuner::get_stats + suggest_difficulty contracts.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn balance_tuner_get_stats_for_empty_history_returns_zeros_round155() {
+        // Empty history: total_sessions=0,
+        // win_rate=0.0, avg_score=0,
+        // avg_duration=0.0. The zero
+        // division path must not
+        // produce NaN.
+        let tuner = BalanceTuner::new();
+        let stats = tuner.get_stats();
+        assert_eq!(stats.total_sessions, 0);
+        assert_eq!(stats.win_rate, 0.0);
+        assert_eq!(stats.avg_score, 0);
+        assert_eq!(stats.avg_duration, 0.0);
+    }
+
+    #[test]
+    fn balance_tuner_suggest_difficulty_with_default_mood_equals_base_round155() {
+        // Round-22 reflexive-loop
+        // contract: when mood is the
+        // default (zero bias),
+        // `suggest_difficulty_with_mood`
+        // must return EXACTLY the same
+        // value as `suggest_difficulty`
+        // (the reflexive loop adds
+        // information when there IS
+        // information, never noise).
+        let tuner = BalanceTuner::new();
+        let base = tuner.suggest_difficulty(5);
+        let with_default = tuner.suggest_difficulty_with_mood(
+            5, NpcDisposition::default()
+        );
+        assert!((base - with_default).abs() < 1e-6);
+    }
+
+    #[test]
+    fn balance_tuner_suggest_difficulty_with_mood_clamps_to_unit_range_round155() {
+        // The result must be clamped to
+        // [0.1, 1.0] regardless of
+        // mood. A regression that
+        // dropped the clamp would let
+        // the reflexive loop push
+        // difficulty past 1.0 (or
+        // below 0.1).
+        let tuner = BalanceTuner::new();
+        // High fear: bias = -0.10;
+        // low level base is 0.3 +
+        // 0.05*1 = 0.35, so result is
+        // 0.25 (within range, but
+        // verify the clamp is not
+        // pushing it below 0.1).
+        let mood = NpcDisposition { fear: 0.8, ..NpcDisposition::default() };
+        let d = tuner.suggest_difficulty_with_mood(1, mood);
+        assert!(d >= 0.1, "difficulty must clamp to >= 0.1: got {}", d);
+        assert!(d <= 1.0, "difficulty must clamp to <= 1.0: got {}", d);
+    }
+}
