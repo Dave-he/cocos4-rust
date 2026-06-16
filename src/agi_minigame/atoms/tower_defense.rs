@@ -1470,3 +1470,310 @@ mod round139_tests {
         assert_eq!(a.current_phase(), AtomPhase::Paused);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 158 — focused helper tests for `atoms/tower_defense.rs`.
+//
+// The round-139 block covered the lifecycle / dispatch
+// surface. This block goes deeper on the data-model
+// primitives (`Enemy`, `Tower`, `Wave`, `EnemySpawn`)
+// and on the public atom-state accessor math
+// (`get_wave_number`, `is_game_over`, `is_victory`,
+// gold / score / base-hp getters) that the App-level
+// HUD layer reads each frame. A regression in any
+// of these would silently break the HUD's
+// "Wave 3/10" / "Game Over" / "Score" readouts.
+//
+// 10 tests pinning the round-138 → round-157 surface.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round158_tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+    use crate::agi_minigame::world_state::UnifiedWorldState;
+    use crate::agi_minigame::player::PlayerProfile;
+
+    fn make_ctx() -> AtomContext {
+        let ws = Arc::new(Mutex::new(UnifiedWorldState::new(PlayerProfile::new("test"))));
+        AtomContext::new(ws).with_delta_time(0.016)
+    }
+
+    fn make_atom() -> TowerDefenseAtom {
+        // 10x10 grid, 100 base HP, 500
+        // starting gold (the round-1
+        // defaults). Round 158 tests
+        // can mutate the atom freely
+        // since each test owns its
+        // own instance.
+        TowerDefenseAtom::new(10, 10, 100.0, 500)
+    }
+
+    /// `Enemy::new`
+    /// initializes all
+    /// fields with the
+    /// `id` cloned into
+    /// the heap and
+    /// `max_hp == hp`
+    /// (so `hp_ratio()`
+    /// is 1.0 on a
+    /// fresh enemy).
+    #[test]
+    fn enemy_new_initializes_fields_round_158() {
+        let e = Enemy::new("e1", EnemyType::Normal, 50.0, 1.0, 10);
+        assert_eq!(e.id, "e1");
+        assert_eq!(e.enemy_type, EnemyType::Normal);
+        assert_eq!(e.hp, 50.0);
+        assert_eq!(e.max_hp, 50.0);
+        assert_eq!(e.speed, 1.0);
+        assert_eq!(e.reward, 10);
+        assert_eq!(e.path_index, 0);
+        assert_eq!(e.position_on_path, 0.0);
+        assert!(e.is_alive());
+        assert!((e.hp_ratio() - 1.0).abs() < 1e-6);
+    }
+
+    /// `Enemy::take_damage`
+    /// subtracts the
+    /// damage from `hp`
+    /// and returns
+    /// `true` when the
+    /// enemy dies. The
+    /// `hp` field is
+    /// pinned to 0 on
+    /// death (not a
+    /// negative value).
+    #[test]
+    fn enemy_take_damage_subtracts_and_kills_round_158() {
+        let mut e = Enemy::new("e1", EnemyType::Normal, 50.0, 1.0, 10);
+        // 20 damage → still alive
+        assert!(!e.take_damage(20.0));
+        assert_eq!(e.hp, 30.0);
+        // 30 damage → exactly 0, killed
+        assert!(e.take_damage(30.0));
+        assert_eq!(e.hp, 0.0);
+        assert!(!e.is_alive());
+    }
+
+    /// `Enemy::take_damage`
+    /// clamps `hp` at 0
+    /// even when the
+    /// incoming damage
+    /// is much larger
+    /// than the current
+    /// `hp` (no
+    /// negative HP
+    /// ever leaks to
+    /// the UI).
+    #[test]
+    fn enemy_take_damage_clamps_hp_at_zero_round_158() {
+        let mut e = Enemy::new("e1", EnemyType::Normal, 10.0, 1.0, 10);
+        // 9999 damage should kill in one shot
+        assert!(e.take_damage(9999.0));
+        assert_eq!(e.hp, 0.0);
+        // hp_ratio on a max_hp=10 / hp=0 enemy
+        // is 0.0
+        assert_eq!(e.hp_ratio(), 0.0);
+    }
+
+    /// `Enemy::hp_ratio`
+    /// returns 0.0
+    /// when `max_hp
+    /// <= 0.0` (a
+    /// defensive
+    /// guard against
+    /// division-by-zero
+    /// for an enemy
+    /// that was
+    /// constructed
+    /// with hp=0).
+    #[test]
+    fn enemy_hp_ratio_zero_when_max_hp_zero_round_158() {
+        let e = Enemy::new("e1", EnemyType::Normal, 0.0, 1.0, 10);
+        // max_hp = 0.0, so ratio is 0.0
+        // (no panic)
+        assert_eq!(e.hp_ratio(), 0.0);
+    }
+
+    /// `Tower::new`
+    /// assigns the
+    /// type-specific
+    /// damage / range /
+    /// attack-speed
+    /// stats and starts
+    /// at `level = 1`
+    /// with no
+    /// `target_id`.
+    #[test]
+    fn tower_new_type_specific_stats_round_158() {
+        let arrow = Tower::new("t1", TowerType::Arrow, 0, 0);
+        assert_eq!(arrow.tower_type, TowerType::Arrow);
+        assert_eq!(arrow.level, 1);
+        assert_eq!(arrow.damage, 10.0);
+        assert_eq!(arrow.range, 3.0);
+        assert_eq!(arrow.attack_speed, 1.0);
+        assert_eq!(arrow.attack_timer, 0.0);
+        assert!(arrow.target_id.is_none());
+
+        let laser = Tower::new("t2", TowerType::Laser, 1, 1);
+        assert_eq!(laser.damage, 20.0);
+        assert_eq!(laser.range, 4.0);
+        assert_eq!(laser.attack_speed, 1.5);
+    }
+
+    /// `Tower::upgrade`
+    /// increments the
+    /// level, multiplies
+    /// damage by 1.5×
+    /// and range by
+    /// 1.1×. The
+    /// returned value
+    /// is the new
+    /// level.
+    #[test]
+    fn tower_upgrade_multiplies_damage_and_range_round_158() {
+        let mut t = Tower::new("t1", TowerType::Arrow, 0, 0);
+        let initial_damage = t.damage;
+        let initial_range = t.range;
+        let new_level = t.upgrade();
+        assert_eq!(new_level, 2);
+        assert_eq!(t.level, 2);
+        assert_eq!(t.damage, initial_damage * 1.5);
+        assert_eq!(t.range, initial_range * 1.1);
+        // Second upgrade
+        t.upgrade();
+        assert_eq!(t.level, 3);
+    }
+
+    /// `Tower::upgrade_cost`
+    /// is 50 × level
+    /// (so level 1 →
+    /// 50, level 2 →
+    /// 100, level 3 →
+    /// 150, ...).
+    /// This is the
+    /// gold cost the
+    /// `upgrade_tower`
+    /// path checks
+    /// against the
+    /// player's gold.
+    #[test]
+    fn tower_upgrade_cost_scales_with_level_round_158() {
+        let mut t = Tower::new("t1", TowerType::Arrow, 0, 0);
+        assert_eq!(t.upgrade_cost(), 50);  // level 1
+        t.upgrade();
+        assert_eq!(t.upgrade_cost(), 100); // level 2
+        t.upgrade();
+        assert_eq!(t.upgrade_cost(), 150); // level 3
+    }
+
+    /// `Wave::new`
+    /// starts with an
+    /// empty enemy
+    /// list, default
+    /// spawn_interval
+    /// = 1.0, and
+    /// `started` /
+    /// `completed`
+    /// both `false`.
+    #[test]
+    fn wave_new_starts_empty_round_158() {
+        let w = Wave::new(1);
+        assert_eq!(w.wave_number, 1);
+        assert!(w.enemies.is_empty());
+        assert_eq!(w.spawn_interval, 1.0);
+        assert!(!w.started);
+        assert!(!w.completed);
+        assert_eq!(w.total_enemies(), 0);
+    }
+
+    /// `Wave::with_enemy`
+    /// appends an
+    /// `EnemySpawn` and
+    /// `total_enemies`
+    /// sums the counts
+    /// across all
+    /// spawn entries
+    /// in a single
+    /// wave.
+    #[test]
+    fn wave_with_enemy_accumulates_total_round_158() {
+        let w = Wave::new(2)
+            .with_enemy(EnemyType::Normal, 5)
+            .with_enemy(EnemyType::Fast, 3)
+            .with_enemy(EnemyType::Boss, 1);
+        assert_eq!(w.enemies.len(), 3);
+        assert_eq!(w.total_enemies(), 9);
+    }
+
+    /// `TowerDefenseAtom`
+    /// exposes
+    /// `is_game_over`
+    /// as `base_hp <=
+    /// 0.0` and
+    /// `is_victory` as
+    /// "all waves done
+    /// AND no enemies
+    /// left on the
+    /// field". A
+    /// regression in
+    /// the
+    /// `on_update`
+    /// gate (or in the
+    /// accessor math)
+    /// would freeze
+    /// the atom in the
+    /// wrong phase.
+    #[test]
+    fn atom_game_over_and_victory_flags_round_158() {
+        let mut a = make_atom();
+        // Generate 3 waves so the
+        // "victory" semantics are
+        // meaningful (a fresh atom
+        // with 0 waves reports
+        // `is_victory() = true` since
+        // `current_wave (0) >=
+        // waves.len() (0)`).
+        a.generate_waves(3, 0.5);
+        assert!(!a.is_game_over());
+        assert!(!a.is_victory());
+        // Drain base HP → game over.
+        a.base_hp = 0.0;
+        assert!(a.is_game_over());
+        // Victory: drain current_wave
+        // past waves.len() and ensure
+        // no enemies are on the field.
+        a.base_hp = 100.0;
+        a.current_wave = a.waves.len();
+        assert!(a.is_victory());
+    }
+
+    /// `get_wave_number`
+    /// is 1-indexed
+    /// (the HUD
+    /// displays "Wave
+    /// 1" on a fresh
+    /// atom, not
+    /// "Wave 0").
+    /// `current_wave`
+    /// is incremented
+    /// when a wave
+    /// completes, so
+    /// the displayed
+    /// number is
+    /// `current_wave +
+    /// 1` (1-based
+    /// display of a
+    /// 0-based
+    /// internal
+    /// counter).
+    #[test]
+    fn atom_get_wave_number_is_1_indexed_round_158() {
+        let mut a = make_atom();
+        // current_wave starts at 0 →
+        // get_wave_number = 1
+        assert_eq!(a.get_wave_number(), 1);
+        a.current_wave = 2;
+        assert_eq!(a.get_wave_number(), 3);
+    }
+}
