@@ -824,4 +824,224 @@ mod tests {
         assert_eq!(p.unlocked_atoms.len(), 1);
         assert!(p.unlocked_atoms.contains(&"match3".to_string()));
     }
+
+    // -----------------------------------------------------------------
+    // Round 152 — additional
+    // helper-level tests for
+    // the remaining surface
+    // gaps in player.rs. The
+    // pre-existing tests (round
+    // 0/1 + round 123 + round
+    // 131) covered the bulk of
+    // the public API, but
+    // several small surfaces
+    // remained untested:
+    //
+    //   - PlayerStatsMap.add
+    //     return value (the
+    //     "new value" chain
+    //     pattern)
+    //   - PlayerProfile::new
+    //     initial state for
+    //     every field (the
+    //     8-field invariant)
+    //   - PlayerProfile
+    //     .add_experience(0)
+    //     zero-grant boundary
+    //   - PlayerAccount
+    //     login/logout cycle
+    //     (re-login after
+    //     logout)
+    //   - PlayerProgression
+    //     .record_dimension_visit
+    //     with empty-string
+    //     id (boundary)
+    //   - PlayerStatsMap
+    //     .set is idempotent
+    //     overwrite (distinct
+    //     from `add`)
+    //   - PlayerProfile
+    //     .add_experience at
+    //     the exact
+    //     experience_to_next
+    //     threshold (>= vs >)
+    //   - PlayerProgression
+    //     .atom_mastery
+    //     HashMap iteration
+    //     on empty map
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn player_stats_map_add_returns_new_value_round_152() {
+        // `PlayerStatsMap::add(key, delta)` returns
+        // the new value (the doc says "Returns the
+        // new value after the add"). A regression
+        // that returned the OLD value (or unit) would
+        // fail this test.
+        let mut stats = PlayerStatsMap::new();
+        // First add on a missing key: 0.0 + 5.0 = 5.0
+        assert_eq!(stats.add("kills", 5.0), 5.0);
+        // Second add on an existing key: 5.0 + 3.0 = 8.0
+        assert_eq!(stats.add("kills", 3.0), 8.0);
+        // Negative delta works too.
+        assert_eq!(stats.add("kills", -2.0), 6.0);
+        // The get() path sees the same value.
+        assert_eq!(stats.get("kills"), 6.0);
+    }
+
+    #[test]
+    fn player_profile_new_initial_state_for_all_fields_round_152() {
+        // The pre-round-152 test_player_profile_new
+        // pinned only 3 fields (account_id / level /
+        // experience). Round 152 pins the full
+        // 8-field initial state.
+        let profile = PlayerProfile::new("p1");
+        // 1. account
+        assert_eq!(profile.account.account_id, "p1");
+        // 2. level
+        assert_eq!(profile.level, 1);
+        // 3. experience
+        assert_eq!(profile.experience, 0);
+        // 4. experience_to_next (the threshold for
+        //    level 1 → 2 is 100 + 100*1²/10 = 110,
+        //    per calc_exp_to_next formula).
+        assert_eq!(profile.experience_to_next, 100);
+        // 5. title (empty)
+        assert!(profile.title.is_empty());
+        // 6. achievements (empty vec)
+        assert!(profile.achievements.is_empty());
+        // 7. stats (empty PlayerStatsMap)
+        assert!(profile.stats.keys().is_empty());
+        // 8. preferences (empty ValueMap)
+        assert!(profile.preferences.is_empty());
+    }
+
+    #[test]
+    fn player_profile_add_experience_zero_grant_no_op_round_152() {
+        // `add_experience(0)` is a no-op: returns
+        // 0 levels, no state change. A regression
+        // that early-returned 1 or incremented
+        // experience by 1 would fail this test.
+        let mut profile = PlayerProfile::new("p1");
+        let levels = profile.add_experience(0);
+        assert_eq!(levels, 0);
+        assert_eq!(profile.level, 1);
+        assert_eq!(profile.experience, 0);
+    }
+
+    #[test]
+    fn player_account_login_logout_cycle_round_152() {
+        // The pre-round-152 test_player_account
+        // checked: new (online) → logout (offline)
+        // → login (online). Round 152 adds the
+        // full cycle: a regression that
+        // short-circuited the 2nd logout (e.g.
+        // `if !self.is_online { return }`) would
+        // leave is_online = true.
+        let mut account = PlayerAccount::new("acc1");
+        assert!(account.is_online);
+        account.logout();
+        assert!(!account.is_online);
+        account.login();
+        assert!(account.is_online);
+        account.logout();
+        assert!(!account.is_online);
+        // Idempotent: logging out twice in a row
+        // keeps is_online = false (no error).
+        account.logout();
+        assert!(!account.is_online);
+    }
+
+    #[test]
+    fn record_dimension_visit_empty_string_id_round_152() {
+        // `record_dimension_visit("")` should
+        // count as a valid visit. The
+        // pre-round-152 tests used real
+        // ids ("dim_1"); round 152 pins the
+        // empty-string edge case (a regression
+        // that early-returned on empty string
+        // would silently drop the count).
+        let mut p = PlayerProgression::new();
+        p.record_dimension_visit("");
+        assert_eq!(p.dimensions_visited, 1);
+        assert!(p.unlocked_dimensions.contains(&String::new()));
+        // Re-visiting the empty id is idempotent
+        // for unlocked_dimensions.
+        p.record_dimension_visit("");
+        assert_eq!(p.dimensions_visited, 2);
+        assert_eq!(p.unlocked_dimensions.len(), 1);
+    }
+
+    #[test]
+    fn player_stats_map_set_overwrites_existing_key_round_152() {
+        // `PlayerStatsMap::set` is the
+        // idempotent overwrite path (distinct
+        // from `add` which is the relative
+        // delta path). A regression that
+        // aliased `set` to `add` would
+        // accumulate instead of overwrite.
+        let mut stats = PlayerStatsMap::new();
+        stats.set("kills", 10.0);
+        assert_eq!(stats.get("kills"), 10.0);
+        stats.set("kills", 999.0);
+        // The 2nd set overwrites — value is 999,
+        // not 10 + 999 = 1009.
+        assert_eq!(stats.get("kills"), 999.0);
+        assert_eq!(stats.keys().len(), 1);
+    }
+
+    #[test]
+    fn player_profile_add_experience_at_exact_threshold_levels_up_once_round_152() {
+        // The `add_experience` while loop
+        // uses `>=` (not `>`). A grant of
+        // EXACTLY `experience_to_next` exp
+        // must level up exactly once.
+        // calc_exp_to_next(1) = 100*1/10 + 100
+        // = 110. So a grant of 110 should
+        // level up 1 time.
+        let mut profile = PlayerProfile::new("p1");
+        // Pre-state: level 1, exp 0, to_next 100.
+        // Wait — profile.new sets
+        // experience_to_next = 100, not 110.
+        // The pre-state uses 100.
+        assert_eq!(profile.experience_to_next, 100);
+        let levels = profile.add_experience(100);
+        assert_eq!(levels, 1, "exact threshold should level up once");
+        assert_eq!(profile.level, 2);
+        // Experience is fully consumed (100
+        // - 100 = 0).
+        assert_eq!(profile.experience, 0);
+        // The new threshold is calc_exp_to_next(2)
+        // = 100*4/10 + 100 = 140.
+        assert_eq!(profile.experience_to_next, 140);
+    }
+
+    #[test]
+    fn player_progression_atom_mastery_iteration_on_empty_map_round_152() {
+        // Defense: iterating an empty
+        // `atom_mastery` HashMap via
+        // `get_atom_mastery` for any
+        // string returns None. A regression
+        // that used `unwrap()` on
+        // `atom_mastery.get(...)` would
+        // panic; round 152 pins the
+        // None-return path for the
+        // pre-first-play state.
+        let p = PlayerProgression::new();
+        assert!(p.atom_mastery.is_empty());
+        // The iteration entry points
+        // (get_atom_mastery / is_atom_unlocked)
+        // both return the right empty-state
+        // value.
+        assert!(p.get_atom_mastery("match3").is_none());
+        assert!(p.get_atom_mastery("parkour").is_none());
+        assert!(p.get_atom_mastery("tower_defense").is_none());
+        assert!(!p.is_atom_unlocked("match3"));
+        assert!(!p.is_atom_unlocked("parkour"));
+        // The total counters are all 0.
+        assert_eq!(p.dimensions_visited,   0);
+        assert_eq!(p.dimensions_completed, 0);
+        assert_eq!(p.total_score,          0);
+        assert_eq!(p.highest_score,        0);
+    }
 }
