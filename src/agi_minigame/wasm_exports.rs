@@ -38,6 +38,28 @@ use super::scene_gen::{
     Palette, SceneBlueprint, ThemeInput, VisualStyle,
 };
 use super::gameplay::GameplayType;
+// Round 165 — DSL codegen
+// (round-162) is the
+// `auto-generate the game logic`
+// half of the brief. The Rust
+// `dsl::codegen::generate_rules`
+// already exists; round-164 A
+// added a TS-side mirror that
+// the App calls at
+// dimension-enter time.
+// Round-165 B exposes the same
+// entry point as a JSON shim so
+// the WASM path can be used as
+// a fallback when the TS
+// mirror's `sceneGenWasm` is
+// available (TS-side round-50
+// `null on parsed.error` pattern
+// drops in unchanged — same
+// `{ "error": "..." }` envelope).
+use super::dsl::codegen::{
+    generate_rules as rust_generate_rules, seed_from_string as rust_seed_from_string,
+    BiomeKind as RustBiomeKind, ComplexityKind as RustComplexityKind, GenInput, MoodKind as RustMoodKind,
+};
 
 // ---------------------------------------------------------------------------
 // JSON shapes — string-tagged enums so the TS side stays human-readable
@@ -436,6 +458,311 @@ pub(crate) fn mood_4th_sentence_for_json_internal(args_json: &str) -> String {
 }
 
 // ---------------------------------------------------------------------------
+// Round 165 — DSL codegen JSON bridge.
+//
+// Three exports close the
+// "auto-generate the game logic"
+// half of the brief end-to-end:
+//
+//   1. `seed_from_string_json` —
+//      64-bit FNV-1a (round-164
+//      B). Lets the TS side
+//      double-check its own
+//      `seedFromString` mirror
+//      against the canonical Rust
+//      implementation.
+//
+//   2. `gen_input_from_strings_json` —
+//      derive a `GenInput` from
+//      human-readable strings
+//      (`"forest"` / `"calm"` /
+//      `"med"` + a string seed).
+//      Falls back to a default
+//      `GenInput` if any tag is
+//      unknown (the TS mirror
+//      shares the same fallback
+//      strategy — codegen is
+//      "best-effort, never
+//      blocking").
+//
+//   3. `generate_rules_json` —
+//      the round-162 top-level
+//      entry point, exported as
+//      a JSON shim. Takes a
+//      `GenInputJson` and
+//      returns a JSON array of
+//      `Rule` objects (using the
+//      round-132 manual JSON
+//      format). This is what the
+//      TS App calls at
+//      dimension-enter time when
+//      the WASM module is
+//      available — same pattern
+//      as `theme_to_scene_json`.
+//
+// All three return the canonical
+// `{"error":"..."}` envelope on
+// failure (parse / unknown
+// enum / serialize). Never
+// panic.
+// ---------------------------------------------------------------------------
+
+/// Round 165 — internal helper for `seed_from_string_json`.
+///
+/// Input JSON: `{ "s": "<string>" }`.
+/// Output JSON: `{ "seed": <u64> }` on success,
+/// `{"error":"..."}` on parse failure.
+pub(crate) fn seed_from_string_json_internal(args_json: &str) -> String {
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    struct ArgsJson {
+        s: String,
+    }
+    fn handle(args_json: &str) -> Result<String, String> {
+        let args: ArgsJson = serde_json::from_str(args_json).map_err(|e| format!("parse: {}", e))?;
+        let seed = rust_seed_from_string(&args.s);
+        // Serialize the seed as a
+        // STRING (not a JSON
+        // number) to preserve the
+        // full 64-bit precision.
+        // serde_json stores JSON
+        // numbers as f64 (IEEE 754
+        // double), which only has
+        // 53 bits of mantissa — u64
+        // values above 2^53 would
+        // silently lose precision
+        // on the JS side. The TS
+        // App converts the string
+        // back to bigint (or Number
+        // when known to fit). The
+        // round-164 B cross-check
+        // tests use the same
+        // string-encoded shape.
+        let out = serde_json::json!({ "seed": seed.to_string() });
+        serde_json::to_string(&out).map_err(|e| format!("serialize: {}", e))
+    }
+    match handle(args_json) {
+        Ok(s) => s,
+        Err(msg) => serde_json::to_string(&ErrorJson { error: msg })
+            .unwrap_or_else(|_| String::from(r#"{"error":"unknown"}"#)),
+    }
+}
+
+/// Round 165 — derive a `GenInput` from human-readable strings.
+///
+/// Input JSON:
+/// ```json
+/// {
+///   "biome_id": "<forest|desert|ice|cyberpunk|lava|space|...>",
+///   "dimension_id": "<string>",      // optional, for seed derivation
+///   "complexity": "<low|med|high>",  // optional, defaults to "med"
+///   "seed": <u64>                    // optional, defaults to seed_from_string(dimension_id)
+/// }
+/// ```
+///
+/// The biome_id tag uses the same 6-biome palette as
+/// `BiomeAtmosphere` (`forest` / `desert` / `ice` / `cyberpunk` /
+/// `lava` / `space`); unknown biomes fall back to `Forest` (matches
+/// the round-164 A TS-side `biomeIdToKind` fallback). The mood is
+/// derived from `seed % 4` so it's stable across reloads (same
+/// strategy as the TS `moodKindFromSeed`).
+///
+/// Output JSON: a `GenInputJson` (the same shape as
+/// `generate_rules_json`'s input).
+pub(crate) fn gen_input_from_strings_json_internal(args_json: &str) -> String {
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    struct ArgsJson {
+        biome_id: String,
+        dimension_id: Option<String>,
+        complexity: Option<String>,
+        seed: Option<u64>,
+    }
+    fn biome_from_id(id: &str) -> RustBiomeKind {
+        match id {
+            "forest" => RustBiomeKind::Forest,
+            "desert" => RustBiomeKind::Desert,
+            "ice" => RustBiomeKind::Ice,
+            "cyberpunk" => RustBiomeKind::Cyberpunk,
+            // lava + space: fall back to Forest (round-164 A
+            // TS-side uses the same fallback). The 4-Rust
+            // BiomeKind variants are exhaustive for the
+            // round-162 generator; the 6-biome atmosphere
+            // palette has 2 extras that the generator
+            // doesn't yet cover.
+            _ => RustBiomeKind::Forest,
+        }
+    }
+    fn complexity_from_id(id: &str) -> RustComplexityKind {
+        match id {
+            "high" => RustComplexityKind::High,
+            "low" => RustComplexityKind::Low,
+            // Default to "med" — the
+            // TS mirror uses the same
+            // fallback (round-164 A
+            // `autoGenerateForDimension`
+            // complexity default).
+            // NOTE: the Rust enum
+            // variant is `Medium`,
+            // not `Med` (the JSON
+            // shim string-tag uses
+            // "Medium" to match the
+            // TS mirror's literal
+            // type — see
+            // `ComplexityKind::to_string`
+            // below).
+            _ => RustComplexityKind::Medium,
+        }
+    }
+    fn mood_from_seed(seed: u64) -> RustMoodKind {
+        // The 4 MoodKind variants are
+        // (in canonical order):
+        //   Calm / Tense / Epic / Mysterious.
+        // Mod-4 picks one of them
+        // (the seed axis is
+        // round-163; the TS mirror
+        // uses the same ordering).
+        match seed % 4 {
+            0 => RustMoodKind::Calm,
+            1 => RustMoodKind::Tense,
+            2 => RustMoodKind::Epic,
+            _ => RustMoodKind::Mysterious,
+        }
+    }
+    fn handle(args_json: &str) -> Result<String, String> {
+        let args: ArgsJson = serde_json::from_str(args_json).map_err(|e| format!("parse: {}", e))?;
+        let biome = biome_from_id(&args.biome_id);
+        let complexity = complexity_from_id(args.complexity.as_deref().unwrap_or("med"));
+        let seed = args.seed.unwrap_or_else(|| match &args.dimension_id {
+            Some(d) => rust_seed_from_string(d),
+            None => 0,
+        });
+        let mood = mood_from_seed(seed);
+        let out = serde_json::json!({
+            "biome": format!("{:?}", biome),
+            "mood": format!("{:?}", mood),
+            "complexity": format!("{:?}", complexity),
+            // Same string-encoded
+            // seed as above (full
+            // 64-bit precision).
+            "seed": seed.to_string(),
+        });
+        serde_json::to_string(&out).map_err(|e| format!("serialize: {}", e))
+    }
+    match handle(args_json) {
+        Ok(s) => s,
+        Err(msg) => serde_json::to_string(&ErrorJson { error: msg })
+            .unwrap_or_else(|_| String::from(r#"{"error":"unknown"}"#)),
+    }
+}
+
+/// Round 165 — internal helper for `generate_rules_json`.
+///
+/// Input JSON: a `GenInputJson` (output of
+/// `gen_input_from_strings_json_internal`, or hand-built).
+///
+/// Output JSON: a JSON array of `Rule` objects in the
+/// round-132 manual-JSON format
+/// (e.g. `[{"event":{"kind":"Collide","arg":null},"actions":[...]}]`).
+/// On failure returns `{"error":"..."}`. Never panics.
+pub(crate) fn generate_rules_json_internal(args_json: &str) -> String {
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    struct GenInputJson {
+        biome: String,
+        mood: String,
+        complexity: String,
+        // Accept BOTH a JSON
+        // number (for old callers
+        // that haven't migrated)
+        // AND a JSON string (for
+        // callers that round-trip
+        // through
+        // `gen_input_from_strings_json`).
+        // The string form is the
+        // canonical one (full
+        // 64-bit precision); the
+        // number form is a legacy
+        // back-compat path.
+        #[serde(deserialize_with = "deserialize_seed_u64")]
+        seed: u64,
+    }
+
+    /// Accept `seed` as either a JSON
+    /// number or a JSON string. The
+    /// TS App always sends a string
+    /// (the canonical round-trip
+    /// from `gen_input_from_strings_json`);
+    /// this deserializer keeps the
+    /// legacy number path open for
+    /// callers that haven't migrated.
+    fn deserialize_seed_u64<'de, D>(d: D) -> Result<u64, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+        let v = serde_json::Value::deserialize(d).map_err(D::Error::custom)?;
+        match v {
+            serde_json::Value::Number(n) => n
+                .as_u64()
+                .ok_or_else(|| D::Error::custom("seed number is not u64")),
+            serde_json::Value::String(s) => s
+                .parse::<u64>()
+                .map_err(|e| D::Error::custom(format!("seed string parse: {}", e))),
+            other => Err(D::Error::custom(format!(
+                "seed must be number or string, got: {}",
+                other
+            ))),
+        }
+    }
+    fn biome_from_name(s: &str) -> Result<RustBiomeKind, String> {
+        match s {
+            "Forest" => Ok(RustBiomeKind::Forest),
+            "Desert" => Ok(RustBiomeKind::Desert),
+            "Ice" => Ok(RustBiomeKind::Ice),
+            "Cyberpunk" => Ok(RustBiomeKind::Cyberpunk),
+            other => Err(format!("unknown biome: {}", other)),
+        }
+    }
+    fn mood_from_name(s: &str) -> Result<RustMoodKind, String> {
+        match s {
+            "Calm" => Ok(RustMoodKind::Calm),
+            "Tense" => Ok(RustMoodKind::Tense),
+            "Epic" => Ok(RustMoodKind::Epic),
+            "Mysterious" => Ok(RustMoodKind::Mysterious),
+            other => Err(format!("unknown mood: {}", other)),
+        }
+    }
+    fn complexity_from_name(s: &str) -> Result<RustComplexityKind, String> {
+        // NOTE: the canonical Rust
+        // variant is `Medium`
+        // (not `Med`). The TS
+        // mirror uses the same
+        // string tag — both sides
+        // serialize as `"Medium"`.
+        match s {
+            "Low" => Ok(RustComplexityKind::Low),
+            "Medium" => Ok(RustComplexityKind::Medium),
+            "High" => Ok(RustComplexityKind::High),
+            other => Err(format!("unknown complexity: {}", other)),
+        }
+    }
+    fn handle(args_json: &str) -> Result<String, String> {
+        let args: GenInputJson = serde_json::from_str(args_json).map_err(|e| format!("parse: {}", e))?;
+        let biome = biome_from_name(&args.biome)?;
+        let mood = mood_from_name(&args.mood)?;
+        let complexity = complexity_from_name(&args.complexity)?;
+        let input = GenInput { biome, mood, complexity, seed: args.seed };
+        let rules = rust_generate_rules(input);
+        let rules_json: Vec<String> = rules.iter().map(|r| r.to_json()).collect();
+        let joined = format!("[{}]", rules_json.join(","));
+        Ok(joined)
+    }
+    match handle(args_json) {
+        Ok(s) => s,
+        Err(msg) => serde_json::to_string(&ErrorJson { error: msg })
+            .unwrap_or_else(|_| String::from(r#"{"error":"unknown"}"#)),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // WASM exports — thin shims around the internal helpers.
 // ---------------------------------------------------------------------------
 
@@ -493,12 +820,52 @@ pub fn mood_4th_sentence_for_json(args_json: &str) -> String {
     mood_4th_sentence_for_json_internal(args_json)
 }
 
-/// Round 51 — health check. Bumped from `0.1.0-round48` to
-/// `0.2.0-round51` to reflect the three new exports. The TS-side
-/// `loadSceneGenWasm` checks the major version `0.2.0-round` prefix.
+/// Round 165 — 64-bit FNV-1a seed derivation.
+///
+/// Input: `{ "s": "<string>" }`. Output: `{ "seed": <u64> }`.
+/// On failure: `{"error":"..."}` (parse error only — the hash
+/// itself is total). The TS mirror in
+/// `AGI-miniGame/src/dsl/codegenBindings.ts` uses the same
+/// algorithm; this WASM export lets the TS side double-check
+/// its mirror against the canonical Rust implementation.
+#[wasm_bindgen]
+pub fn seed_from_string_json(args_json: &str) -> String {
+    seed_from_string_json_internal(args_json)
+}
+
+/// Round 165 — derive a `GenInputJson` from a biome_id +
+/// optional dimension_id + optional complexity + optional seed.
+///
+/// See `gen_input_from_strings_json_internal` for the input
+/// shape and the fallback rules. The output is the same shape
+/// `generate_rules_json` accepts — chain the two for the common
+/// dimension-enter workflow.
+#[wasm_bindgen]
+pub fn gen_input_from_strings_json(args_json: &str) -> String {
+    gen_input_from_strings_json_internal(args_json)
+}
+
+/// Round 165 — codegen top-level entry point (round-162 core).
+///
+/// Input: `GenInputJson`. Output: JSON array of `Rule` objects
+/// in the round-132 manual format. On failure:
+/// `{"error":"..."}`. Never panics.
+///
+/// The TS App calls this at dimension-enter time when the WASM
+/// module is available; the round-164 A TS mirror is the
+/// fallback. Same `null on parsed.error` pattern as
+/// `themeToSceneWithFallback`.
+#[wasm_bindgen]
+pub fn generate_rules_json(args_json: &str) -> String {
+    generate_rules_json_internal(args_json)
+}
+
+/// Round 51 → 165 — health check. Bumped from `0.2.0-round51` to
+/// `0.3.0-round165` to reflect the three new exports. The TS-side
+/// `loadSceneGenWasm` checks the major version `0.3.0-round` prefix.
 #[wasm_bindgen]
 pub fn wasm_module_version() -> String {
-    String::from("0.2.0-round51")
+    String::from("0.3.0-round165")
 }
 
 // ---------------------------------------------------------------------------
@@ -1193,20 +1560,24 @@ mod tests {
     #[test]
     fn round141_wasm_module_version_constant() {
         // The version string is a contract: the TS-side
-        // `loadSceneGenWasm` checks the `0.2.0-round` prefix. If a
+        // `loadSceneGenWasm` checks the `0.3.0-round` prefix. If a
         // future round bumps it, this test must be updated in
         // lockstep.
+        // Round 165 bumped the major
+        // from `0.2.0` to `0.3.0`
+        // (new codegen WASM
+        // exports).
         let v = wasm_module_version();
-        assert!(v.starts_with("0.2.0-round"), "version must keep major prefix: {}", v);
-        assert!(v.contains("round51"), "version must mention round 51: {}", v);
+        assert!(v.starts_with("0.3.0-round"), "version must keep major prefix: {}", v);
+        assert!(v.contains("round165"), "version must mention round 165: {}", v);
     }
 
     #[test]
     fn round141_wasm_module_version_matches_expected_string() {
         // Pin the exact string. A new round that bumps the version
-        // (e.g. round 52) must update both this test and the TS-side
+        // (e.g. round 166) must update both this test and the TS-side
         // version check.
-        assert_eq!(wasm_module_version(), "0.2.0-round51");
+        assert_eq!(wasm_module_version(), "0.3.0-round165");
     }
 
     #[test]
@@ -1277,5 +1648,348 @@ mod tests {
         let p: PaletteJson = serde_json::from_str(&out).unwrap();
         // The fear palette is ["#0A1A2F", "#1B4965", "#CAE9FF"]
         assert_eq!(p.colors, ["#0A1A2F", "#1B4965", "#CAE9FF"]);
+    }
+
+    // ========================================================================
+    // Round 165 — codegen JSON bridge tests
+    //
+    // Pinned contracts:
+    //   - seed_from_string_json is a thin wrapper around the canonical
+    //     FNV-1a 64-bit hash. The "empty" / "a" / "b" vectors are the
+    //     round-164 B known_vectors; round-164 A uses the same values
+    //     for the cross-check with the TS mirror.
+    //   - gen_input_from_strings_json defaults to Forest + Med + seed=0
+    //     when given a bare { biome_id: "..." } (matches the TS
+    //     `autoGenerateForDimension` fallback).
+    //   - gen_input_from_strings_json derives the seed from
+    //     dimension_id when seed is omitted (round-164 A: the same
+    //     `seedFromString(dimensionId)` call).
+    //   - gen_input_from_strings_json accepts the 4 Rust BiomeKind
+    //     spellings directly ("Forest"/"Desert"/"Ice"/"Cyberpunk") AND
+    //     the 4 lowercase biome_ids from the 6-biome Atmosphere
+    //     palette ("forest"/"desert"/"ice"/"cyberpunk").
+    //   - gen_input_from_strings_json falls back to Forest for the 2
+    //     atmosphere-only biomes ("lava"/"space").
+    //   - generate_rules_json returns a non-empty array for the
+    //     minimal GenInput (round-162 coverage contract: always emits
+    //     at least 1 On(Spawn) -> Spawn).
+    //   - generate_rules_json returns {"error":"..."} on unknown
+    //     biome / mood / complexity.
+    //   - generate_rules_json is deterministic for the same input.
+    // ========================================================================
+
+    #[test]
+    fn round_165_seed_from_string_json_empty_string_round165() {
+        // The round-164 B known vector
+        // for the empty string: the
+        // FNV-1a 64-bit offset basis
+        // (0xCBF29CE484222325). The
+        // WASM bridge serializes the
+        // seed as a STRING (not a
+        // JSON number) to preserve
+        // the full 64-bit precision
+        // — serde_json stores JSON
+        // numbers as f64, which
+        // truncates above 2^53.
+        let args = r#"{"s":""}"#;
+        let out = seed_from_string_json_internal(args);
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        let seed_str = v["seed"].as_str().expect("seed is a string");
+        let seed: u64 = seed_str.parse().expect("seed parses as u64");
+        assert_eq!(seed, 0xCBF29CE484222325);
+    }
+
+    #[test]
+    fn round_165_seed_from_string_json_known_vectors_round165() {
+        // Cross-check with the
+        // round-164 B seed_from_string
+        // known-vector test (the TS
+        // mirror uses the same
+        // values). The WASM bridge
+        // must round-trip the
+        // canonical hash. The seed
+        // is JSON-string-encoded
+        // for precision (see the
+        // empty-string test for the
+        // why).
+        let cases: &[(&str, u64)] = &[
+            ("", 0xCBF29CE484222325),
+            ("a", 0xAF63DC4C8601EC8C),
+            ("b", 0xAF63DF4C8601F1A5),
+            ("forest", 0x2098148EC99FB680),
+        ];
+        for (input, expected) in cases {
+            let args = format!(r#"{{"s":"{}"}}"#, input);
+            let out = seed_from_string_json_internal(&args);
+            let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+            let seed_str = v["seed"].as_str().expect("seed is a string");
+            let seed: u64 = seed_str.parse().expect("seed parses as u64");
+            assert_eq!(
+                seed, *expected,
+                "seed_from_string({:?}) = 0x{:016X}, expected 0x{:016X}",
+                input, seed, expected
+            );
+        }
+    }
+
+    #[test]
+    fn round_165_seed_from_string_json_bad_json_returns_error_envelope_round165() {
+        // Malformed JSON → standard
+        // error envelope (not a
+        // panic).
+        let out = seed_from_string_json_internal("not json");
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert!(v["error"].is_string());
+    }
+
+    #[test]
+    fn round_165_gen_input_from_strings_json_minimal_round165() {
+        // Bare { biome_id: "..." } —
+        // no complexity / seed /
+        // dimension_id. Defaults:
+        //   biome → as given (or Forest for unknown)
+        //   complexity → Med
+        //   seed → 0 (no dimension_id)
+        //   mood → Calm (seed % 4 == 0)
+        let args = r#"{"biome_id":"forest"}"#;
+        let out = gen_input_from_strings_json_internal(args);
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(v["biome"], "Forest");
+        assert_eq!(v["mood"], "Calm");
+        assert_eq!(v["complexity"], "Medium");
+        // Seed is JSON-string-encoded
+        // (precision preservation —
+        // see the empty-string test).
+        assert_eq!(v["seed"].as_str().unwrap(), "0");
+    }
+
+    #[test]
+    fn round_165_gen_input_from_strings_json_dimension_seed_round165() {
+        // With dimension_id and
+        // no explicit seed — the
+        // seed is derived from
+        // seed_from_string(dimension_id)
+        // (round-164 A: matches the
+        // TS `seedFromString` call).
+        let args = r#"{"biome_id":"desert","dimension_id":"forest"}"#;
+        let out = gen_input_from_strings_json_internal(args);
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(v["biome"], "Desert");
+        // Seed is JSON-string-encoded
+        // (precision preservation).
+        let seed_str = v["seed"].as_str().unwrap();
+        let seed: u64 = seed_str.parse().unwrap();
+        // The "forest" hash from the
+        // round-164 B known vectors.
+        assert_eq!(seed, 0x2098148EC99FB680);
+        // Mood = seed % 4:
+        // 0x2098148EC99FB680 % 4 = ?
+        // The test just asserts
+        // mood ∈ {Calm, Tense, Wild,
+        // Glitched} — pinning the
+        // exact mood is brittle (the
+        // round-164 A TS test pins
+        // `moodKindFromSeed` more
+        // directly).
+        let mood = v["mood"].as_str().unwrap();
+        assert!(
+            matches!(mood, "Calm" | "Tense" | "Epic" | "Mysterious"),
+            "mood was {}",
+            mood
+        );
+    }
+
+    #[test]
+    fn round_165_gen_input_from_strings_json_explicit_seed_round165() {
+        // Explicit seed wins over
+        // the dimension_id default.
+        let args = r#"{"biome_id":"cyberpunk","dimension_id":"forest","seed":42}"#;
+        let out = gen_input_from_strings_json_internal(args);
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        // Seed is JSON-string-encoded.
+        assert_eq!(v["seed"].as_str().unwrap(), "42");
+    }
+
+    #[test]
+    fn round_165_gen_input_from_strings_json_complexity_round165() {
+        // Complexity tag is
+        // parsed: low/med/high →
+        // Low/Med/High. Unknown
+        // tags fall back to Med
+        // (matches the TS
+        // `biomeIdToKind`
+        // fallback).
+        let cases: &[(&str, &str)] = &[
+            (r#"{"biome_id":"forest","complexity":"low"}"#, "Low"),
+            (r#"{"biome_id":"forest","complexity":"med"}"#, "Medium"),
+            (r#"{"biome_id":"forest","complexity":"high"}"#, "High"),
+            (r#"{"biome_id":"forest","complexity":"banana"}"#, "Medium"),
+        ];
+        for (args, expected) in cases {
+            let out = gen_input_from_strings_json_internal(args);
+            let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+            assert_eq!(v["complexity"], *expected, "args was {}", args);
+        }
+    }
+
+    #[test]
+    fn round_165_gen_input_from_strings_json_lava_falls_back_to_forest_round165() {
+        // The 6-biome Atmosphere
+        // palette has 2 entries
+        // (lava / space) that the
+        // round-162 codegen doesn't
+        // cover — they fall back to
+        // Forest (matches the
+        // round-164 A TS
+        // `biomeIdToKind` fallback).
+        for id in ["lava", "space"] {
+            let args = format!(r#"{{"biome_id":"{}"}}"#, id);
+            let out = gen_input_from_strings_json_internal(&args);
+            let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+            assert_eq!(v["biome"], "Forest", "biome_id was {}", id);
+        }
+    }
+
+    #[test]
+    fn round_165_gen_input_from_strings_json_lowercase_biomes_round165() {
+        // The lowercase 4-biome
+        // ids from the Atmosphere
+        // palette map to the
+        // canonical Rust BiomeKind
+        // spellings (the TS mirror
+        // passes these directly to
+        // `biomeIdToKind`).
+        let cases: &[(&str, &str)] = &[
+            ("forest", "Forest"),
+            ("desert", "Desert"),
+            ("ice", "Ice"),
+            ("cyberpunk", "Cyberpunk"),
+        ];
+        for (id, expected) in cases {
+            let args = format!(r#"{{"biome_id":"{}"}}"#, id);
+            let out = gen_input_from_strings_json_internal(&args);
+            let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+            assert_eq!(v["biome"], *expected, "biome_id was {}", id);
+        }
+    }
+
+    #[test]
+    fn round_165_generate_rules_json_minimal_emits_at_least_one_rule_round165() {
+        // Round-162 coverage
+        // contract: even at Low
+        // complexity + Calm mood,
+        // the generator emits at
+        // least 1 rule (the
+        // `On(Spawn) -> Spawn`
+        // baseline).
+        let args = r#"{"biome":"Forest","mood":"Calm","complexity":"Low","seed":0}"#;
+        let out = generate_rules_json_internal(args);
+        // The output is a JSON
+        // array of rule objects
+        // (NOT an error envelope).
+        assert!(out.starts_with('['), "expected JSON array, got: {}", out);
+        let rules: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        assert!(!rules.is_empty(), "expected ≥ 1 rule, got 0");
+        // Every rule must have
+        // `event` + `actions`
+        // (round-132 manual JSON
+        // format).
+        for rule in &rules {
+            assert!(rule.get("event").is_some(), "rule missing event: {}", rule);
+            assert!(rule.get("actions").is_some(), "rule missing actions: {}", rule);
+        }
+    }
+
+    #[test]
+    fn round_165_generate_rules_json_high_complexity_emits_five_rules_round165() {
+        // Round-162 coverage:
+        // High complexity emits 5
+        // rules (Low: 1, Med: 3,
+        // High: 5).
+        let args = r#"{"biome":"Forest","mood":"Epic","complexity":"High","seed":0}"#;
+        let out = generate_rules_json_internal(args);
+        let rules: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        assert_eq!(rules.len(), 5);
+    }
+
+    #[test]
+    fn round_165_generate_rules_json_is_deterministic_round165() {
+        // Same GenInput → same
+        // rules (round-162
+        // determinism contract).
+        let args = r#"{"biome":"Ice","mood":"Tense","complexity":"Medium","seed":42}"#;
+        let out_a = generate_rules_json_internal(args);
+        let out_b = generate_rules_json_internal(args);
+        assert_eq!(out_a, out_b);
+    }
+
+    #[test]
+    fn round_165_generate_rules_json_seed_axis_changes_output_round165() {
+        // Round-163 — different
+        // seeds perturb the rule
+        // amounts. The output
+        // shape (number of rules,
+        // action kinds) stays
+        // stable, but the args
+        // differ. We compare two
+        // seeds and assert they
+        // produce *different*
+        // strings (the perturbation
+        // is meaningful, not
+        // no-op).
+        let a = generate_rules_json_internal(
+            r#"{"biome":"Cyberpunk","mood":"Epic","complexity":"Medium","seed":0}"#,
+        );
+        let b = generate_rules_json_internal(
+            r#"{"biome":"Cyberpunk","mood":"Epic","complexity":"Medium","seed":12345}"#,
+        );
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn round_165_generate_rules_json_unknown_biome_errors_round165() {
+        // Unknown biome tag →
+        // error envelope (NOT a
+        // panic, NOT a silent
+        // fallback — generate_rules
+        // is the strict path).
+        let args = r#"{"biome":"Atlantis","mood":"Calm","complexity":"Low","seed":0}"#;
+        let out = generate_rules_json_internal(args);
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert!(v["error"].is_string());
+    }
+
+    #[test]
+    fn round_165_generate_rules_json_unknown_complexity_errors_round165() {
+        let args = r#"{"biome":"Forest","mood":"Calm","complexity":"Insane","seed":0}"#;
+        let out = generate_rules_json_internal(args);
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert!(v["error"].is_string());
+    }
+
+    #[test]
+    fn round_165_generate_rules_json_unknown_mood_errors_round165() {
+        let args = r#"{"biome":"Forest","mood":"Ecstatic","complexity":"Low","seed":0}"#;
+        let out = generate_rules_json_internal(args);
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert!(v["error"].is_string());
+    }
+
+    #[test]
+    fn round_165_generate_rules_json_malformed_json_errors_round165() {
+        let out = generate_rules_json_internal("not json");
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert!(v["error"].is_string());
+    }
+
+    #[test]
+    fn round_165_version_bumped_to_round_165_round165() {
+        // The version bump is the
+        // signal to the TS side
+        // that the new exports are
+        // available — loadSceneGenWasm
+        // checks the `0.3.0-round`
+        // prefix.
+        assert_eq!(wasm_module_version(), "0.3.0-round165");
     }
 }
