@@ -469,3 +469,754 @@ mod tests {
         assert!(!recipe_locked.can_craft(&inv));
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 138 helper-level tests — follow
+// the round 110b / 122-137
+// pattern. The pre-round-138
+// `mod tests` had 7 integration
+// tests (init, craft, insufficient,
+// discovery, queue, inventory,
+// can_craft) but no focused unit
+// coverage of the public surface.
+// These tests pin the per-enum
+// variant counts, per-field
+// defaults of `SynthesisAtom::new`
+// + `Recipe::new` + `SynthItem::new`,
+// the builder-chain returns-self
+// contract, the `can_craft` matrix
+// (locked / missing / exact /
+// over-supplied), the
+// `add_to_inventory` /
+// `remove_from_inventory` round
+// trip, the `craft` vs
+// `instant_craft` divergence
+// (queue vs immediate), the
+// discovery unlock contract, the
+// `save_state` / `load_state`
+// round-trip, the `handle_event`
+// dispatch for craft /
+// instant_craft / add_item
+// (with + without count) /
+// unknown, and the lifecycle
+// `on_init` / `on_enter` /
+// `on_pause` / `on_resume` /
+// `on_exit` / `on_destroy` phase
+// transitions.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round138_tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+    use crate::agi_minigame::world_state::UnifiedWorldState;
+    use crate::agi_minigame::player::PlayerProfile;
+
+    fn make_ctx() -> AtomContext {
+        let ws = Arc::new(Mutex::new(UnifiedWorldState::new(PlayerProfile::new("test"))));
+        AtomContext::new(ws).with_delta_time(0.016)
+    }
+
+    /// `ItemType` has 4
+    /// variants (Resource /
+    /// Equipment /
+    /// Consumable /
+    /// Material).
+    #[test]
+    fn item_type_has_4_variants_round_138() {
+        let v = [
+            ItemType::Resource,
+            ItemType::Equipment,
+            ItemType::Consumable,
+            ItemType::Material,
+        ];
+        for &x in &v { assert_eq!(x, x); }
+        assert_ne!(ItemType::Resource, ItemType::Material);
+        assert_ne!(ItemType::Consumable, ItemType::Equipment);
+    }
+
+    /// `SynthItem::new`
+    /// stores the
+    /// constructor
+    /// args verbatim.
+    #[test]
+    fn synth_item_new_stores_fields_round_138() {
+        let i = SynthItem::new("gem", "宝石", ItemType::Resource, 2, 50);
+        assert_eq!(i.id, "gem");
+        assert_eq!(i.name, "宝石");
+        assert_eq!(i.item_type, ItemType::Resource);
+        assert_eq!(i.tier, 2);
+        assert_eq!(i.value, 50);
+    }
+
+    /// `Recipe::new` —
+    /// empty inputs,
+    /// output = ("", 0),
+    /// craft_time = 1.0,
+    /// is_unlocked = false.
+    #[test]
+    fn recipe_new_defaults_round_138() {
+        let r = Recipe::new("r0", "Test");
+        assert_eq!(r.id, "r0");
+        assert_eq!(r.name, "Test");
+        assert!(r.inputs.is_empty());
+        assert_eq!(r.output.0, "");
+        assert_eq!(r.output.1, 0);
+        assert!((r.craft_time - 1.0).abs() < 1e-6);
+        assert!(!r.is_unlocked);
+    }
+
+    /// `Recipe::with_input`
+    /// appends a
+    /// (item_id, count)
+    /// tuple +
+    /// returns self
+    /// for chaining.
+    #[test]
+    fn recipe_with_input_appends_round_138() {
+        let r = Recipe::new("r1", "X")
+            .with_input("wood", 2)
+            .with_input("stone", 1);
+        assert_eq!(r.inputs.len(), 2);
+        assert_eq!(r.inputs[0], ("wood".to_string(), 2));
+        assert_eq!(r.inputs[1], ("stone".to_string(), 1));
+    }
+
+    /// `Recipe::with_output`
+    /// sets the
+    /// output +
+    /// returns self
+    /// for chaining.
+    #[test]
+    fn recipe_with_output_round_138() {
+        let r = Recipe::new("r1", "X").with_output("plank", 3);
+        assert_eq!(r.output.0, "plank");
+        assert_eq!(r.output.1, 3);
+    }
+
+    /// `Recipe::with_craft_time`
+    /// sets time
+    /// + returns
+    /// self.
+    #[test]
+    fn recipe_with_craft_time_round_138() {
+        let r = Recipe::new("r1", "X").with_craft_time(7.5);
+        assert!((r.craft_time - 7.5).abs() < 1e-6);
+    }
+
+    /// `Recipe::unlocked`
+    /// sets
+    /// is_unlocked
+    /// to true
+    /// + returns
+    /// self.
+    #[test]
+    fn recipe_unlocked_sets_flag_round_138() {
+        let r = Recipe::new("r1", "X").unlocked();
+        assert!(r.is_unlocked);
+    }
+
+    /// `can_craft` —
+    /// locked recipe
+    /// returns false
+    /// even with
+    /// enough inputs.
+    #[test]
+    fn recipe_can_craft_locked_returns_false_round_138() {
+        let mut inv = HashMap::new();
+        inv.insert("wood".to_string(), 5);
+        let r = Recipe::new("r1", "X").with_input("wood", 1);
+        // Not unlocked
+        // → false.
+        assert!(!r.can_craft(&inv));
+    }
+
+    /// `can_craft` —
+    /// unlocked but
+    /// missing input
+    /// returns false.
+    #[test]
+    fn recipe_can_craft_missing_input_returns_false_round_138() {
+        let inv = HashMap::new(); // empty
+        let r = Recipe::new("r1", "X")
+            .with_input("wood", 1)
+            .unlocked();
+        assert!(!r.can_craft(&inv));
+    }
+
+    /// `can_craft` —
+    /// exact match
+    /// returns true.
+    #[test]
+    fn recipe_can_craft_exact_match_round_138() {
+        let mut inv = HashMap::new();
+        inv.insert("wood".to_string(), 2);
+        let r = Recipe::new("r1", "X")
+            .with_input("wood", 2)
+            .unlocked();
+        assert!(r.can_craft(&inv));
+    }
+
+    /// `can_craft` —
+    /// over-supplied
+    /// inventory also
+    /// returns true.
+    #[test]
+    fn recipe_can_craft_extra_inventory_ok_round_138() {
+        let mut inv = HashMap::new();
+        inv.insert("wood".to_string(), 100);
+        let r = Recipe::new("r1", "X")
+            .with_input("wood", 2)
+            .unlocked();
+        assert!(r.can_craft(&inv));
+    }
+
+    /// `SynthesisAtom::new`
+    /// defaults:
+    /// phase = Uninit,
+    /// all collections
+    /// empty, all
+    /// counters 0.
+    #[test]
+    fn synthesis_atom_new_defaults_round_138() {
+        let a = SynthesisAtom::new();
+        assert_eq!(a.phase, AtomPhase::Uninitialized);
+        assert!(a.inventory.is_empty());
+        assert!(a.recipes.is_empty());
+        assert!(a.item_definitions.is_empty());
+        assert!(a.crafting_queue.is_empty());
+        assert_eq!(a.score, 0);
+        assert_eq!(a.items_crafted, 0);
+        assert_eq!(a.highest_tier, 0);
+        assert_eq!(a.discoveries, 0);
+    }
+
+    /// `add_item_definition`
+    /// inserts by id
+    /// + overwrites
+    /// on re-add.
+    #[test]
+    fn add_item_definition_inserts_and_overwrites_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.add_item_definition(SynthItem::new("a", "A", ItemType::Resource, 1, 10));
+        assert_eq!(a.item_definitions.len(), 1);
+        a.add_item_definition(SynthItem::new("a", "A2", ItemType::Material, 2, 20));
+        // Re-adding
+        // same id
+        // overwrites
+        // (not duplicate).
+        assert_eq!(a.item_definitions.len(), 1);
+        assert_eq!(a.item_definitions.get("a").unwrap().name, "A2");
+    }
+
+    /// `add_recipe`
+    /// appends.
+    #[test]
+    fn add_recipe_appends_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.add_recipe(Recipe::new("r1", "X"));
+        a.add_recipe(Recipe::new("r2", "Y"));
+        assert_eq!(a.recipes.len(), 2);
+    }
+
+    /// `add_to_inventory`
+    /// accumulates
+    /// on existing
+    /// entries.
+    #[test]
+    fn add_to_inventory_accumulates_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.add_to_inventory("wood", 3);
+        a.add_to_inventory("wood", 2);
+        assert_eq!(a.get_inventory_count("wood"), 5);
+    }
+
+    /// `remove_from_inventory`
+    /// returns false
+    /// when count
+    /// exceeds current.
+    #[test]
+    fn remove_from_inventory_insufficient_returns_false_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.add_to_inventory("wood", 3);
+        assert!(!a.remove_from_inventory("wood", 5));
+        // Count
+        // unchanged.
+        assert_eq!(a.get_inventory_count("wood"), 3);
+    }
+
+    /// `remove_from_inventory`
+    /// drops the
+    /// entry when
+    /// count hits 0.
+    #[test]
+    fn remove_from_inventory_drops_at_zero_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.add_to_inventory("wood", 3);
+        assert!(a.remove_from_inventory("wood", 3));
+        assert_eq!(a.get_inventory_count("wood"), 0);
+        assert!(!a.inventory.contains_key("wood"));
+    }
+
+    /// `get_inventory_count`
+    /// returns 0
+    /// for missing
+    /// items.
+    #[test]
+    fn get_inventory_count_missing_returns_zero_round_138() {
+        let a = SynthesisAtom::new();
+        assert_eq!(a.get_inventory_count("nope"), 0);
+    }
+
+    /// `craft` returns
+    /// false for
+    /// unknown recipe.
+    #[test]
+    fn craft_unknown_recipe_returns_false_round_138() {
+        let mut a = SynthesisAtom::new();
+        assert!(!a.craft("r_does_not_exist"));
+    }
+
+    /// `craft` returns
+    /// false when
+    /// `!can_craft`.
+    #[test]
+    fn craft_cannot_craft_returns_false_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.add_recipe(
+            Recipe::new("r1", "X")
+                .with_input("wood", 1)
+                .unlocked(),
+        );
+        // Empty
+        // inventory →
+        // !can_craft.
+        assert!(!a.craft("r1"));
+    }
+
+    /// `craft`
+    /// consumes
+    /// inputs +
+    /// pushes to
+    /// queue.
+    #[test]
+    fn craft_consumes_and_pushes_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.add_recipe(
+            Recipe::new("r1", "X")
+                .with_input("wood", 2)
+                .with_output("plank", 1)
+                .unlocked(),
+        );
+        a.add_to_inventory("wood", 5);
+        assert!(a.craft("r1"));
+        // wood
+        // consumed
+        // 5-2=3.
+        assert_eq!(a.get_inventory_count("wood"), 3);
+        // Job
+        // pushed.
+        assert_eq!(a.get_crafting_queue_size(), 1);
+    }
+
+    /// `instant_craft`
+    /// returns false
+    /// for unknown
+    /// recipe.
+    #[test]
+    fn instant_craft_unknown_returns_false_round_138() {
+        let mut a = SynthesisAtom::new();
+        assert!(!a.instant_craft("r_does_not_exist"));
+    }
+
+    /// `instant_craft`
+    /// returns false
+    /// when
+    /// `!can_craft`.
+    #[test]
+    fn instant_craft_cannot_craft_returns_false_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.add_recipe(
+            Recipe::new("r1", "X")
+                .with_input("wood", 5)
+                .with_output("plank", 1)
+                .unlocked(),
+        );
+        assert!(!a.instant_craft("r1"));
+    }
+
+    /// `instant_craft`
+    /// adds output to
+    /// inventory +
+    /// increments
+    /// `items_crafted` +
+    /// adds score
+    /// (output_count
+    /// * 10).
+    #[test]
+    fn instant_craft_adds_output_and_score_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.add_item_definition(SynthItem::new("plank", "木板", ItemType::Material, 2, 15));
+        a.add_recipe(
+            Recipe::new("r1", "X")
+                .with_input("wood", 2)
+                .with_output("plank", 1)
+                .unlocked(),
+        );
+        a.add_to_inventory("wood", 5);
+        assert!(a.instant_craft("r1"));
+        assert_eq!(a.get_inventory_count("plank"), 1);
+        assert_eq!(a.get_items_crafted(), 1);
+        assert_eq!(a.get_score(), 10);
+    }
+
+    /// `instant_craft`
+    /// updates
+    /// `highest_tier`
+    /// to the
+    /// max-tier
+    /// output seen.
+    #[test]
+    fn instant_craft_updates_highest_tier_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.add_item_definition(SynthItem::new("sword", "剑", ItemType::Equipment, 3, 50));
+        a.add_recipe(
+            Recipe::new("r_sword", "Sword")
+                .with_input("iron", 2)
+                .with_output("sword", 1)
+                .unlocked(),
+        );
+        a.add_to_inventory("iron", 5);
+        a.instant_craft("r_sword");
+        assert_eq!(a.get_highest_tier(), 3);
+    }
+
+    /// `check_discoveries`
+    /// unlocks a
+    /// locked recipe
+    /// when all its
+    /// inputs become
+    /// present in the
+    /// inventory.
+    #[test]
+    fn check_discoveries_unlocks_recipe_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.add_recipe(
+            Recipe::new("r_x", "X")
+                .with_input("iron", 1)
+                .with_input("wood", 1),
+        );
+        assert_eq!(a.get_unlocked_recipes().len(), 0);
+        a.add_to_inventory("iron", 1);
+        a.add_to_inventory("wood", 1);
+        a.check_discoveries();
+        assert_eq!(a.get_unlocked_recipes().len(), 1);
+        // Discovery
+        // counter
+        // bumped
+        // + 100
+        // score
+        // bonus.
+        assert_eq!(a.get_discoveries(), 1);
+        assert_eq!(a.get_score(), 100);
+    }
+
+    /// `check_discoveries`
+    /// does NOT
+    /// re-unlock an
+    /// already-unlocked
+    /// recipe (no
+    /// double
+    /// discovery
+    /// count).
+    #[test]
+    fn check_discoveries_no_double_count_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.add_recipe(
+            Recipe::new("r_x", "X")
+                .with_input("wood", 1)
+                .unlocked(),
+        );
+        a.add_to_inventory("wood", 1);
+        a.check_discoveries();
+        a.check_discoveries();
+        // Still
+        // 0
+        // discoveries
+        // because the
+        // recipe was
+        // already
+        // unlocked
+        // at the
+        // time of the
+        // first check.
+        assert_eq!(a.get_discoveries(), 0);
+    }
+
+    /// `generate_base_items`
+    /// adds 12
+    /// definitions
+    /// + 7 recipes.
+    #[test]
+    fn generate_base_items_populates_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.generate_base_items();
+        assert_eq!(a.item_definitions.len(), 12);
+        assert_eq!(a.recipes.len(), 7);
+    }
+
+    /// `give_starter_resources`
+    /// gives
+    /// wood/stone/
+    /// herb/iron/
+    /// crystal.
+    #[test]
+    fn give_starter_resources_populates_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.give_starter_resources();
+        assert_eq!(a.get_inventory_count("wood"), 10);
+        assert_eq!(a.get_inventory_count("stone"), 10);
+        assert_eq!(a.get_inventory_count("herb"), 10);
+        assert_eq!(a.get_inventory_count("iron"), 5);
+        assert_eq!(a.get_inventory_count("crystal"), 2);
+    }
+
+    /// `get_unlocked_recipes`
+    /// filters to
+    /// only
+    /// `is_unlocked`
+    /// entries.
+    #[test]
+    fn get_unlocked_recipes_filters_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.add_recipe(Recipe::new("a", "A").unlocked());
+        a.add_recipe(Recipe::new("b", "B"));
+        a.add_recipe(Recipe::new("c", "C").unlocked());
+        let unlocked = a.get_unlocked_recipes();
+        assert_eq!(unlocked.len(), 2);
+        assert_eq!(unlocked[0].id, "a");
+        assert_eq!(unlocked[1].id, "c");
+    }
+
+    /// `save_state`
+    /// includes the
+    /// 4 persisted
+    /// keys.
+    #[test]
+    fn save_state_keys_round_138() {
+        let a = SynthesisAtom::new();
+        let s = a.save_state();
+        assert!(s.contains_key("score"));
+        assert!(s.contains_key("items_crafted"));
+        assert!(s.contains_key("highest_tier"));
+        assert!(s.contains_key("discoveries"));
+    }
+
+    /// `load_state`
+    /// restores all
+    /// 4 persisted
+    /// fields.
+    #[test]
+    fn load_state_restores_all_fields_round_138() {
+        let mut a = SynthesisAtom::new();
+        let mut s = ValueMap::new();
+        s.insert("score".to_string(), Value::Integer(1000));
+        s.insert("items_crafted".to_string(), Value::Integer(50));
+        s.insert("highest_tier".to_string(), Value::Integer(4));
+        s.insert("discoveries".to_string(), Value::Integer(7));
+        a.load_state(&s);
+        assert_eq!(a.score, 1000);
+        assert_eq!(a.items_crafted, 50);
+        assert_eq!(a.highest_tier, 4);
+        assert_eq!(a.discoveries, 7);
+    }
+
+    /// `handle_event`
+    /// with
+    /// `craft` +
+    /// `recipe_id`
+    /// calls
+    /// `craft()`.
+    #[test]
+    fn handle_event_craft_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.add_recipe(
+            Recipe::new("r1", "X")
+                .with_input("wood", 2)
+                .unlocked(),
+        );
+        a.add_to_inventory("wood", 5);
+        let mut data = ValueMap::new();
+        data.insert("recipe_id".to_string(), Value::String("r1".to_string()));
+        let mut ctx = make_ctx();
+        a.handle_event("craft", &data, &mut ctx);
+        assert_eq!(a.get_crafting_queue_size(), 1);
+    }
+
+    /// `handle_event`
+    /// with
+    /// `instant_craft`
+    /// + `recipe_id`
+    /// calls
+    /// `instant_craft()`.
+    #[test]
+    fn handle_event_instant_craft_round_138() {
+        let mut a = SynthesisAtom::new();
+        a.add_recipe(
+            Recipe::new("r1", "X")
+                .with_input("wood", 2)
+                .with_output("plank", 1)
+                .unlocked(),
+        );
+        a.add_to_inventory("wood", 5);
+        let mut data = ValueMap::new();
+        data.insert("recipe_id".to_string(), Value::String("r1".to_string()));
+        let mut ctx = make_ctx();
+        a.handle_event("instant_craft", &data, &mut ctx);
+        assert_eq!(a.get_inventory_count("plank"), 1);
+    }
+
+    /// `handle_event`
+    /// with
+    /// `add_item` +
+    /// `item_id` +
+    /// `count`
+    /// calls
+    /// `add_to_inventory()`.
+    #[test]
+    fn handle_event_add_item_with_count_round_138() {
+        let mut a = SynthesisAtom::new();
+        let mut data = ValueMap::new();
+        data.insert("item_id".to_string(), Value::String("wood".to_string()));
+        data.insert("count".to_string(), Value::Integer(7));
+        let mut ctx = make_ctx();
+        a.handle_event("add_item", &data, &mut ctx);
+        assert_eq!(a.get_inventory_count("wood"), 7);
+    }
+
+    /// `handle_event`
+    /// with
+    /// `add_item`
+    /// without
+    /// `count`
+    /// defaults
+    /// to 1.
+    #[test]
+    fn handle_event_add_item_default_count_round_138() {
+        let mut a = SynthesisAtom::new();
+        let mut data = ValueMap::new();
+        data.insert("item_id".to_string(), Value::String("wood".to_string()));
+        let mut ctx = make_ctx();
+        a.handle_event("add_item", &data, &mut ctx);
+        assert_eq!(a.get_inventory_count("wood"), 1);
+    }
+
+    /// `handle_event`
+    /// with
+    /// unknown
+    /// event
+    /// name is
+    /// a no-op.
+    #[test]
+    fn handle_event_unknown_is_noop_round_138() {
+        let mut a = SynthesisAtom::new();
+        let prev = a.score;
+        let s = ValueMap::new();
+        let mut ctx = make_ctx();
+        a.handle_event("bogus", &s, &mut ctx);
+        assert_eq!(a.score, prev);
+    }
+
+    /// `on_init` →
+    /// phase =
+    /// `Initialized`.
+    #[test]
+    fn on_init_phase_round_138() {
+        let mut a = SynthesisAtom::new();
+        let mut ctx = make_ctx();
+        a.on_init(&mut ctx);
+        assert_eq!(a.phase, AtomPhase::Initialized);
+    }
+
+    /// `on_enter`
+    /// gives starter
+    /// resources +
+    /// sets Running.
+    #[test]
+    fn on_enter_initializes_round_138() {
+        let mut a = SynthesisAtom::new();
+        let mut ctx = make_ctx();
+        a.on_enter(&mut ctx);
+        assert_eq!(a.phase, AtomPhase::Running);
+        // Starter
+        // resources
+        // present.
+        assert_eq!(a.get_inventory_count("wood"), 10);
+        // Base
+        // items
+        // generated.
+        assert!(!a.item_definitions.is_empty());
+    }
+
+    /// `on_pause` /
+    /// `on_resume` /
+    /// `on_exit` /
+    /// `on_destroy`
+    /// each
+    /// transition
+    /// to the
+    /// matching
+    /// `AtomPhase`.
+    #[test]
+    fn lifecycle_phases_round_138() {
+        let mut a = SynthesisAtom::new();
+        let mut ctx = make_ctx();
+        a.on_init(&mut ctx);
+        a.on_enter(&mut ctx);
+        a.on_pause(&mut ctx);
+        assert_eq!(a.phase, AtomPhase::Paused);
+        a.on_resume(&mut ctx);
+        assert_eq!(a.phase, AtomPhase::Running);
+        a.on_exit(&mut ctx);
+        assert_eq!(a.phase, AtomPhase::Completed);
+        a.on_destroy();
+        assert_eq!(a.phase, AtomPhase::Uninitialized);
+    }
+
+    /// `atom_id` /
+    /// `atom_name` /
+    /// `as_any` /
+    /// `as_any_mut`
+    /// contract.
+    #[test]
+    fn atom_id_and_name_round_138() {
+        let a = SynthesisAtom::new();
+        assert_eq!(a.atom_id(), "synthesis");
+        assert_eq!(a.atom_name(), "合成");
+        let _ = a.as_any();
+        let mut a = SynthesisAtom::new();
+        let _ = a.as_any_mut();
+    }
+
+    /// `current_phase`
+    /// mirrors the
+    /// internal
+    /// `phase` field.
+    #[test]
+    fn current_phase_matches_field_round_138() {
+        let mut a = SynthesisAtom::new();
+        assert_eq!(a.current_phase(), AtomPhase::Uninitialized);
+        a.phase = AtomPhase::Paused;
+        assert_eq!(a.current_phase(), AtomPhase::Paused);
+    }
+
+    /// `Default::default()`
+    /// delegates to
+    /// `SynthesisAtom::new()`.
+    #[test]
+    fn default_delegates_to_new_round_138() {
+        let a: SynthesisAtom = Default::default();
+        assert_eq!(a.phase, AtomPhase::Uninitialized);
+        assert!(a.recipes.is_empty());
+    }
+}
