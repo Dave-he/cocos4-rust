@@ -405,6 +405,66 @@ pub fn seed_offset(seed: u64, slot: u32) -> f32 {
     v * (1.0 / (u32::MAX as f32)) - 0.5
 }
 
+/// Round 164 — derive a `u64` seed from a
+/// human-readable string (typically a dimension
+/// ID like `"dim_alpha"` or a biome key like
+/// `"forest"`). The App calls this at
+/// dimension-enter time to seed the round-163
+/// `seed_offset` axis, so reloading the same
+/// dimension gives the same auto-generated rule
+/// set (round-72 save round-trip stability).
+///
+/// Implementation: 64-bit FNV-1a hash. The
+/// algorithm is the FNV-1 variant (xor then
+/// multiply, in that order — see
+/// http://www.isthe.com/chongo/tech/comp/fnv/)
+/// with the canonical 64-bit constants:
+///   - offset basis: 0xCBF29CE484222325
+///   - prime:        0x100000001B3
+///
+/// Why FNV-1a rather than `std::hash`:
+///   - `std::hash` is per-process random (the
+///     `RandomState` builder uses random keys for
+///     HashMap DoS resistance) — calling it
+///     twice in a row on the same string can
+///     give different results across runs. FNV-1a
+///     is a pure function of the bytes, so the
+///     seed round-trips through round-72 saves.
+///   - FNV-1a is also what `narration.rs::fnv1a`
+///     uses for 32-bit strings (round-125) and
+///     what `AGI-miniGame/src/main.ts:285` mirrors
+///     in TypeScript. Using the same algorithm
+///     here (in 64-bit) means the AGI-miniGame
+///     App can derive the same seed in TS-land
+///     and in WASM-land — important for the
+///     round-48 progressive-enhancement gate
+///     (TS-mirror fallback when WASM is null).
+///   - The seed is `u64` and FNV-1a 32-bit would
+///     collapse to 32 bits of entropy. The 64-bit
+///     variant keeps all 64 bits of the seed axis
+///     useful, so the round-163 `seed_offset`
+///     scatter is preserved across all 2^64
+///     possible seeds.
+///
+/// Edge cases:
+///   - empty string: returns the offset basis
+///     (0xCBF29CE484222325). A bug in the call
+///     site that passes `""` would still produce
+///     a deterministic value (defense in depth).
+///   - non-ASCII: hashes the UTF-8 bytes
+///     directly. The same Unicode string always
+///     produces the same seed (verified by
+///     `seed_from_string_unicode_is_stable`).
+pub fn seed_from_string(s: &str) -> u64 {
+    // FNV-1a 64-bit offset basis.
+    let mut h: u64 = 0xCBF29CE484222325;
+    for b in s.as_bytes() {
+        h ^= *b as u64;
+        h = h.wrapping_mul(0x100000001B3);
+    }
+    h
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -981,5 +1041,162 @@ mod round163_tests {
                 seed, mag
             );
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Round 164 — `seed_from_string` tests. The helper
+// derives a `u64` seed from a dimension ID so the
+// App can wire the round-163 seed axis at
+// dimension-enter time. The tests pin the FNV-1a
+// 64-bit contract: empty string → offset basis,
+// same string → same seed, different strings →
+// different seeds, ASCII / Unicode stable.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round164_tests {
+    use super::*;
+
+    /// FNV-1a 64-bit offset basis. Pinned as a
+    /// const so the test that checks the empty-
+    /// string case doesn't have to hardcode the
+    /// 0xCBF29CE484222325 literal in two places.
+    const FNV_OFFSET_BASIS_64: u64 = 0xCBF29CE484222325;
+
+    #[test]
+    fn seed_from_string_empty_returns_offset_basis_round_164() {
+        // Defense in depth: a bug in the call
+        // site that passes "" should still get a
+        // deterministic value (the offset basis
+        // itself), not a panic or a random hash.
+        assert_eq!(seed_from_string(""), FNV_OFFSET_BASIS_64);
+    }
+
+    #[test]
+    fn seed_from_string_is_deterministic_round_164() {
+        // Same string → same seed, across calls
+        // and across runs. The round-72 save
+        // round-trip contract: a re-hydrated
+        // dimension must produce the same
+        // auto-generated rule set as the
+        // original.
+        for s in ["dim_alpha", "dim_beta", "forest", "cyber_boss_wave", "x"] {
+            let a = seed_from_string(s);
+            let b = seed_from_string(s);
+            assert_eq!(a, b, "seed_from_string({:?}) must be deterministic", s);
+        }
+    }
+
+    #[test]
+    fn seed_from_string_distinct_inputs_give_distinct_seeds_round_164() {
+        // The 4 biomes + 5 dimension IDs + the
+        // common "kitchen sink" strings all
+        // produce distinct seeds (a regression
+        // that aliased them all to a constant
+        // would silently collapse the codegen
+        // seed axis).
+        let seeds: Vec<u64> = [
+            "forest", "desert", "ice", "cyber",
+            "dim_alpha", "dim_beta", "dim_gamma",
+            "cyber_boss_wave", "ice_herb", "desert_thorn",
+        ]
+        .iter()
+        .map(|s| seed_from_string(s))
+        .collect();
+        let mut unique = 0;
+        let mut seen: Vec<u64> = Vec::new();
+        for s in &seeds {
+            if !seen.iter().any(|x| *x == *s) {
+                seen.push(*s);
+                unique += 1;
+            }
+        }
+        assert_eq!(
+            unique,
+            10,
+            "10 distinct dimension / biome IDs must give 10 distinct seeds, got {} unique values",
+            unique
+        );
+    }
+
+    #[test]
+    fn seed_from_string_unicode_is_stable_and_distinct_round_164() {
+        // The hash operates on the UTF-8 bytes
+        // directly. The same Unicode string
+        // always produces the same seed (so a
+        // dimension with a 中文 ID round-trips
+        // through round-72 saves), and a single
+        // character difference produces a
+        // different seed.
+        let a = seed_from_string("次元_alpha");
+        let b = seed_from_string("次元_alpha");
+        let c = seed_from_string("次元_beta");
+        assert_eq!(a, b, "Unicode strings must be stable");
+        assert_ne!(a, c, "Unicode strings with 1-char difference must differ");
+    }
+
+    #[test]
+    fn seed_from_string_fits_in_u64_round_164() {
+        // The seed axis is `u64`. Sanity check
+        // that the helper never returns a value
+        // larger than u64::MAX (would-be compile
+        // error in practice, but the test makes
+        // the contract explicit).
+        for s in ["", "x", "a long string of bytes that should still fit in 64 bits"] {
+            let v = seed_from_string(s);
+            assert!(v <= u64::MAX);
+        }
+    }
+
+    #[test]
+    fn seed_from_string_known_vector_round_164() {
+        // Pin the FNV-1a 64-bit output for
+        // canonical inputs. The constants are
+        // derived from the FNV reference
+        // implementation (offset basis
+        // 0xCBF29CE484222325 + prime
+        // 0x100000001B3, "xor then multiply"
+        // order). A regression that flips the
+        // order to FNV-1 ("multiply then xor"),
+        // or changes the constants, would fail
+        // this test — the AGI-miniGame TS
+        // mirror can be cross-validated against
+        // these exact values (and vice versa:
+        // a TS-side regression in the mirror
+        // would fail the e2e cross-check).
+        assert_eq!(seed_from_string(""), FNV_OFFSET_BASIS_64);
+        assert_eq!(seed_from_string("a"), 0xAF63DC4C8601EC8C);
+        assert_eq!(seed_from_string("b"), 0xAF63DF4C8601F1A5);
+        assert_eq!(seed_from_string("forest"), 0x2098148EC99FB680);
+    }
+
+    #[test]
+    fn seed_from_string_wires_into_codegen_round_164() {
+        // End-to-end sanity: the seed derived
+        // from "dim_alpha" + Low complexity must
+        // produce the same rule set across
+        // calls, and a different dimension ID
+        // must produce a different rule set.
+        let a = generate_rules(GenInput {
+            biome: BiomeKind::Forest,
+            mood: MoodKind::Calm,
+            complexity: ComplexityKind::Low,
+            seed: seed_from_string("dim_alpha"),
+        });
+        let b = generate_rules(GenInput {
+            biome: BiomeKind::Forest,
+            mood: MoodKind::Calm,
+            complexity: ComplexityKind::Low,
+            seed: seed_from_string("dim_alpha"),
+        });
+        let c = generate_rules(GenInput {
+            biome: BiomeKind::Forest,
+            mood: MoodKind::Calm,
+            complexity: ComplexityKind::Low,
+            seed: seed_from_string("dim_beta"),
+        });
+        assert_eq!(a, b, "same dimension ID → same rules");
+        assert_ne!(a, c, "different dimension IDs → different rules (for Low where spawn count perturbs)");
     }
 }
