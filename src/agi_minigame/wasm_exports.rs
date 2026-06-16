@@ -844,4 +844,438 @@ mod tests {
         let custom = GameplayType::Custom("robot".to_string());
         assert_eq!(gameplay_type_to_str(&custom), "robot");
     }
+
+    // -----------------------------------------------------------------------
+    // Round 141 — helper-level tests for the JSON bridge surface.
+    // Round 138/139/140 pattern: focus on the small mapping helpers
+    // and JSON-bridge error paths that the existing integration tests
+    // don't cover.
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn round141_visual_style_from_str_all_known_tags() {
+        // Pin all 6 visual_style tags byte-for-byte against the
+        // `VisualStyle` enum variants. If a future round adds a
+        // variant without updating the bridge, this fails loudly.
+        assert!(matches!(visual_style_from_str("cyberpunk"), Ok(VisualStyle::Cyberpunk)));
+        assert!(matches!(visual_style_from_str("fantasy"), Ok(VisualStyle::Fantasy)));
+        assert!(matches!(visual_style_from_str("space"), Ok(VisualStyle::Space)));
+        assert!(matches!(visual_style_from_str("underwater"), Ok(VisualStyle::Underwater)));
+        assert!(matches!(visual_style_from_str("desert"), Ok(VisualStyle::Desert)));
+        assert!(matches!(visual_style_from_str("dungeon"), Ok(VisualStyle::Dungeon)));
+    }
+
+    #[test]
+    fn round141_visual_style_from_str_unknown_error_message() {
+        // Error envelope must include the bad tag for debuggability.
+        let err = visual_style_from_str("atlantis").unwrap_err();
+        assert!(err.contains("atlantis"), "error must echo the bad tag: {}", err);
+        assert!(err.contains("visual_style"), "error must name the field: {}", err);
+    }
+
+    #[test]
+    fn round141_visual_style_from_str_empty_string_errors() {
+        // Empty string is not a valid tag — must error, not panic.
+        let err = visual_style_from_str("").unwrap_err();
+        assert!(err.contains("visual_style"));
+    }
+
+    #[test]
+    fn round141_music_mood_from_str_all_known_tags() {
+        // Pin all 6 music_mood tags byte-for-byte against `MusicMood`.
+        assert!(matches!(music_mood_from_str("epic"), Ok(MusicMood::Epic)));
+        assert!(matches!(music_mood_from_str("mysterious"), Ok(MusicMood::Mysterious)));
+        assert!(matches!(music_mood_from_str("cheerful"), Ok(MusicMood::Cheerful)));
+        assert!(matches!(music_mood_from_str("tense"), Ok(MusicMood::Tense)));
+        assert!(matches!(music_mood_from_str("melancholic"), Ok(MusicMood::Melancholic)));
+        assert!(matches!(music_mood_from_str("pulse"), Ok(MusicMood::Pulse)));
+    }
+
+    #[test]
+    fn round141_music_mood_from_str_case_sensitive() {
+        // The bridge uses lowercase canonical tags; uppercase must NOT
+        // match. This is a contract the TS side relies on (its literal
+        // type is `"epic" | "mysterious" | ...`).
+        assert!(music_mood_from_str("EPIC").is_err());
+        assert!(music_mood_from_str("Epic").is_err());
+        assert!(music_mood_from_str(" epic").is_err());
+    }
+
+    #[test]
+    fn round141_biome_id_to_str_all_variants() {
+        // The 6 `BiomeId` variants all map to lowercase strings.
+        assert_eq!(biome_id_to_str(BiomeId::Cyberpunk), "cyberpunk");
+        assert_eq!(biome_id_to_str(BiomeId::Forest), "forest");
+        assert_eq!(biome_id_to_str(BiomeId::Desert), "desert");
+        assert_eq!(biome_id_to_str(BiomeId::Ice), "ice");
+        assert_eq!(biome_id_to_str(BiomeId::Space), "space");
+        assert_eq!(biome_id_to_str(BiomeId::Dungeon), "dungeon");
+    }
+
+    #[test]
+    fn round141_npc_archetype_to_str_all_variants() {
+        // 11 `NpcArchetype` variants → 11 distinct lowercase strings.
+        let cases: &[(NpcArchetype, &str)] = &[
+            (NpcArchetype::Robot, "robot"),
+            (NpcArchetype::Mage, "mage"),
+            (NpcArchetype::Beast, "beast"),
+            (NpcArchetype::Astronaut, "astronaut"),
+            (NpcArchetype::Alien, "alien"),
+            (NpcArchetype::Siren, "siren"),
+            (NpcArchetype::Diver, "diver"),
+            (NpcArchetype::Scorpion, "scorpion"),
+            (NpcArchetype::Nomad, "nomad"),
+            (NpcArchetype::Skeleton, "skeleton"),
+            (NpcArchetype::Lich, "lich"),
+        ];
+        for (a, expected) in cases {
+            assert_eq!(npc_archetype_to_str(*a), *expected);
+        }
+    }
+
+    #[test]
+    fn round141_event_step_json_field_passthrough() {
+        // The `event_chain` mapping must preserve fields verbatim.
+        let native = EventStep {
+            kind: "collide".to_string(),
+            delay_secs: 2500,
+            payload: "p1:1.5".to_string(),
+        };
+        let j = EventStepJson {
+            kind: native.kind.clone(),
+            delay_secs: native.delay_secs,
+            payload: native.payload.clone(),
+        };
+        assert_eq!(j.kind, "collide");
+        assert_eq!(j.delay_secs, 2500);
+        assert_eq!(j.payload, "p1:1.5");
+    }
+
+    #[test]
+    fn round141_theme_input_from_json_preserves_difficulty_and_seed() {
+        // The two passthrough fields must NOT be clamped or
+        // transformed — the WASM layer is a transparent bridge.
+        let j = ThemeInputJson {
+            visual_style: "fantasy".to_string(),
+            music_mood: "mysterious".to_string(),
+            difficulty: -0.5, // intentionally out of [0,1] — bridge doesn't clamp
+            seed: u64::MAX,
+        };
+        let native = theme_input_from_json(j).expect("parses");
+        assert_eq!(native.difficulty, -0.5);
+        assert_eq!(native.seed, u64::MAX);
+    }
+
+    #[test]
+    fn round141_theme_input_from_json_bad_music_mood_errors() {
+        // If the visual_style parses but the music_mood doesn't, the
+        // shim surfaces the music_mood error.
+        let j = ThemeInputJson {
+            visual_style: "fantasy".to_string(),
+            music_mood: "jazzy".to_string(),
+            difficulty: 0.5,
+            seed: 1,
+        };
+        let err = theme_input_from_json(j).unwrap_err();
+        assert!(err.contains("jazzy"), "error must echo the bad music_mood tag: {}", err);
+        assert!(err.contains("music_mood"));
+    }
+
+    #[test]
+    fn round141_npc_disposition_from_json_field_passthrough() {
+        // All 3 axes pass through verbatim — the bridge does NOT
+        // clamp. Clamping is the caller's responsibility (TS does
+        // it in NpcMind.defaultDisposition()).
+        let j = NpcDispositionJson {
+            friendly: 2.5,
+            fear: -1.5,
+            trust: 99.0,
+        };
+        let native = npc_disposition_from_json(j);
+        assert_eq!(native.friendly, 2.5);
+        assert_eq!(native.fear, -1.5);
+        assert_eq!(native.trust, 99.0);
+    }
+
+    #[test]
+    fn round141_generation_hint_from_json_casts_to_usize() {
+        // The JSON shape uses `u32` for atom counts, the native struct
+        // uses `usize`. The bridge must cast losslessly.
+        let j = GenerationHintJson {
+            min_atoms: 5,
+            max_atoms: 12,
+            reward_multiplier: 2.5,
+            base_difficulty_range_lo: 0.2,
+            base_difficulty_range_hi: 0.9,
+        };
+        let native = generation_hint_from_json(j);
+        assert_eq!(native.min_atoms, 5);
+        assert_eq!(native.max_atoms, 12);
+        assert_eq!(native.reward_multiplier, 2.5);
+        assert_eq!(native.base_difficulty_range, (0.2, 0.9));
+    }
+
+    #[test]
+    fn round141_generation_hint_from_json_zero_atoms() {
+        // Edge: min_atoms=0 is unusual but must round-trip without
+        // error. The downstream `build_generation_config_with_mood`
+        // is the one that enforces the practical minimum.
+        let j = GenerationHintJson {
+            min_atoms: 0,
+            max_atoms: 0,
+            reward_multiplier: 1.0,
+            base_difficulty_range_lo: 0.0,
+            base_difficulty_range_hi: 1.0,
+        };
+        let native = generation_hint_from_json(j);
+        assert_eq!(native.min_atoms, 0);
+        assert_eq!(native.max_atoms, 0);
+    }
+
+    #[test]
+    fn round141_palette_to_json_emits_three_hex_strings() {
+        // The `Palette` type is `[&str; 3]`. The bridge must serialize
+        // each element to a String without quoting or escaping.
+        let p: Palette = ["#000000", "#FFFFFF", "#ABCDEF"];
+        let j = palette_to_json(p);
+        assert_eq!(j.colors.len(), 3);
+        assert_eq!(j.colors[0], "#000000");
+        assert_eq!(j.colors[1], "#FFFFFF");
+        assert_eq!(j.colors[2], "#ABCDEF");
+    }
+
+    #[test]
+    fn round141_palette_to_json_serializes_to_canonical_shape() {
+        // The TS side reads `parsed.colors[0]` directly — the JSON
+        // shape must be `{ "colors": [...] }` and not a tuple.
+        let p: Palette = ["#111", "#222", "#333"];
+        let j = palette_to_json(p);
+        let s = serde_json::to_string(&j).unwrap();
+        assert!(s.contains("\"colors\""));
+        assert!(s.contains("\"#111\""));
+        assert!(s.contains("\"#222\""));
+        assert!(s.contains("\"#333\""));
+    }
+
+    #[test]
+    fn round141_theme_to_scene_json_internal_error_envelope_is_json() {
+        // When the shim catches an internal error, it serializes an
+        // `ErrorJson { error: "..." }` to JSON. Verify on multiple
+        // failure paths that the output is *valid JSON* (not a
+        // Rust-format Debug string).
+        let out = theme_to_scene_json_internal("not json at all");
+        let v: serde_json::Value = serde_json::from_str(&out)
+            .unwrap_or_else(|_| panic!("error output must be valid JSON: {}", out));
+        assert!(v.get("error").is_some(), "error envelope must have 'error' key");
+    }
+
+    #[test]
+    fn round141_theme_to_scene_json_internal_unknown_visual_style() {
+        // Unknown visual_style tag → error envelope containing the tag.
+        let out = theme_to_scene_json_internal(
+            r#"{"visual_style":"atlantis","music_mood":"pulse","difficulty":0.5,"seed":1}"#,
+        );
+        let err: ErrorJson = serde_json::from_str(&out)
+            .unwrap_or_else(|_| panic!("unknown tag must serialize as ErrorJson: {}", out));
+        assert!(err.error.contains("atlantis"));
+    }
+
+    #[test]
+    fn round141_theme_to_scene_json_internal_unknown_music_mood() {
+        // Same path for music_mood — must also error rather than
+        // silently coerce.
+        let out = theme_to_scene_json_internal(
+            r#"{"visual_style":"fantasy","music_mood":"jazzy","difficulty":0.5,"seed":1}"#,
+        );
+        let err: ErrorJson = serde_json::from_str(&out).unwrap();
+        assert!(err.error.contains("jazzy"));
+    }
+
+    #[test]
+    fn round141_theme_to_scene_json_internal_all_visual_styles_produce_valid_blueprints() {
+        // Smoke test: every supported visual_style must produce a
+        // valid SceneBlueprintJson. The biome_id echoes the
+        // visual_style for the cases that map 1:1 (cyberpunk) and
+        // may differ for others (fantasy→forest, underwater→ice, etc.).
+        let styles = ["cyberpunk", "fantasy", "space", "underwater", "desert", "dungeon"];
+        for style in styles {
+            let input = format!(
+                r#"{{"visual_style":"{}","music_mood":"pulse","difficulty":0.5,"seed":1}}"#,
+                style
+            );
+            let out = theme_to_scene_json_internal(&input);
+            let bp: SceneBlueprintJson = serde_json::from_str(&out)
+                .unwrap_or_else(|_| panic!("{}: must parse as SceneBlueprintJson: {}", style, out));
+            assert!(!bp.biome_id.is_empty(), "{}: biome_id must be non-empty", style);
+        }
+    }
+
+    #[test]
+    fn round141_build_generation_config_with_mood_json_internal_bad_hint_field() {
+        // Missing `hint` field in the input → `parse:` error.
+        let args = r#"{"player_level":5,"recent_loss_count":0,"mood":{"friendly":0.0,"fear":0.0,"trust":0.0},"seed":1}"#;
+        let out = build_generation_config_with_mood_json_internal(args);
+        let err: ErrorJson = serde_json::from_str(&out)
+            .unwrap_or_else(|_| panic!("missing hint must serialize as ErrorJson: {}", out));
+        assert!(err.error.starts_with("parse:"));
+    }
+
+    #[test]
+    fn round141_build_generation_config_with_mood_json_internal_bad_mood_field() {
+        // Missing `mood` field → also a parse error.
+        let args = r#"{"player_level":5,"recent_loss_count":0,"hint":{"min_atoms":2,"max_atoms":4,"reward_multiplier":1.0,"base_difficulty_range_lo":0.3,"base_difficulty_range_hi":0.8},"seed":1}"#;
+        let out = build_generation_config_with_mood_json_internal(args);
+        let err: ErrorJson = serde_json::from_str(&out).unwrap();
+        assert!(err.error.starts_with("parse:"));
+    }
+
+    #[test]
+    fn round141_build_generation_config_with_mood_json_internal_high_loss_count() {
+        // recent_loss_count=10 must also exclude shooting (threshold
+        // is >= 3). Edge: high count above the threshold.
+        let args = format!(
+            r#"{{"player_level":5,"recent_loss_count":10,"mood":{},"hint":{},"seed":1}}"#,
+            neutral_mood_json(),
+            default_hint_json()
+        );
+        let out = build_generation_config_with_mood_json_internal(&args);
+        let cfg: GenerationConfigJson = serde_json::from_str(&out).unwrap();
+        assert!(cfg.excluded_types.contains(&"shooting".to_string()));
+    }
+
+    #[test]
+    fn round141_mood_palette_json_internal_malformed_json_errors() {
+        // Non-JSON input → `parse:` error envelope.
+        let out = mood_palette_json_internal("not json");
+        let err: ErrorJson = serde_json::from_str(&out)
+            .unwrap_or_else(|_| panic!("bad input must serialize as ErrorJson: {}", out));
+        assert!(err.error.starts_with("parse:"));
+    }
+
+    #[test]
+    fn round141_mood_palette_json_internal_missing_field_errors() {
+        // Missing `trust` field → parse error.
+        let out = mood_palette_json_internal(r#"{"friendly":0.0,"fear":0.5}"#);
+        let err: ErrorJson = serde_json::from_str(&out).unwrap();
+        assert!(err.error.starts_with("parse:"));
+    }
+
+    #[test]
+    fn round141_mood_4th_sentence_for_json_internal_branch_high_errors() {
+        // branch >= 3 → "no pool" error. Verify branch 4 (well above
+        // the pool boundary) also errors cleanly.
+        let args = r#"{"branch":4,"blueprint_id":"dim_42"}"#;
+        let out = mood_4th_sentence_for_json_internal(args);
+        let err: ErrorJson = serde_json::from_str(&out)
+            .unwrap_or_else(|_| panic!("branch >= 3 must serialize as ErrorJson: {}", out));
+        assert!(err.error.contains("4"), "error should mention branch 4: {}", err.error);
+    }
+
+    #[test]
+    fn round141_mood_4th_sentence_for_json_internal_empty_blueprint_id() {
+        // Empty blueprint_id must not panic — just hashes to some
+        // pool entry.
+        let args = r#"{"branch":0,"blueprint_id":""}"#;
+        let out = mood_4th_sentence_for_json_internal(args);
+        let sent: serde_json::Value = serde_json::from_str(&out)
+            .unwrap_or_else(|_| panic!("empty blueprint_id must still produce a sentence: {}", out));
+        assert!(sent["sentence"].as_str().is_some());
+    }
+
+    #[test]
+    fn round141_mood_4th_sentence_for_json_internal_missing_blueprint_id_errors() {
+        // Missing `blueprint_id` field → parse error.
+        let out = mood_4th_sentence_for_json_internal(r#"{"branch":0}"#);
+        let err: ErrorJson = serde_json::from_str(&out).unwrap();
+        assert!(err.error.starts_with("parse:"));
+    }
+
+    #[test]
+    fn round141_wasm_module_version_constant() {
+        // The version string is a contract: the TS-side
+        // `loadSceneGenWasm` checks the `0.2.0-round` prefix. If a
+        // future round bumps it, this test must be updated in
+        // lockstep.
+        let v = wasm_module_version();
+        assert!(v.starts_with("0.2.0-round"), "version must keep major prefix: {}", v);
+        assert!(v.contains("round51"), "version must mention round 51: {}", v);
+    }
+
+    #[test]
+    fn round141_wasm_module_version_matches_expected_string() {
+        // Pin the exact string. A new round that bumps the version
+        // (e.g. round 52) must update both this test and the TS-side
+        // version check.
+        assert_eq!(wasm_module_version(), "0.2.0-round51");
+    }
+
+    #[test]
+    fn round141_error_json_serializes_with_error_key() {
+        // The `ErrorJson` envelope must always serialize to
+        // `{"error":"..."}`. Verify via the canonical scene_json
+        // error path.
+        let out = theme_to_scene_json_internal("not json");
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        let err_str = v["error"].as_str().expect("'error' must be a string");
+        assert!(!err_str.is_empty(), "'error' must be non-empty");
+    }
+
+    #[test]
+    fn round141_wasm_shim_theme_to_scene_json_matches_internal() {
+        // The `#[wasm_bindgen]` shim is a thin wrapper around the
+        // internal helper. Verify they produce byte-identical output
+        // for the same input.
+        let input = r#"{"visual_style":"cyberpunk","music_mood":"pulse","difficulty":0.5,"seed":1}"#;
+        let from_shim = theme_to_scene_json(input);
+        let from_internal = theme_to_scene_json_internal(input);
+        assert_eq!(from_shim, from_internal);
+    }
+
+    #[test]
+    fn round141_wasm_shim_build_generation_config_matches_internal() {
+        // Same parity check for the build_generation_config shim.
+        let args = format!(
+            r#"{{"player_level":5,"recent_loss_count":0,"mood":{},"hint":{},"seed":42}}"#,
+            neutral_mood_json(),
+            default_hint_json()
+        );
+        let from_shim = build_generation_config_with_mood_json(&args);
+        let from_internal = build_generation_config_with_mood_json_internal(&args);
+        assert_eq!(from_shim, from_internal);
+    }
+
+    #[test]
+    fn round141_wasm_shim_mood_palette_matches_internal() {
+        // Same parity check for mood_palette.
+        let from_shim = mood_palette_json(&neutral_mood_json());
+        let from_internal = mood_palette_json_internal(&neutral_mood_json());
+        assert_eq!(from_shim, from_internal);
+    }
+
+    #[test]
+    fn round141_wasm_shim_mood_4th_sentence_matches_internal() {
+        // Same parity check for mood_4th_sentence_for.
+        let args = r#"{"branch":0,"blueprint_id":"dim_42"}"#;
+        let from_shim = mood_4th_sentence_for_json(args);
+        let from_internal = mood_4th_sentence_for_json_internal(args);
+        assert_eq!(from_shim, from_internal);
+    }
+
+    #[test]
+    fn round141_npc_disposition_negative_axes_dont_change_palette() {
+        // The palette is selected by the BRANCH (which axis is
+        // "max positive"), not by exact values. Verify that a
+        // "negative-friendly, positive-fear" mood also picks the
+        // fear palette (fear is the dominant positive axis).
+        let mood = NpcDispositionJson {
+            friendly: -0.8,
+            fear: 0.6,
+            trust: -0.5,
+        };
+        let j = serde_json::to_string(&mood).unwrap();
+        let out = mood_palette_json_internal(&j);
+        let p: PaletteJson = serde_json::from_str(&out).unwrap();
+        // The fear palette is ["#0A1A2F", "#1B4965", "#CAE9FF"]
+        assert_eq!(p.colors, ["#0A1A2F", "#1B4965", "#CAE9FF"]);
+    }
 }
