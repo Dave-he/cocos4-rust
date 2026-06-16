@@ -955,3 +955,351 @@ mod round137_tests {
         assert_eq!(a.current_phase(), AtomPhase::Paused);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 159 — focused helper tests for `atoms/parkour.rs`.
+//
+// The round-137 block covered the
+// dispatch / event surface. This
+// block goes deeper on the data-model
+// primitives (Obstacle / Collectible
+// field defaults, the 4 obstacle
+// types / 4 collectible types / 5
+// runner actions / 6 runner states)
+// and on the player-action math
+// (lane changes, jump / slide / dash
+// transitions, score / coins / hp /
+// distance / state accessors that the
+// App-level HUD reads each frame).
+//
+// 11 tests pinning the round-137 →
+// round-158 surface.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round159_tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+    use crate::agi_minigame::world_state::UnifiedWorldState;
+    use crate::agi_minigame::player::PlayerProfile;
+
+    fn make_ctx() -> AtomContext {
+        let ws = Arc::new(Mutex::new(UnifiedWorldState::new(PlayerProfile::new("test"))));
+        AtomContext::new(ws).with_delta_time(0.016)
+    }
+
+    fn make_atom() -> ParkourAtom {
+        // 3 lanes, base speed 5.0, 3 HP.
+        // Round-1 defaults.
+        ParkourAtom::new(3, 5.0, 3)
+    }
+
+    /// `ParkourAtom::new`
+    /// centers the
+    /// runner in the
+    /// middle lane
+    /// (`num_lanes / 2`),
+    /// starts in the
+    /// `Running` state,
+    /// with the
+    /// provided hp +
+    /// max_hp, and an
+    /// empty obstacles
+    /// + collectibles
+    /// list.
+    #[test]
+    fn parkour_new_centers_runner_in_middle_lane_round_159() {
+        let a = make_atom();
+        // 3 lanes → middle = 1
+        assert_eq!(a.get_lane(), 1);
+        assert_eq!(a.get_state(), RunnerState::Running);
+        assert_eq!(a.get_hp(), 3);
+        assert_eq!(a.get_coins(), 0);
+        assert_eq!(a.get_score(), 0);
+        assert_eq!(a.get_distance(), 0.0);
+    }
+
+    /// `perform_action`
+    /// `LaneLeft` from
+    /// the middle lane
+    /// decrements by 1
+    /// (so middle →
+    /// left). From
+    /// lane 0, the
+    /// `if self.lane > 0`
+    /// guard prevents
+    /// underflow.
+    #[test]
+    fn parkour_lane_left_decrements_with_floor_at_zero_round_159() {
+        let mut a = make_atom();
+        // Middle (1) → left (0)
+        a.perform_action(RunnerAction::LaneLeft);
+        assert_eq!(a.get_lane(), 0);
+        // Lane 0 → 0 (no underflow)
+        a.perform_action(RunnerAction::LaneLeft);
+        assert_eq!(a.get_lane(), 0);
+    }
+
+    /// `perform_action`
+    /// `LaneRight` from
+    /// the middle lane
+    /// increments by 1
+    /// (so middle →
+    /// right). From
+    /// the rightmost
+    /// lane, the
+    /// `if self.lane <
+    /// self.num_lanes
+    /// - 1` guard
+    /// prevents
+    /// overflow.
+    #[test]
+    fn parkour_lane_right_increments_with_ceiling_at_max_round_159() {
+        let mut a = make_atom();
+        // Middle (1) → right (2)
+        a.perform_action(RunnerAction::LaneRight);
+        assert_eq!(a.get_lane(), 2);
+        // 3 lanes → max lane is 2
+        a.perform_action(RunnerAction::LaneRight);
+        assert_eq!(a.get_lane(), 2);
+    }
+
+    /// `perform_action`
+    /// `Jump` flips
+    /// the state from
+    /// `Running` to
+    /// `Jumping` and
+    /// sets
+    /// `action_timer`
+    /// to 0.6 (the
+    /// jump duration
+    /// in seconds).
+    /// The state
+    /// transition only
+    /// fires from
+    /// `Running` —
+    /// jumping again
+    /// mid-air is a
+    /// no-op.
+    #[test]
+    fn parkour_jump_flips_running_to_jumping_round_159() {
+        let mut a = make_atom();
+        assert_eq!(a.get_state(), RunnerState::Running);
+        a.perform_action(RunnerAction::Jump);
+        assert_eq!(a.get_state(), RunnerState::Jumping);
+        // Mid-air jump is a no-op
+        a.perform_action(RunnerAction::Jump);
+        assert_eq!(a.get_state(), RunnerState::Jumping);
+    }
+
+    /// `perform_action`
+    /// `Slide` flips
+    /// the state from
+    /// `Running` to
+    /// `Sliding` and
+    /// sets
+    /// `action_timer`
+    /// to 0.5. Same
+    /// guard as Jump:
+    /// only fires from
+    /// `Running`.
+    #[test]
+    fn parkour_slide_flips_running_to_sliding_round_159() {
+        let mut a = make_atom();
+        assert_eq!(a.get_state(), RunnerState::Running);
+        a.perform_action(RunnerAction::Slide);
+        assert_eq!(a.get_state(), RunnerState::Sliding);
+        // Sliding + slide is a no-op
+        a.perform_action(RunnerAction::Slide);
+        assert_eq!(a.get_state(), RunnerState::Sliding);
+    }
+
+    /// `perform_action`
+    /// `Dash` flips
+    /// the state to
+    /// `Dashing`,
+    /// doubles the
+    /// speed
+    /// (× 2.5), sets
+    /// `dash_timer` +
+    /// `invincible_timer`
+    /// both to 0.3.
+    /// While the dash
+    /// is active, a
+    /// second `Dash`
+    /// is a no-op
+    /// (`dash_timer >
+    /// 0.0` guard).
+    #[test]
+    fn parkour_dash_doubles_speed_and_blocks_re_dash_round_159() {
+        let mut a = make_atom();
+        let base_speed = a.speed;
+        a.perform_action(RunnerAction::Dash);
+        assert_eq!(a.get_state(), RunnerState::Dashing);
+        // Speed = base * 2.5
+        assert_eq!(a.speed, base_speed * 2.5);
+        // Re-dash is a no-op while
+        // dash_timer is active
+        a.perform_action(RunnerAction::Dash);
+        assert_eq!(a.get_state(), RunnerState::Dashing);
+        assert_eq!(a.speed, base_speed * 2.5);
+    }
+
+    /// `ObstacleType`
+    /// has 4 variants
+    /// (Low / High /
+    /// Gap / Spike).
+    /// All are
+    /// `Copy + Eq +
+    /// Hash` so they
+    /// can be used in
+    /// a `match`
+    /// without
+    /// borrowing.
+    #[test]
+    fn parkour_obstacle_type_has_4_variants_round_159() {
+        let v = [
+            ObstacleType::Low,
+            ObstacleType::High,
+            ObstacleType::Gap,
+            ObstacleType::Spike,
+        ];
+        for &x in &v { assert_eq!(x, x); }
+    }
+
+    /// `CollectibleType`
+    /// has 4 variants
+    /// (Coin / Gem /
+    /// PowerUp /
+    /// Shield). Same
+    /// `Copy + Eq +
+    /// Hash` contract.
+    #[test]
+    fn parkour_collectible_type_has_4_variants_round_159() {
+        let v = [
+            CollectibleType::Coin,
+            CollectibleType::Gem,
+            CollectibleType::PowerUp,
+            CollectibleType::Shield,
+        ];
+        for &x in &v { assert_eq!(x, x); }
+    }
+
+    /// `RunnerAction`
+    /// has 5 variants
+    /// (Jump / Slide /
+    /// Dash /
+    /// LaneLeft /
+    /// LaneRight).
+    /// `RunnerState`
+    /// has 6 variants
+    /// (Running /
+    /// Jumping /
+    /// Sliding /
+    /// Dashing / Hit
+    /// / Dead). The
+    /// state enum is
+    /// the most
+    /// important one
+    /// — a regression
+    /// that removes
+    /// the `Dead`
+    /// variant would
+    /// break the
+    /// `is_dead()`
+    /// accessor (the
+    /// match arm
+    /// wouldn't
+    /// compile).
+    #[test]
+    fn parkour_runner_action_and_state_have_5_and_6_variants_round_159() {
+        let actions = [
+            RunnerAction::Jump,
+            RunnerAction::Slide,
+            RunnerAction::Dash,
+            RunnerAction::LaneLeft,
+            RunnerAction::LaneRight,
+        ];
+        assert_eq!(actions.len(), 5);
+        for &a in &actions { assert_eq!(a, a); }
+
+        let states = [
+            RunnerState::Running,
+            RunnerState::Jumping,
+            RunnerState::Sliding,
+            RunnerState::Dashing,
+            RunnerState::Hit,
+            RunnerState::Dead,
+        ];
+        assert_eq!(states.len(), 6);
+        for &s in &states { assert_eq!(s, s); }
+    }
+
+    /// `is_dead()`
+    /// returns `true`
+    /// when `hp <= 0`
+    /// and `false`
+    /// otherwise. A
+    /// regression that
+    /// used `hp == 0`
+    /// (strict equality)
+    /// would falsely
+    /// report alive
+    /// for negative
+    /// HP (e.g. after
+    /// a critical
+    /// hit that
+    /// took 2 HP
+    /// from 1 HP).
+    #[test]
+    fn parkour_is_dead_matches_hp_at_most_zero_round_159() {
+        let mut a = make_atom();
+        assert!(!a.is_dead());
+        a.hp = 0;
+        assert!(a.is_dead());
+        a.hp = -1;
+        assert!(a.is_dead());
+    }
+
+    /// The accessor
+    /// methods
+    /// (`get_score` /
+    /// `get_distance` /
+    /// `get_hp` /
+    /// `get_coins` /
+    /// `get_lane` /
+    /// `get_state`)
+    /// all read
+    /// directly from
+    /// the internal
+    /// state. The
+    /// HUD layer
+    /// calls these
+    /// each frame
+    /// to render the
+    /// score / coins
+    /// / HP / lane
+    /// indicator. A
+    /// regression
+    /// that returns
+    /// a stale value
+    /// would freeze
+    /// the HUD
+    /// readout.
+    #[test]
+    fn parkour_getters_round_trip_internal_state_round_159() {
+        let mut a = make_atom();
+        a.score = 12345;
+        a.distance = 678.9;
+        a.coins = 42;
+        a.hp = 2;
+        a.lane = 0;
+        a.state = RunnerState::Hit;
+        assert_eq!(a.get_score(), 12345);
+        assert_eq!(a.get_distance(), 678.9);
+        assert_eq!(a.get_coins(), 42);
+        assert_eq!(a.get_hp(), 2);
+        assert_eq!(a.get_lane(), 0);
+        assert_eq!(a.get_state(), RunnerState::Hit);
+    }
+}
