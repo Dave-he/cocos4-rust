@@ -612,4 +612,179 @@ mod tests {
         // is 1.
         assert_eq!(ws.progression.dimensions_visited, 1);
     }
+
+    // -----------------------------------------------------------------------
+    // Round 150 helper-level tests.
+    //
+    // The world_state.rs module has round-124 helper tests for the
+    // gameplay_record path, but several public surfaces are
+    // untested: get_player_stats aggregation, get_active_events
+    // filtering, remove_event idempotency, and the
+    // global_data / world_variables accessor pair. Round 150 pins
+    // these so a future refactor can't silently change the
+    // aggregation / filtering / idempotency contracts.
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn get_player_stats_aggregates_total_playtime_from_history_round_150() {
+        // Round-124 only exercises single-record playtime. Pin
+        // that `get_player_stats` correctly SUMS multiple
+        // records' playtime. A regression that used only the
+        // LAST record (or a 0 fallback) would silently misreport
+        // the total.
+        use std::time::{Duration, SystemTime};
+        let mut ws = UnifiedWorldState::new(PlayerProfile::new("test-player"));
+        // Record 1: 10s of play.
+        let r1 = GameplayRecord {
+            gameplay_type: GameplayType::Match3,
+            start_time: SystemTime::now(),
+            end_time: SystemTime::now() + Duration::from_secs(10),
+            score: 100,
+            rewards_earned: vec![],
+        };
+        // Record 2: 25s of play.
+        let r2 = GameplayRecord {
+            gameplay_type: GameplayType::TowerDefense,
+            start_time: SystemTime::now(),
+            end_time: SystemTime::now() + Duration::from_secs(25),
+            score: 200,
+            rewards_earned: vec![],
+        };
+        ws.record_gameplay(r1);
+        ws.record_gameplay(r2);
+        let stats = ws.get_player_stats();
+        // Pin: total_playtime is the SUM (10+25=35s). The
+        // exact number may be 34 or 35 depending on timing
+        // granularity (sub-second). Allow ±1s.
+        assert!(stats.total_playtime >= 34 && stats.total_playtime <= 36,
+                "expected ~35s total playtime, got {}", stats.total_playtime);
+        assert_eq!(stats.gameplay_count, 2);
+        assert_eq!(stats.gold, 0);
+        assert_eq!(stats.gem, 0);
+    }
+
+    #[test]
+    fn get_active_events_filters_inactive_events_round_150() {
+        // Pin the contract: `get_active_events` returns ONLY
+        // events where `is_active == true`. A regression that
+        // returned all events (regardless of active flag)
+        // would leak completed events to the HUD.
+        use std::time::SystemTime;
+        let mut sw = SharedWorld::new();
+        let mk = |id: &str, active: bool| WorldEvent {
+            event_id: id.to_string(),
+            name: format!("Event {id}"),
+            description: "D".to_string(),
+            start_time: SystemTime::now(),
+            end_time: SystemTime::now(),
+            is_active: active,
+            modifiers: ValueMap::new(),
+        };
+        sw.add_event(mk("active-1", true));
+        sw.add_event(mk("inactive-1", false));
+        sw.add_event(mk("active-2", true));
+        let active_events = sw.get_active_events();
+        // Only 2 of the 3 are active.
+        assert_eq!(active_events.len(), 2);
+        // Verify the IDs (order = insertion order).
+        assert_eq!(active_events[0].event_id, "active-1");
+        assert_eq!(active_events[1].event_id, "active-2");
+        // Sanity: the inactive event is NOT in the result.
+        assert!(active_events.iter().all(|e| e.event_id != "inactive-1"));
+    }
+
+    #[test]
+    fn remove_event_is_idempotent_round_150() {
+        // Pin the contract: removing a non-existent event_id
+        // is a NO-OP (the function does NOT panic and does
+        // NOT remove any other event). Regression that used
+        // `swap_remove` or asserted the id was present would
+        // silently corrupt the event list on a typo'd id.
+        use std::time::SystemTime;
+        let mut sw = SharedWorld::new();
+        let mk = |id: &str| WorldEvent {
+            event_id: id.to_string(),
+            name: id.to_string(),
+            description: "".to_string(),
+            start_time: SystemTime::now(),
+            end_time: SystemTime::now(),
+            is_active: true,
+            modifiers: ValueMap::new(),
+        };
+        sw.add_event(mk("evt-1"));
+        sw.add_event(mk("evt-2"));
+        // Remove a non-existent id.
+        sw.remove_event("does-not-exist");
+        // Both original events are still present.
+        let active = sw.get_active_events();
+        assert_eq!(active.len(), 2);
+        // Removing the SAME non-existent id again is also
+        // a no-op (idempotent).
+        sw.remove_event("does-not-exist");
+        sw.remove_event("does-not-exist");
+        assert_eq!(sw.get_active_events().len(), 2);
+    }
+
+    #[test]
+    fn unified_world_state_global_data_set_then_get_round_trips_round_150() {
+        // `set_global` / `get_global` lives on UnifiedWorldState
+        // (not SharedWorld). Pin the symmetric contract.
+        let mut ws = UnifiedWorldState::new(PlayerProfile::new("test-player"));
+        assert!(ws.get_global("missing").is_none());
+        ws.set_global("season", Value::Integer(7));
+        ws.set_global("boss_hp", Value::Integer(9999));
+        assert_eq!(ws.get_global("season"), Some(&Value::Integer(7)));
+        assert_eq!(ws.get_global("boss_hp"), Some(&Value::Integer(9999)));
+        // Set the same key again with a different value —
+        // it should overwrite (not panic on duplicate).
+        ws.set_global("season", Value::Integer(8));
+        assert_eq!(ws.get_global("season"), Some(&Value::Integer(8)));
+    }
+
+    #[test]
+    fn shared_world_variables_set_then_get_round_trip_round_150() {
+        // SharedWorld has its own set_variable / get_variable
+        // (separate from set_global on UnifiedWorldState).
+        // Pin the round-trip + overwrite-on-duplicate-key.
+        let mut sw = SharedWorld::new();
+        sw.set_variable("difficulty", Value::Integer(3));
+        sw.set_variable("music_volume", Value::Integer(80));
+        assert_eq!(sw.get_variable("difficulty"), Some(&Value::Integer(3)));
+        assert_eq!(sw.get_variable("music_volume"), Some(&Value::Integer(80)));
+        // Overwrite.
+        sw.set_variable("difficulty", Value::Integer(5));
+        assert_eq!(sw.get_variable("difficulty"), Some(&Value::Integer(5)));
+        // Missing key.
+        assert!(sw.get_variable("nope").is_none());
+    }
+
+    #[test]
+    fn remove_event_with_duplicate_ids_removes_all_round_150() {
+        // Edge case: if the same id is added twice and then
+        // removed once, the retain-based filter removes BOTH
+        // copies (round-124's filter semantics). A regression
+        // to break-on-first-match would leave the second
+        // copy behind.
+        use std::time::SystemTime;
+        let mut sw = SharedWorld::new();
+        let mk = |id: &str, active: bool| WorldEvent {
+            event_id: id.to_string(),
+            name: id.to_string(),
+            description: "".to_string(),
+            start_time: SystemTime::now(),
+            end_time: SystemTime::now(),
+            is_active: active,
+            modifiers: ValueMap::new(),
+        };
+        sw.add_event(mk("dup", true));
+        sw.add_event(mk("other", true));
+        sw.add_event(mk("dup", true));
+        // 3 events total (2 with id "dup").
+        assert_eq!(sw.get_active_events().len(), 3);
+        // Remove "dup" — BOTH copies go.
+        sw.remove_event("dup");
+        let remaining = sw.get_active_events();
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].event_id, "other");
+    }
 }
