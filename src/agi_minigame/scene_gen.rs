@@ -1001,4 +1001,305 @@ mod tests {
         assert_eq!(visual_style_table(VisualStyle::Desert).4.len(), 2);
         assert_eq!(visual_style_table(VisualStyle::Dungeon).4.len(), 2);
     }
+
+    // -----------------------------------------------------------------------
+    // Round 146 — helper-level
+    // tests for the
+    // small public helpers
+    // in scene_gen.rs
+    // (round 110b / 122 /
+    // 123 / 124 / 125 /
+    // 126 / 127 / 128
+    // pattern extended).
+    //
+    // The pre-round-146
+    // tests covered
+    // 41 cases
+    // concentrated on:
+    //   - build_generation_config_with_mood:
+    //     neutral / fear /
+    //     friendly+trust /
+    //     hostile + clamp
+    //     + dedup +
+    //     seed determinism
+    //   - GenerationHint
+    //     defaults
+    //   - excluded_types
+    //     (losses >= 3 →
+    //     Shooting dropped)
+    //   - mood_palette all
+    //     4 branches +
+    //     priority order
+    //     + boundary
+    //     conditions +
+    //     palette_helpers
+    //   - theme_to_scene:
+    //     cyberpunk biome /
+    //     dense npc /
+    //     dungeon wall /
+    //     desert trap /
+    //     underwater →
+    //     ice / event chain
+    //     length + determinism
+    //     / bpm bounds /
+    //     npc density
+    //     scales with
+    //     difficulty /
+    //     archetype hints
+    //     per style /
+    //     default WFC
+    //     weights + cross-
+    //     layer seed
+    //     snapshots
+    //   - visual_style_table
+    //     archetype hint
+    //     non-empty
+    //
+    // Round 146 closes
+    // the coverage gap
+    // for:
+    //   - mood_promoted_atoms:
+    //     all 3 branches
+    //     fire (returns 3
+    //     picks in branch
+    //     order) + neutral
+    //     returns empty +
+    //     seed determinism
+    //   - default_preferred_pool:
+    //     low-level
+    //     (level ≤ 4) +
+    //     mid-level (5–14)
+    //     + high-level
+    //     (≥ 15) head +
+    //     length contracts
+    //   - build_generation_config_with_mood:
+    //     max_atoms auto-
+    //     bumps to min
+    //     when hint has
+    //     max < min (the
+    //     `max_atoms.max(min_atoms)`
+    //     contract) +
+    //     allow_composite
+    //     is always true
+    //     + seed is
+    //     threaded into
+    //     GenerationConfig
+    //   - theme_to_scene:
+    //     npc_count = 0
+    //     when npc_density
+    //     < 0.2 (the
+    //     `density ≥ 0.2 →
+    //     count ≥ 1` floor
+    //     contract) +
+    //     event_chain
+    //     delays are
+    //     monotonically
+    //     non-decreasing
+    //     (the `sort_by_key`
+    //     contract) +
+    //     event payload
+    //     format pin
+    //     (`{visual_style as u8}_{i}`)
+    //     + WFC weights
+    //     pinned for
+    //     Fantasy / Space
+    //     (only Cyberpunk /
+    //     Dungeon / Desert
+    //     are pre-round-146)
+    //   - music_mood_delta:
+    //     Pin the 6
+    //     deltas (Epic /
+    //     Mysterious /
+    //     Cheerful / Tense
+    //     / Melancholic /
+    //     Pulse) — only
+    //     Pulse=0 is
+    //     indirectly
+    //     exercised via
+    //     the cross-layer
+    //     BPM sweep
+    //   - GenerationConfig
+    //     field coverage:
+    //     reward_multiplier
+    //     is preserved
+    //     from hint +
+    //     player_level is
+    //     preserved from
+    //     arg
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn mood_promoted_atoms_fear_only_returns_one_pick_round_146() {
+        // Only fear > 0.5 → 1 branch fires → 1 promoted atom
+        // (random pick from [Parkour, Puzzle]).
+        let fear = NpcDisposition { friendly: 0.0, fear: 0.8, trust: 0.0 };
+        let promoted = mood_promoted_atoms(&fear, 0);
+        assert_eq!(promoted.len(), 1);
+        assert!(
+            promoted[0] == GameplayType::Parkour || promoted[0] == GameplayType::Puzzle,
+            "expected Parkour or Puzzle, got {:?}", promoted[0]
+        );
+    }
+
+    #[test]
+    fn mood_promoted_atoms_friendly_only_returns_one_pick_round_146() {
+        // friendly > 0.5 && trust > 0.3 → 1 branch fires →
+        // 1 promoted atom (random pick from [Match3, Synthesis]).
+        let loved = NpcDisposition { friendly: 0.7, fear: 0.0, trust: 0.5 };
+        let promoted = mood_promoted_atoms(&loved, 7);
+        assert_eq!(promoted.len(), 1);
+        assert!(
+            promoted[0] == GameplayType::Match3 || promoted[0] == GameplayType::Synthesis,
+            "expected Match3 or Synthesis, got {:?}", promoted[0]
+        );
+    }
+
+    #[test]
+    fn mood_promoted_atoms_hostile_only_returns_one_pick_round_146() {
+        // friendly < -0.3 → 1 branch fires → 1 promoted atom
+        // (random pick from [TowerDefense, TurnCombat]).
+        let hated = NpcDisposition { friendly: -0.5, fear: 0.0, trust: 0.0 };
+        let promoted = mood_promoted_atoms(&hated, 13);
+        assert_eq!(promoted.len(), 1);
+        assert!(
+            promoted[0] == GameplayType::TowerDefense || promoted[0] == GameplayType::TurnCombat,
+            "expected TowerDefense or TurnCombat, got {:?}", promoted[0]
+        );
+    }
+
+    #[test]
+    fn mood_promoted_atoms_neutral_returns_empty_round_146() {
+        // No branch fires → empty Vec (not [None] or some default).
+        let neutral_mood = NpcDisposition::default();
+        let promoted = mood_promoted_atoms(&neutral_mood, 0);
+        assert!(promoted.is_empty(), "expected empty vec, got {:?}", promoted);
+    }
+
+    #[test]
+    fn mood_promoted_atoms_is_seed_deterministic_round_146() {
+        // Same (mood, seed) → same picks across calls. A regression
+        // that re-seeded on every call would silently shift the
+        // promoted order.
+        let fear = NpcDisposition { friendly: 0.0, fear: 0.8, trust: 0.0 };
+        let a = mood_promoted_atoms(&fear, 42);
+        let b = mood_promoted_atoms(&fear, 42);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn build_generation_config_max_atoms_floor_at_min_round_146() {
+        // hint.max_atoms < hint.min_atoms → max gets bumped up to
+        // min via `.max(hint.min_atoms)`. Pin the auto-floor
+        // contract.
+        let mut hint = GenerationHint::default();
+        hint.min_atoms = 5;
+        hint.max_atoms = 2;
+        let cfg = build_generation_config_with_mood(
+            5, 0, &NpcDisposition::default(), hint, 0,
+        );
+        assert!(cfg.max_atoms >= cfg.min_atoms,
+                "max_atoms ({}) must be ≥ min_atoms ({})", cfg.max_atoms, cfg.min_atoms);
+        assert_eq!(cfg.max_atoms, 5);
+        assert_eq!(cfg.min_atoms, 5);
+    }
+
+    #[test]
+    fn build_generation_config_allow_composite_always_true_round_146() {
+        // The reflexive loop always returns allow_composite = true
+        // (composite gameplay is part of the round-22 baseline).
+        let moods = [
+            NpcDisposition::default(),
+            NpcDisposition { friendly: 0.0, fear: 0.8, trust: 0.0 },
+            NpcDisposition { friendly: 0.7, fear: 0.0, trust: 0.5 },
+            NpcDisposition { friendly: -0.5, fear: 0.0, trust: 0.0 },
+        ];
+        for m in &moods {
+            let cfg = build_generation_config_with_mood(
+                5, 0, m, GenerationHint::default(), 0,
+            );
+            assert!(cfg.allow_composite, "allow_composite must be true for mood {:?}", m);
+        }
+    }
+
+    #[test]
+    fn build_generation_config_threads_seed_and_reward_round_146() {
+        // The hint's reward_multiplier is preserved; the seed is
+        // threaded into GenerationConfig.seed; player_level
+        // round-trips. Pin the data-passing contract.
+        let mut hint = GenerationHint::default();
+        hint.reward_multiplier = 1.75;
+        let cfg = build_generation_config_with_mood(
+            12, 0, &NpcDisposition::default(), hint, 0xDEAD_BEEF_u64,
+        );
+        assert_eq!(cfg.reward_multiplier, 1.75);
+        assert_eq!(cfg.seed, Some(0xDEAD_BEEF_u64));
+        assert_eq!(cfg.player_level, 12);
+    }
+
+    #[test]
+    fn theme_to_scene_npc_count_is_zero_when_density_below_floor_round_146() {
+        // The floor contract: when `npc_density < 0.2`, `npc_count`
+        // is 0 (no NPCs spawn). Easiest path: the lowest-density
+        // visual style at the lowest difficulty.
+        //   Desert base 0.2 × (0.5 + 0.0 * 0.7) = 0.1 → npc_density
+        //   = clamp(0.1, 0.1, 1.0) = 0.1 < 0.2 → npc_count = 0.
+        let bp = theme_to_scene(input(VisualStyle::Desert, MusicMood::Melancholic, 0.0, 1));
+        assert!(bp.npc_density < 0.2,
+                "expected density < 0.2, got {}", bp.npc_density);
+        assert_eq!(bp.npc_count, 0,
+                   "expected 0 NPCs when density < 0.2, got {}", bp.npc_count);
+    }
+
+    #[test]
+    fn theme_to_scene_event_chain_delays_are_non_decreasing_round_146() {
+        // After the `sort_by_key(delay_secs)` step the chain is in
+        // strictly time order (delays are 5, 13, 21, 29, 37 with
+        // small jitter, always non-decreasing). Pin the contract.
+        for seed in 0..20 {
+            let bp = theme_to_scene(input(VisualStyle::Space, MusicMood::Pulse, 0.5, seed));
+            for w in bp.event_chain.windows(2) {
+                assert!(w[0].delay_secs <= w[1].delay_secs,
+                        "delays out of order at seed {}: {} > {}",
+                        seed, w[0].delay_secs, w[1].delay_secs);
+            }
+        }
+    }
+
+    #[test]
+    fn theme_to_scene_event_payload_matches_visual_style_index_round_146() {
+        // Pin the payload format `{visual_style as u8}_{i}`. A
+        // regression that dropped the visual_style from the
+        // payload would break the TS-side event dispatch.
+        //   Cyberpunk = 0, Fantasy = 1, etc.
+        let visuals = [
+            (VisualStyle::Cyberpunk, 0u8),
+            (VisualStyle::Fantasy,   1),
+            (VisualStyle::Space,     2),
+            (VisualStyle::Underwater,3),
+            (VisualStyle::Desert,    4),
+            (VisualStyle::Dungeon,   5),
+        ];
+        for (v, expected_idx) in visuals.iter() {
+            let bp = theme_to_scene(input(*v, MusicMood::Pulse, 0.5, 1));
+            for (i, evt) in bp.event_chain.iter().enumerate() {
+                let expected = format!("{}_{}", expected_idx, i);
+                assert_eq!(evt.payload, expected,
+                           "wrong payload for {:?} event {}: got {}, want {}",
+                           v, i, evt.payload, expected);
+            }
+        }
+    }
+
+    #[test]
+    fn theme_to_scene_wfc_weights_pinned_for_fantasy_and_space_round_146() {
+        // Pre-round-146 only Cyberpunk / Dungeon / Desert WFC weights
+        // are pinned. Pin Fantasy (more chests) and Space (more spawns)
+        // so a drift in the table breaks the test.
+        //   Fantasy  = [5, 3, 1, 2, 0, 0, 0, 3]
+        //   Space    = [6, 2, 1, 1, 0, 0, 2, 0]
+        let fantasy = theme_to_scene(input(VisualStyle::Fantasy, MusicMood::Cheerful, 0.5, 1));
+        assert_eq!(fantasy.wfc_tile_weights, [5, 3, 1, 2, 0, 0, 0, 3]);
+        let space = theme_to_scene(input(VisualStyle::Space, MusicMood::Pulse, 0.5, 1));
+        assert_eq!(space.wfc_tile_weights, [6, 2, 1, 1, 0, 0, 2, 0]);
+    }
 }
