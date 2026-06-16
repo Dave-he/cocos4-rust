@@ -791,4 +791,204 @@ mod round132_tests {
         assert!(json.contains("\"Damage\""));
         assert!(json.contains("\"Spawn\""));
     }
+
+    // -----------------------------------------------------------------------
+    // Round 149 helper-level tests.
+    //
+    // Closing the dsl/ast.rs gaps left by the round-132 block. The
+    // round-132 block covered the basic from_str / to_json /
+    // mutation_cost contracts; round 149 pins edge cases that
+    // matter for the AGI-miniGame WASM bridge: case-sensitivity of
+    // the enum from_str helpers (the TS-side MemeCompiler only ever
+    // emits the canonical PascalCase, but a hostile or buggy host
+    // could pass anything), Arg::from_json negative / scientific /
+    // zero handling, Action/Event JSON output for empty-arg and
+    // no-arg cases, and the full mutation_cost scale.
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn event_kind_from_str_is_case_sensitive_round_149() {
+        // The grammar is PascalCase ("Collide" / "Timer" / "Spawn" /
+        // "PlayerHit"). Mixed-case / lowercase / uppercase must all
+        // be rejected — a regression that did case-insensitive
+        // matching would silently accept "collide" from a buggy
+        // hot-reload payload and produce a Rule the engine can't
+        // dispatch.
+        for variant in &["Collide", "Timer", "Spawn", "PlayerHit"] {
+            assert_eq!(
+                EventKind::from_str(variant).map(|k| format!("{:?}", k).trim_matches('"').to_string()),
+                Some(variant.to_string()),
+                "canonical {} should parse", variant,
+            );
+        }
+        for bad in &["collide", "COLLIDE", "CollIde", "timer", "TIMER", "spawn", "PLAYERHIT"] {
+            assert_eq!(EventKind::from_str(bad), None, "non-canonical {} must reject", bad);
+        }
+    }
+
+    #[test]
+    fn action_kind_from_str_is_case_sensitive_round_149() {
+        // Same PascalCase contract as EventKind. A regression that
+        // did case-insensitive matching would let "spawn" / "DAMAGE"
+        // through and dispatch to the wrong arm.
+        for variant in &["Damage", "Heal", "Spawn", "SpawnEntity"] {
+            assert_eq!(
+                ActionKind::from_str(variant).map(|k| format!("{:?}", k).trim_matches('"').to_string()),
+                Some(variant.to_string()),
+            );
+        }
+        for bad in &["damage", "DAMAGE", "spawn", "SPAWN", "spawnentity", "SPAWNENTITY", "spawn_entity", "Spawn-Entity"] {
+            assert_eq!(ActionKind::from_str(bad), None, "non-canonical {} must reject", bad);
+        }
+    }
+
+    #[test]
+    fn event_kind_from_str_rejects_empty_and_whitespace_round_149() {
+        // Defense: an empty / whitespace-only identifier from a
+        // malformed JSON payload must NOT parse to a variant.
+        assert_eq!(EventKind::from_str(""), None);
+        assert_eq!(EventKind::from_str(" "), None);
+        assert_eq!(EventKind::from_str("\t"), None);
+    }
+
+    #[test]
+    fn action_kind_from_str_rejects_empty_and_partial_matches_round_149() {
+        // Defense: partial matches ("Dam" / "Hea" / "Spaw") must
+        // not parse. A regression that did `starts_with` matching
+        // would silently match "Dam" → Damage and dispatch a wrong
+        // action.
+        assert_eq!(ActionKind::from_str(""), None);
+        assert_eq!(ActionKind::from_str("Dam"), None);
+        assert_eq!(ActionKind::from_str("Heal "), None); // trailing space
+        assert_eq!(ActionKind::from_str(" Spawn"), None); // leading space
+        assert_eq!(ActionKind::from_str("Dam."), None);
+    }
+
+    #[test]
+    fn arg_from_json_handles_negative_and_zero_and_scientific_round_149() {
+        // The host serializes numbers via f32; f32 supports
+        // negative, zero, and scientific notation. Pin that
+        // from_json doesn't crash on these edge cases and that
+        // the round-trip is exact.
+        assert_eq!(Arg::from_json("-5"), Some(Arg::Number(-5.0)));
+        assert_eq!(Arg::from_json("0"), Some(Arg::Number(0.0)));
+        assert_eq!(Arg::from_json("-0.0"), Some(Arg::Number(-0.0)));
+        // 1e3 parses as 1000.0 via f32::from_str
+        assert_eq!(Arg::from_json("1e3"), Some(Arg::Number(1000.0)));
+        // 2.5e-1 = 0.25
+        assert_eq!(Arg::from_json("2.5e-1"), Some(Arg::Number(0.25)));
+    }
+
+    #[test]
+    fn arg_from_json_rejects_malformed_round_149() {
+        // Strings that don't start with `"` AND don't parse as
+        // f32 must return None. Regression that returned Some
+        // (e.g. silently) would corrupt the engine's state.
+        assert_eq!(Arg::from_json(""), None);
+        assert_eq!(Arg::from_json("abc"), None);
+        assert_eq!(Arg::from_json("1.2.3"), None);
+        // Unmatched quote: starts with `"` but doesn't end with `"`
+        // → f32 parse fails → None.
+        assert_eq!(Arg::from_json("\"unterminated"), None);
+    }
+
+    #[test]
+    fn arg_to_json_trims_all_trailing_zeros_round_149() {
+        // `format!("{:.6}", n)` produces e.g. "1.000000" → trim
+        // trailing 0s → trim trailing `.` → "1". Pin this for the
+        // "5.000000" / "0.000000" cases that the round-132 block
+        // didn't exercise.
+        assert_eq!(Arg::Number(5.0).to_json(), "5");
+        assert_eq!(Arg::Number(5.5).to_json(), "5.5");
+        assert_eq!(Arg::Number(0.0).to_json(), "0");
+        assert_eq!(Arg::Number(-1.0).to_json(), "-1");
+        assert_eq!(Arg::Number(-1.25).to_json(), "-1.25");
+        // 1.0000001 → format!("{:.6}", 1.0000001) = "1.000000" (6
+        // digits of precision — values smaller than 1e-6 get
+        // rounded off).
+        assert_eq!(Arg::Number(1.0_f32).to_json(), "1");
+    }
+
+    #[test]
+    fn arg_to_json_escapes_backslash_and_quote_round_149() {
+        // The escape order is critical: backslash MUST be escaped
+        // first, otherwise the second pass (escaping `"`) would
+        // produce `\\\"` for an input of `\"` (instead of the
+        // correct `\\\"`). Pin both directions.
+        assert_eq!(Arg::Str("hello".to_string()).to_json(), "\"hello\"");
+        assert_eq!(Arg::Str("say \"hi\"".to_string()).to_json(), "\"say \\\"hi\\\"\"");
+        assert_eq!(Arg::Str("path\\to\\file".to_string()).to_json(), "\"path\\\\to\\\\file\"");
+        // Combined: a string with BOTH backslash and quote
+        let s = "back\\slash and \"quote\"".to_string();
+        let json = Arg::Str(s.clone()).to_json();
+        assert_eq!(json, "\"back\\\\slash and \\\"quote\\\"\"");
+        // Round-trip: parse the JSON back.
+        let inner = &json[1..json.len()-1];
+        let unescaped = inner.replace("\\\\", "\x00BACKSLASH\x00").replace("\\\"", "\x00QUOTE\x00");
+        let restored = unescaped.replace("\x00BACKSLASH\x00", "\\").replace("\x00QUOTE\x00", "\"");
+        assert_eq!(restored, s);
+    }
+
+    #[test]
+    fn rule_mutation_cost_scale_round_149() {
+        // Pin the full scale: base=1 + per-action weight
+        // (Damage=1, Heal=1, Spawn=2, SpawnEntity=3). The
+        // round-132 block only tested a 2-action mixed case.
+        let make = |kinds: &[ActionKind]| Rule {
+            event: Event { kind: EventKind::Collide, arg: None },
+            actions: kinds.iter().map(|k| Action { kind: k.clone(), args: vec![] }).collect(),
+        };
+        // 1 Damage = 1 + 1 = 2
+        assert_eq!(make(&[ActionKind::Damage]).mutation_cost(), 2);
+        // 1 Heal = 1 + 1 = 2
+        assert_eq!(make(&[ActionKind::Heal]).mutation_cost(), 2);
+        // 1 Spawn = 1 + 2 = 3
+        assert_eq!(make(&[ActionKind::Spawn]).mutation_cost(), 3);
+        // 1 SpawnEntity = 1 + 3 = 4
+        assert_eq!(make(&[ActionKind::SpawnEntity]).mutation_cost(), 4);
+        // All 4 SpawnEntity = 1 + 12 = 13
+        assert_eq!(make(&[ActionKind::SpawnEntity, ActionKind::SpawnEntity, ActionKind::SpawnEntity, ActionKind::SpawnEntity]).mutation_cost(), 13);
+        // Mixed 4-action = 1 + 1+1+2+3 = 8
+        assert_eq!(make(&[ActionKind::Damage, ActionKind::Heal, ActionKind::Spawn, ActionKind::SpawnEntity]).mutation_cost(), 8);
+    }
+
+    #[test]
+    fn event_to_json_omits_arg_field_when_none_round_149() {
+        // The `arg` field in Event::to_json: when None, the
+        // `arg` key is `null` (not omitted entirely). This is the
+        // round-32 hot-reload contract — the engine checks for
+        // the presence of the `arg` key.
+        let e = Event { kind: EventKind::Collide, arg: None };
+        let json = e.to_json();
+        assert!(json.contains("\"arg\":null"));
+        assert!(json.contains("\"kind\":\"Collide\""));
+    }
+
+    #[test]
+    fn action_to_json_with_empty_args_produces_empty_array_round_149() {
+        // The `args` field must be a JSON array (even when
+        // empty). A regression that produced a null / missing
+        // value would break the engine's `for arg in args`
+        // iteration.
+        let a = Action { kind: ActionKind::Damage, args: vec![] };
+        let json = a.to_json();
+        assert!(json.contains("\"args\":[]"));
+        assert!(json.contains("\"kind\":\"Damage\""));
+    }
+
+    #[test]
+    fn rule_to_json_with_empty_actions_still_has_actions_key_round_149() {
+        // Edge case: a rule with no actions (unusual but
+        // possible — a parser-level no-op). The JSON must
+        // still contain the `"actions":[]` key (the engine
+        // iterates over the array and a missing key would
+        // produce `undefined` in JS, masking the bug).
+        let r = Rule {
+            event: Event { kind: EventKind::Collide, arg: None },
+            actions: vec![],
+        };
+        let json = r.to_json();
+        assert!(json.contains("\"actions\":[]"));
+        assert!(json.contains("\"event\":"));
+    }
 }
