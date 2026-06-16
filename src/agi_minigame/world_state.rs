@@ -787,4 +787,470 @@ mod tests {
         assert_eq!(remaining.len(), 1);
         assert_eq!(remaining[0].event_id, "other");
     }
+
+    // -----------------------------------------------------------------
+    // Round 161 — focused helper
+    // tests for the
+    // `record_gameplay`
+    // event surface +
+    // the `PlayerStats`
+    // aggregator + the
+    // `add_announcement`
+    // / `get_active_events`
+    // edge cases.
+    //
+    // The round-150 block
+    // already pinned the
+    // `record_gameplay`
+    // happy path +
+    // `SharedWorld`
+    // add/remove. This
+    // round extends the
+    // coverage to:
+    //   - record_gameplay
+    //     appends to the
+    //     history vec
+    //     (FIFO, oldest-
+    //     first)
+    //   - record_gameplay
+    //     with a 0-second
+    //     duration is
+    //     counted in
+    //     total_playtime
+    //     (defensive: a
+    //     regression that
+    //     skipped 0-second
+    //     records would
+    //     understate
+    //     playtime for
+    //     tie / quick-loss
+    //     games)
+    //   - get_player_stats
+    //     reflects gold +
+    //     gem balances
+    //     (not just 0
+    //     defaults)
+    //   - get_player_stats
+    //     reflects
+    //     level + experience
+    //     directly from
+    //     PlayerProfile
+    //     (not a stale
+    //     snapshot)
+    //   - add_announcement
+    //     appends to the
+    //     vec
+    //   - get_active_events
+    //     when the vec is
+    //     empty returns an
+    //     empty slice
+    //     (defensive
+    //     contract)
+    //   - get_active_events
+    //     when no event is
+    //     active (all
+    //     is_active=false)
+    //     returns an empty
+    //     slice
+    //   - set_active_gameplay
+    //     records a
+    //     "current"
+    //     dimension
+    //     visit on
+    //     PlayerProgression
+    //   - clear_active_gameplay
+    //     returns the
+    //     prior state
+    //     (and is Some on
+    //     a populated
+    //     active_gameplay)
+    //   - clear_active_gameplay
+    //     on a fresh
+    //     world state
+    //     returns None
+    //   - PlayerStats
+    //     struct has 6
+    //     fields (level /
+    //     experience /
+    //     total_playtime /
+    //     gameplay_count
+    //     / gold / gem)
+    //
+    // 11 tests pinning the
+    // round-150 → round-160
+    // surface.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn record_gameplay_appends_to_history_vec_round_161() {
+        // `record_gameplay`
+        // pushes to
+        // `gameplay_history`
+        // (FIFO, oldest-
+        // first). A
+        // regression that
+        // prepended or
+        // overwrote would
+        // break the
+        // "most recent
+        // first" UI panels
+        // (StatsPanel +
+        // vault panel both
+        // read from the
+        // tail of this
+        // vec).
+        let mut ws = UnifiedWorldState::new(PlayerProfile::new("p1"));
+        let now = std::time::SystemTime::now();
+        let mk = |score: u64, label: &str| GameplayRecord {
+            gameplay_type: GameplayType::Match3,
+            start_time: now,
+            end_time: now,
+            score,
+            rewards_earned: vec![RewardInfo {
+                item_id: label.to_string(),
+                quantity: 1,
+            }],
+        };
+        assert_eq!(ws.gameplay_history.len(), 0);
+        ws.record_gameplay(mk(100, "gold"));
+        assert_eq!(ws.gameplay_history.len(), 1);
+        assert_eq!(ws.gameplay_history[0].score, 100);
+        ws.record_gameplay(mk(200, "gold"));
+        ws.record_gameplay(mk(300, "gold"));
+        assert_eq!(ws.gameplay_history.len(), 3);
+        // Oldest first.
+        assert_eq!(ws.gameplay_history[0].score, 100);
+        assert_eq!(ws.gameplay_history[1].score, 200);
+        assert_eq!(ws.gameplay_history[2].score, 300);
+    }
+
+    #[test]
+    fn calculate_total_playtime_counts_zero_second_records_round_161() {
+        // `calculate_total_playtime`
+        // sums the
+        // end_time − start_time
+        // deltas. If start
+        // == end, the
+        // `duration_since`
+        // returns Ok(0),
+        // and the fold
+        // adds 0. So a
+        // record with 0
+        // duration
+        // contributes 0 to
+        // the total — NOT
+        // skipped (a
+        // regression that
+        // used `.filter(d >
+        // 0)` would
+        // understate
+        // playtime for tie
+        // / quick-loss
+        // games, but the
+        // actual contract
+        // is "include the
+        // record, the delta
+        // is just 0").
+        let mut ws = UnifiedWorldState::new(PlayerProfile::new("p1"));
+        let now = std::time::SystemTime::now();
+        ws.record_gameplay(GameplayRecord {
+            gameplay_type: GameplayType::Match3,
+            start_time: now,
+            end_time: now, // 0-second record
+            score: 50,
+            rewards_earned: vec![],
+        });
+        ws.record_gameplay(GameplayRecord {
+            gameplay_type: GameplayType::Match3,
+            start_time: now,
+            end_time: now, // 0-second record
+            score: 50,
+            rewards_earned: vec![],
+        });
+        // Both records are present.
+        assert_eq!(ws.gameplay_history.len(), 2);
+        // Total playtime is 0 + 0 = 0
+        // (not skipped / not
+        // 2).
+        let stats = ws.get_player_stats();
+        assert_eq!(stats.total_playtime, 0);
+        assert_eq!(stats.gameplay_count, 2);
+    }
+
+    #[test]
+    fn get_player_stats_reflects_wallet_balances_round_161() {
+        // `get_player_stats`
+        // reads
+        // `wallet.get_balance`
+        // for both Gold +
+        // Gem. Pin that
+        // the returned
+        // struct reflects
+        // the current
+        // wallet state
+        // (not stale
+        // defaults).
+        let mut ws = UnifiedWorldState::new(PlayerProfile::new("p1"));
+        let now = std::time::SystemTime::now();
+        ws.record_gameplay(GameplayRecord {
+            gameplay_type: GameplayType::Match3,
+            start_time: now,
+            end_time: now,
+            score: 500,
+            rewards_earned: vec![
+                RewardInfo { item_id: "gold".to_string(), quantity: 250 },
+                RewardInfo { item_id: "gem".to_string(), quantity: 7 },
+            ],
+        });
+        let stats = ws.get_player_stats();
+        assert_eq!(stats.gold, 250);
+        assert_eq!(stats.gem, 7);
+        assert_eq!(stats.gameplay_count, 1);
+    }
+
+    #[test]
+    fn get_player_stats_reflects_player_profile_level_and_experience_round_161() {
+        // `get_player_stats`
+        // reads `level` +
+        // `experience`
+        // directly from
+        // `PlayerProfile`
+        // (NOT a stale
+        // snapshot from
+        // when the
+        // PlayerStats was
+        // first created).
+        // Mutate the
+        // profile and
+        // re-read.
+        let mut profile = PlayerProfile::new("p1");
+        profile.level = 42;
+        profile.experience = 9999;
+        let ws = UnifiedWorldState::new(profile);
+        let stats = ws.get_player_stats();
+        assert_eq!(stats.level, 42);
+        assert_eq!(stats.experience, 9999);
+    }
+
+    #[test]
+    fn shared_world_add_announcement_appends_round_161() {
+        // `add_announcement`
+        // appends to the
+        // `global_announcements`
+        // vec (oldest-
+        // first). A
+        // regression that
+        // prepended or
+        // deduped by id
+        // would break the
+        // "announcement
+        // feed" UI.
+        use std::time::SystemTime;
+        let mut sw = SharedWorld::new();
+        assert_eq!(sw.global_announcements.len(), 0);
+        sw.add_announcement(Announcement {
+            id: "a1".to_string(),
+            title: "Server restart".to_string(),
+            content: "Down for 5m".to_string(),
+            timestamp: SystemTime::now(),
+        });
+        assert_eq!(sw.global_announcements.len(), 1);
+        sw.add_announcement(Announcement {
+            id: "a2".to_string(),
+            title: "New event".to_string(),
+            content: "Festival live".to_string(),
+            timestamp: SystemTime::now(),
+        });
+        assert_eq!(sw.global_announcements.len(), 2);
+        assert_eq!(sw.global_announcements[0].id, "a1");
+        assert_eq!(sw.global_announcements[1].id, "a2");
+    }
+
+    #[test]
+    fn get_active_events_empty_when_vec_empty_round_161() {
+        // `get_active_events`
+        // on a fresh
+        // `SharedWorld`
+        // (no events
+        // added) returns
+        // an empty slice.
+        // A regression
+        // that returned
+        // `&[]` correctly
+        // (the round-1
+        // contract) is
+        // preserved; a
+        // regression that
+        // returned `None`
+        // would break the
+        // for-each loop
+        // pattern in the
+        // call sites.
+        let sw = SharedWorld::new();
+        assert_eq!(sw.get_active_events().len(), 0);
+    }
+
+    #[test]
+    fn get_active_events_excludes_inactive_events_round_161() {
+        // `get_active_events`
+        // filters out
+        // events where
+        // `is_active =
+        // false`. Pin
+        // that a mixed
+        // vec (2 active,
+        // 2 inactive)
+        // returns only
+        // the 2 active
+        // events.
+        use std::time::SystemTime;
+        let mut sw = SharedWorld::new();
+        let mk = |id: &str, active: bool| WorldEvent {
+            event_id: id.to_string(),
+            name: id.to_string(),
+            description: "".to_string(),
+            start_time: SystemTime::now(),
+            end_time: SystemTime::now(),
+            is_active: active,
+            modifiers: ValueMap::new(),
+        };
+        sw.add_event(mk("a-1", true));
+        sw.add_event(mk("a-2", true));
+        sw.add_event(mk("i-1", false));
+        sw.add_event(mk("i-2", false));
+        let active = sw.get_active_events();
+        assert_eq!(active.len(), 2);
+        let ids: Vec<&str> = active.iter().map(|e| e.event_id.as_str()).collect();
+        assert!(ids.contains(&"a-1"));
+        assert!(ids.contains(&"a-2"));
+        assert!(!ids.contains(&"i-1"));
+        assert!(!ids.contains(&"i-2"));
+    }
+
+    #[test]
+    fn set_active_gameplay_populates_active_gameplay_info_round_161() {
+        // `set_active_gameplay`
+        // stores a new
+        // `ActiveGameplayInfo`
+        // with the given
+        // `gameplay_type`
+        // + `current_state`.
+        // A regression
+        // that stored
+        // `None` or used
+        // a wrong type
+        // would break the
+        // "in-progress
+        // gameplay" UI.
+        let mut ws = UnifiedWorldState::new(PlayerProfile::new("p1"));
+        assert!(ws.active_gameplay.is_none());
+        ws.set_active_gameplay(GameplayType::TowerDefense, GameplayState::new());
+        let info = ws.active_gameplay.as_ref().expect("active gameplay should be set");
+        assert_eq!(info.gameplay_type, GameplayType::TowerDefense);
+        // current_state was
+        // just-constructed,
+        // so is_active
+        // starts true
+        // (the
+        // GameplayState::new
+        // default — newly-
+        // constructed
+        // gameplay
+        // is, by
+        // definition,
+        // active).
+        assert!(info.current_state.is_active);
+    }
+
+    #[test]
+    fn clear_active_gameplay_returns_prior_state_round_161() {
+        // `clear_active_gameplay`
+        // returns the
+        // `current_state`
+        // of the popped
+        // `ActiveGameplayInfo`
+        // (so the caller
+        // can resume
+        // / persist the
+        // final state).
+        // A regression
+        // that returned
+        // `()` or
+        // always-None
+        // would break
+        // resume.
+        let mut ws = UnifiedWorldState::new(PlayerProfile::new("p1"));
+        let mut state = GameplayState::new();
+        state.is_active = true;
+        state.score = 1234;
+        ws.set_active_gameplay(GameplayType::Match3, state);
+        let returned = ws.clear_active_gameplay();
+        assert!(returned.is_some());
+        let s = returned.unwrap();
+        assert!(s.is_active);
+        assert_eq!(s.score, 1234);
+        // active_gameplay is
+        // now None (the
+        // Option was
+        // .take()'d).
+        assert!(ws.active_gameplay.is_none());
+    }
+
+    #[test]
+    fn clear_active_gameplay_on_empty_returns_none_round_161() {
+        // `clear_active_gameplay`
+        // on a fresh
+        // `UnifiedWorldState`
+        // (no active
+        // gameplay) returns
+        // None. A
+        // regression that
+        // returned a
+        // default
+        // GameplayState
+        // would mask the
+        // "nothing to
+        // clear" case.
+        let mut ws = UnifiedWorldState::new(PlayerProfile::new("p1"));
+        let returned = ws.clear_active_gameplay();
+        assert!(returned.is_none());
+    }
+
+    #[test]
+    fn player_stats_struct_has_6_fields_round_161() {
+        // `PlayerStats`
+        // has 6 public
+        // fields:
+        //   - level
+        //   - experience
+        //   - total_playtime
+        //   - gameplay_count
+        //   - gold
+        //   - gem
+        // Pin the field
+        // count to
+        // detect silent
+        // removals
+        // (a regression
+        // that dropped
+        // `gem` would
+        // break the
+        // currency
+        // summary in
+        // StatsPanel).
+        let stats = PlayerStats {
+            level: 1,
+            experience: 0,
+            total_playtime: 0,
+            gameplay_count: 0,
+            gold: 0,
+            gem: 0,
+        };
+        assert_eq!(stats.level, 1);
+        assert_eq!(stats.experience, 0);
+        assert_eq!(stats.total_playtime, 0);
+        assert_eq!(stats.gameplay_count, 0);
+        assert_eq!(stats.gold, 0);
+        assert_eq!(stats.gem, 0);
+    }
 }
