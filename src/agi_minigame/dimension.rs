@@ -1126,3 +1126,250 @@ mod round130_tests {
         assert!(!obj.progress(0));
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 153 helper-level tests for `dimension.rs`.
+//
+// Round 153 closes surface-area gaps left after
+// the round-130 / round-132 sweep — specifically
+// the DimensionState lifecycle guards, the
+// objective-lookup paths, and the
+// DimensionRunner no-active-dim paths.
+//
+// Every test is fully self-contained: each builds
+// its own `Dimension` (or `DimensionRunner`) via
+// the local `make_dim` / `make_runner` helpers
+// below, so a regression in one fixture doesn't
+// poison the others.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round153_tests {
+    use super::*;
+    use std::sync::Arc;
+    use crate::agi_minigame::atoms;
+    use crate::agi_minigame::player::PlayerProfile;
+    use crate::agi_minigame::world_state::UnifiedWorldState;
+
+    fn make_registry() -> AtomRegistry {
+        let mut reg = AtomRegistry::new();
+        atoms::register_all_atoms(&mut reg);
+        reg
+    }
+
+    fn make_world() -> Arc<Mutex<UnifiedWorldState>> {
+        Arc::new(Mutex::new(UnifiedWorldState::new(PlayerProfile::new("round153"))))
+    }
+
+    fn make_runner() -> DimensionRunner {
+        let ws = make_world();
+        let reg = make_registry();
+        DimensionRunner::new(ws, Arc::new(Mutex::new(reg)))
+    }
+
+    fn make_dim_with_objectives(
+        id: &str,
+        objective_specs: Vec<(&str, u64, bool)>,
+    ) -> Dimension {
+        let objectives = objective_specs
+            .into_iter()
+            .map(|(oid, target, is_optional)| {
+                DimensionObjective::new(oid, oid, target, is_optional)
+            })
+            .collect();
+        let cfg = DimensionConfig {
+            id: id.to_string(),
+            name: id.to_string(),
+            description: "round153".to_string(),
+            atom_ids: Vec::new(),
+            difficulty: 0.5,
+            time_limit_secs: Some(60),
+            rules: Vec::new(),
+            rewards: Vec::new(),
+            objectives,
+        };
+        Dimension::new(cfg)
+    }
+
+    fn make_ctx() -> AtomContext {
+        AtomContext::new(make_world())
+    }
+
+    // -----------------------------------------------------------------
+    // DimensionState lifecycle guards.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn dimension_start_is_no_op_when_not_ready_round153() {
+        // `start` guards on `state == Ready`. A
+        // fresh Dimension is `Uninitialized`, so
+        // start() must not flip state and must
+        // not crash. The guard prevents a
+        // double-start path that would otherwise
+        // produce an extra `dimension_complete`
+        // event or duplicate atom_runner init.
+        let mut dim = make_dim_with_objectives("start_guard", vec![]);
+        assert_eq!(dim.state, DimensionState::Uninitialized);
+        let mut ctx = make_ctx();
+        dim.start(&mut ctx);
+        assert_eq!(
+            dim.state,
+            DimensionState::Uninitialized,
+            "start() must not promote Uninitialized → anything else"
+        );
+        assert!(dim.event_log.is_empty());
+    }
+
+    #[test]
+    fn dimension_pause_is_no_op_when_not_running_round153() {
+        // Symmetric guard: pause() must only
+        // act when state == Running. A
+        // Ready→pause call (or Running→pause
+        // twice) must not flip state and must
+        // not push a `dimension_pause` event.
+        let mut dim = make_dim_with_objectives("pause_guard", vec![]);
+        assert_eq!(dim.state, DimensionState::Uninitialized);
+        let mut ctx = make_ctx();
+        dim.pause(&mut ctx);
+        assert_eq!(
+            dim.state,
+            DimensionState::Uninitialized,
+            "pause() on Uninitialized must stay Uninitialized"
+        );
+        assert!(dim.event_log.is_empty());
+    }
+
+    #[test]
+    fn dimension_resume_is_no_op_when_not_paused_round153() {
+        // Symmetric guard: resume() must only
+        // act when state == Paused. A fresh
+        // dimension is `Uninitialized`, so
+        // resume() must be a no-op.
+        let mut dim = make_dim_with_objectives("resume_guard", vec![]);
+        let mut ctx = make_ctx();
+        dim.resume(&mut ctx);
+        assert_eq!(dim.state, DimensionState::Uninitialized);
+        assert!(dim.event_log.is_empty());
+    }
+
+    // -----------------------------------------------------------------
+    // Objective lookup paths.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn dimension_progress_objective_for_unknown_id_returns_false_round153() {
+        // progress_objective must return
+        // false (no side-effects, no
+        // completed_objectives push) when
+        // the id isn't in the config.
+        let mut dim = make_dim_with_objectives(
+            "unknown_obj",
+            vec![("kill", 10, false)],
+        );
+        let just_completed = dim.progress_objective("does_not_exist", 1);
+        assert!(!just_completed);
+        assert!(dim.completed_objectives.is_empty());
+    }
+
+    #[test]
+    fn dimension_get_objective_for_unknown_id_returns_none_round153() {
+        // get_objective's mirror: unknown id
+        // returns None (not a default-zero
+        // objective, which would silently
+        // mark a mandatory objective as 0%).
+        let dim = make_dim_with_objectives(
+            "get_unknown",
+            vec![("kill", 10, false)],
+        );
+        assert!(dim.get_objective("does_not_exist").is_none());
+        // Sanity: the real objective is still findable.
+        let obj = dim.get_objective("kill").expect("real obj");
+        assert_eq!(obj.target, 10);
+    }
+
+    // -----------------------------------------------------------------
+    // Event log paths.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn dimension_broadcast_event_writes_to_event_log_round153() {
+        // broadcast_event writes the event to
+        // event_log (in addition to
+        // dispatching to atom runners).
+        // With no atom runners the dispatch
+        // is a no-op but the log entry must
+        // still appear.
+        let mut dim = make_dim_with_objectives("broadcast_log", vec![]);
+        let mut data = ValueMap::new();
+        data.insert("k".to_string(), Value::Integer(42));
+        let mut ctx = make_ctx();
+        dim.broadcast_event("custom_event", &data, &mut ctx);
+        assert_eq!(dim.event_log.len(), 1);
+        let logged = &dim.event_log[0];
+        assert_eq!(logged.event_type, "custom_event");
+        // Value lookup on the logged map.
+        match logged.data.get("k") {
+            Some(Value::Integer(42)) => {}
+            other => panic!("expected Integer(42) in logged data, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn dimension_event_log_after_complete_and_fail_round153() {
+        // complete() and fail() each push one
+        // event to event_log — pin both
+        // entries so a future refactor can't
+        // accidentally drop one of them.
+        let mut dim_c = make_dim_with_objectives("complete_log", vec![]);
+        let mut ctx_c = make_ctx();
+        dim_c.complete(&mut ctx_c);
+        assert_eq!(dim_c.event_log.len(), 1);
+        assert_eq!(dim_c.event_log[0].event_type, "dimension_complete");
+        assert_eq!(dim_c.state, DimensionState::Completed);
+
+        let mut dim_f = make_dim_with_objectives("fail_log", vec![]);
+        let mut ctx_f = make_ctx();
+        dim_f.fail(&mut ctx_f, "out_of_time");
+        assert_eq!(dim_f.event_log.len(), 1);
+        assert_eq!(dim_f.event_log[0].event_type, "dimension_fail");
+        match dim_f.event_log[0].data.get("reason") {
+            Some(Value::String(s)) if s == "out_of_time" => {}
+            other => panic!("expected String(\"out_of_time\"), got {:?}", other),
+        }
+        assert_eq!(dim_f.state, DimensionState::Failed);
+    }
+
+    // -----------------------------------------------------------------
+    // DimensionProgress formula + DimensionRunner no-active paths.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn dimension_progress_time_remaining_formula_round153() {
+        // time_remaining = time_limit_secs - elapsed_time.
+        // With no time_limit_secs the field is
+        // None. Pin both branches.
+        let mut dim = make_dim_with_objectives("time_remaining", vec![]);
+        // No elapsed_time yet, full budget.
+        let p0 = dim.get_progress();
+        assert_eq!(p0.time_remaining, Some(60.0));
+        // Simulate 10s of elapsed_time.
+        dim.elapsed_time = 10.0;
+        let p1 = dim.get_progress();
+        assert_eq!(p1.time_remaining, Some(50.0));
+        // Now flip time_limit_secs to None —
+        // time_remaining becomes None.
+        dim.config.time_limit_secs = None;
+        let p2 = dim.get_progress();
+        assert_eq!(p2.time_remaining, None);
+    }
+
+    #[test]
+    fn dimension_runner_is_running_with_no_active_dim_round153() {
+        // A fresh runner has no active dimension;
+        // is_running() must return false.
+        let runner = make_runner();
+        assert!(!runner.is_running());
+        assert!(runner.get_active_dimension().is_none());
+        assert!(runner.get_progress().is_none());
+    }
+}
