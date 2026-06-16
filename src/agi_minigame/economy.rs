@@ -1119,4 +1119,640 @@ mod tests {
         item.quantity = 6;
         assert!(item.is_full());
     }
+
+    // -----------------------------------------------------------------
+    // Round 145 — helper-level
+    // tests for
+    // CurrencyType
+    // / Currency /
+    // Transaction /
+    // Wallet /
+    // InventoryItem
+    // / Inventory
+    // contracts
+    // that the
+    // pre-round-
+    // 145 tests
+    // didn't
+    // cover. The
+    // 34.6K file
+    // has 61
+    // tests in
+    // `mod tests`
+    // (above),
+    // no separate
+    // `mod
+    // roundN_tests`
+    // block
+    // pre-round-
+    // 145 (the
+    // round-N
+    // helper
+    // pattern is
+    // applied to
+    // smaller
+    // files like
+    // atom.rs /
+    // runtime_scene.rs
+    // /
+    // gameplay.rs).
+    //
+    // Round 145
+    // closes:
+    //   - CurrencyType::name()
+    //     for all 5
+    //     variants
+    //     (pre-
+    //     round-145
+    //     tests
+    //     cover 0
+    //     variants
+    //     explicitly
+    //     — only
+    //     the
+    //     Custom
+    //     fallback
+    //     path is
+    //     exercised
+    //     implicitly)
+    //   - CurrencyType::Custom(id)
+    //     equality +
+    //     Hash
+    //     (the
+    //     derive
+    //     contract
+    //     matters
+    //     for
+    //     HashMap
+    //     keys
+    //     used
+    //     in
+    //     Currency.amounts
+    //     and
+    //     Inventory.items)
+    //   - Currency::add()
+    //     saturating
+    //     at
+    //     u64::MAX
+    //     when no
+    //     cap is
+    //     set
+    //     (saturating_add
+    //     contract;
+    //     pre-
+    //     round-145
+    //     tests
+    //     only
+    //     cover
+    //     the
+    //     finite-
+    //     cap
+    //     path)
+    //   - Currency::can_afford()
+    //     exact-
+    //     amount
+    //     boundary
+    //     (current
+    //     == amount
+    //     must
+    //     return
+    //     true)
+    //   - Transaction::total_gains
+    //     / total_costs
+    //     for empty
+    //     + multi-
+    //     entry +
+    //     multi-
+    //     currency
+    //     (the
+    //     pre-
+    //     round-145
+    //     tests
+    //     don't
+    //     exercise
+    //     these
+    //     accessors)
+    //   - Wallet::execute
+    //     atomic
+    //     semantics:
+    //     when ONE
+    //     entry is
+    //     unaffordable,
+    //     the entire
+    //     transaction
+    //     is rejected
+    //     (no partial
+    //     apply).
+    //     This is
+    //     a CRITICAL
+    //     contract:
+    //     a
+    //     regression
+    //     that
+    //     applies
+    //     the
+    //     affordable
+    //     entries
+    //     before
+    //     failing
+    //     on the
+    //     unaffordable
+    //     one would
+    //     silently
+    //     corrupt
+    //     the
+    //     wallet
+    //     state.
+    //   - Wallet::execute
+    //     log
+    //     rotation
+    //     (when
+    //     transaction_log.len()
+    //     >=
+    //     max_log_size,
+    //     the
+    //     oldest
+    //     entry is
+    //     removed)
+    //   - InventoryItem::add
+    //     saturating
+    //     at
+    //     max_stack
+    //     (returns
+    //     the
+    //     actually-
+    //     added
+    //     amount,
+    //     not the
+    //     requested
+    //     amount)
+    //   - InventoryItem::remove
+    //     for amount
+    //     > quantity
+    //     (caps at
+    //     quantity,
+    //     returns
+    //     the
+    //     actually-
+    //     removed
+    //     amount)
+    //   - Inventory::add_item
+    //     returns 0
+    //     when the
+    //     inventory
+    //     is full
+    //     AND the
+    //     item is
+    //     new
+    //     (the
+    //     existing-
+    //     item path
+    //     still
+    //     returns
+    //     the
+    //     actually-
+    //     added
+    //     amount
+    //     because
+    //     it
+    //     stacks
+    //     into
+    //     the
+    //     existing
+    //     slot
+    //     without
+    //     consuming
+    //     a new
+    //     capacity
+    //     slot)
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn test_currency_type_name_all_5_variants_round_145() {
+        // `CurrencyType::name()`
+        // for all 5
+        // variants. Pre-
+        // round-145 tests
+        // don't exercise
+        // any of the
+        // named variants
+        // directly (only
+        // the Custom
+        // fallback is
+        // covered
+        // implicitly via
+        // the Currency
+        // tests).
+        assert_eq!(CurrencyType::Gold.name(),    "gold");
+        assert_eq!(CurrencyType::Gem.name(),     "gem");
+        assert_eq!(CurrencyType::Energy.name(),  "energy");
+        assert_eq!(CurrencyType::Token.name(),   "token");
+        // Custom variant
+        // always returns
+        // the constant
+        // "custom"
+        // regardless of
+        // the inner id
+        // (defense: a
+        // regression that
+        // returned a
+        // serialized id
+        // would silently
+        // desync the
+        // WASM bridge
+        // JSON contract).
+        assert_eq!(CurrencyType::Custom(0).name(),  "custom");
+        assert_eq!(CurrencyType::Custom(99).name(), "custom");
+    }
+
+    #[test]
+    fn test_currency_type_custom_equality_and_hash_round_145() {
+        // `CurrencyType::Custom(u32)` derives PartialEq + Eq + Hash.
+        // Two Customs with the same id must be equal + hash to the
+        // same value. Two Customs with different ids must NOT be
+        // equal. The derive contract matters because CurrencyType
+        // is used as a HashMap key in Currency.amounts and the
+        // inventory items map.
+        assert_eq!(CurrencyType::Custom(7),  CurrencyType::Custom(7));
+        assert_ne!(CurrencyType::Custom(7),  CurrencyType::Custom(8));
+        assert_ne!(CurrencyType::Custom(7),  CurrencyType::Gold);
+        // Hash contract: equal values hash to the same value.
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut h1 = DefaultHasher::new();
+        let mut h2 = DefaultHasher::new();
+        CurrencyType::Custom(42).hash(&mut h1);
+        CurrencyType::Custom(42).hash(&mut h2);
+        assert_eq!(h1.finish(), h2.finish());
+        // And: CurrencyType can be used as a HashMap key (this is
+        // the actual host use case in Currency.amounts).
+        let mut map: std::collections::HashMap<CurrencyType, &str> = std::collections::HashMap::new();
+        map.insert(CurrencyType::Gold, "yellow");
+        assert_eq!(map.get(&CurrencyType::Gold).copied(), Some("yellow"));
+    }
+
+    #[test]
+    fn test_currency_add_saturates_at_u64_max_round_145() {
+        // When no cap is set for a currency, `Currency::add`
+        // uses `u64::MAX` as the implicit cap. Adding an
+        // amount that would overflow should saturate at
+        // u64::MAX, NOT wrap around to 0 (a regression
+        // that removed `.min(cap)` would wrap).
+        // Use a fresh Currency type (Token) that has no
+        // default cap set in `Currency::new()`.
+        let mut c = Currency::new();
+        // First add some, then add a huge amount.
+        c.add(CurrencyType::Token, 100);
+        assert_eq!(c.get(CurrencyType::Token), 100);
+        c.add(CurrencyType::Token, u64::MAX);
+        // Should saturate at u64::MAX, not wrap.
+        assert_eq!(c.get(CurrencyType::Token), u64::MAX);
+    }
+
+    #[test]
+    fn test_currency_can_afford_exact_amount_round_145() {
+        // `can_afford` boundary: current == amount must
+        // return true (the >= contract). Pre-round-145
+        // tests don't cover the exact-amount case
+        // (they test strictly-greater and
+        // strictly-less).
+        let mut c = Currency::new();
+        c.add(CurrencyType::Gold, 100);
+        assert!(c.can_afford(CurrencyType::Gold, 100));   // exact
+        assert!(c.can_afford(CurrencyType::Gold, 99));    // under
+        assert!(!c.can_afford(CurrencyType::Gold, 101));  // over
+    }
+
+    #[test]
+    fn test_transaction_total_gains_and_costs_round_145() {
+        // The
+        // `total_gains`
+        // and
+        // `total_costs`
+        // accessors
+        // sum
+        // entries
+        // by
+        // currency
+        // type.
+        // Empty
+        // transaction
+        // returns
+        // 0
+        // for
+        // all
+        // currencies.
+        // Multi-
+        // currency
+        // transaction
+        // returns
+        // per-
+        // currency
+        // sums.
+        let empty = Transaction::new("empty", "");
+        assert_eq!(empty.total_gains(CurrencyType::Gold), 0);
+        assert_eq!(empty.total_costs(CurrencyType::Gold), 0);
+        // Multi-entry
+        // multi-currency.
+        let tx = Transaction::new("tx", "test")
+            .gain(CurrencyType::Gold,   10)
+            .gain(CurrencyType::Gold,   20)
+            .cost(CurrencyType::Gold,   5)
+            .gain(CurrencyType::Gem,    100)
+            .cost(CurrencyType::Energy, 30);
+        assert_eq!(tx.total_gains(CurrencyType::Gold),   30);  // 10 + 20
+        assert_eq!(tx.total_costs(CurrencyType::Gold),   5);
+        assert_eq!(tx.total_gains(CurrencyType::Gem),    100);
+        assert_eq!(tx.total_costs(CurrencyType::Gem),    0);
+        assert_eq!(tx.total_gains(CurrencyType::Energy), 0);
+        assert_eq!(tx.total_costs(CurrencyType::Energy), 30);
+    }
+
+    #[test]
+    fn test_wallet_execute_atomic_semantics_round_145() {
+        // CRITICAL
+        // contract:
+        // when ONE
+        // entry is
+        // unaffordable,
+        // the
+        // entire
+        // transaction
+        // is
+        // rejected
+        // (no
+        // partial
+        // apply).
+        // A
+        // regression
+        // that
+        // applied
+        // the
+        // affordable
+        // entries
+        // before
+        // failing
+        // would
+        // silently
+        // corrupt
+        // the
+        // wallet
+        // state.
+        let mut wallet = Wallet::new();
+        wallet.currency.add(CurrencyType::Gold, 50);
+        // Transaction
+        // with one
+        // affordable
+        // cost
+        // (Gold: 10)
+        // and one
+        // unaffordable
+        // cost
+        // (Gold: 9999).
+        // Both
+        // entries
+        // are Gold;
+        // the
+        // second
+        // is
+        // unaffordable.
+        let tx = Transaction::new("atomic_test", "")
+            .cost(CurrencyType::Gold, 10)
+            .cost(CurrencyType::Gold, 9999);
+        assert!(!wallet.execute(tx));
+        // Balance
+        // unchanged
+        // (50 Gold
+        // — none
+        // spent).
+        assert_eq!(wallet.get_balance(CurrencyType::Gold), 50);
+        // Transaction
+        // log NOT
+        // updated
+        // (a
+        // rejected
+        // transaction
+        // is not
+        // logged).
+        assert_eq!(wallet.transaction_log.len(), 0);
+    }
+
+    #[test]
+    fn test_wallet_execute_log_rotation_round_145() {
+        // When
+        // `transaction_log.len()`
+        // >=
+        // `max_log_size`,
+        // the
+        // oldest
+        // entry is
+        // removed
+        // (FIFO).
+        // This
+        // is
+        // the
+        // ring-buffer
+        // contract;
+        // the
+        // log
+        // never
+        // grows
+        // past
+        // `max_log_size`.
+        let mut wallet = Wallet::new();
+        wallet.max_log_size = 3; // small for the test
+        wallet.currency.add(CurrencyType::Gold, 1_000_000);
+        // Execute 5
+        // transactions;
+        // log
+        // should
+        // cap at
+        // 3
+        // (the
+        // oldest 2
+        // are
+        // removed).
+        for i in 0..5 {
+            let tx = Transaction::new(&format!("tx{i}"), "")
+                .cost(CurrencyType::Gold, 1);
+            assert!(wallet.execute(tx));
+        }
+        assert_eq!(wallet.transaction_log.len(), 3);
+        // The
+        // 3
+        // remaining
+        // entries
+        // are the
+        // most
+        // recent 3
+        // (tx2,
+        // tx3,
+        // tx4
+        // — tx0
+        // and
+        // tx1
+        // were
+        // evicted).
+        assert_eq!(wallet.transaction_log[0].id, "tx2");
+        assert_eq!(wallet.transaction_log[1].id, "tx3");
+        assert_eq!(wallet.transaction_log[2].id, "tx4");
+    }
+
+    #[test]
+    fn test_inventory_item_add_saturates_at_max_stack_round_145() {
+        // `InventoryItem::add`
+        // saturates
+        // at
+        // max_stack
+        // and
+        // returns
+        // the
+        // ACTUALLY-added
+        // amount
+        // (not
+        // the
+        // requested
+        // amount).
+        // A
+        // regression
+        // that
+        // returned
+        // the
+        // requested
+        // amount
+        // would
+        // over-
+        // report
+        // (host
+        // code
+        // would
+        // think
+        // items
+        // were
+        // added
+        // that
+        // weren't).
+        let mut item = InventoryItem::new("potion", "Healing Potion")
+            .with_quantity(95)
+            .with_max_stack(99);
+        let added = item.add(10); // request 10, only 4 fit
+        assert_eq!(added, 4);
+        assert_eq!(item.quantity, 99);
+        assert!(item.is_full());
+    }
+
+    #[test]
+    fn test_inventory_item_remove_caps_at_quantity_round_145() {
+        // `InventoryItem::remove`
+        // caps
+        // at
+        // quantity
+        // (removing
+        // more
+        // than
+        // available
+        // removes
+        // only
+        // what's
+        // there).
+        // Returns
+        // the
+        // ACTUALLY-
+        // removed
+        // amount.
+        let mut item = InventoryItem::new("gem", "Ruby").with_quantity(3);
+        let removed = item.remove(10); // request 10, only 3 available
+        assert_eq!(removed, 3);
+        assert_eq!(item.quantity, 0);
+        assert!(item.is_empty());
+    }
+
+    #[test]
+    fn test_inventory_add_item_returns_0_when_full_and_item_new_round_145() {
+        // When
+        // the
+        // inventory
+        // is
+        // at
+        // capacity
+        // AND
+        // the
+        // item
+        // is
+        // new
+        // (not
+        // an
+        // existing
+        // stack),
+        // `add_item`
+        // returns
+        // 0
+        // and
+        // the
+        // item
+        // is
+        // NOT
+        // inserted.
+        // (The
+        // existing-
+        // item
+        // path
+        // always
+        // succeeds
+        // even
+        // when
+        // at
+        // capacity
+        // because
+        // it
+        // stacks
+        // into
+        // the
+        // existing
+        // slot
+        // without
+        // consuming
+        // a
+        // new
+        // capacity
+        // slot
+        // — that's
+        // the
+        // canonical
+        // "stacking
+        // inventory"
+        // pattern.)
+        let mut inv = Inventory::new(2);
+        inv.add_item(InventoryItem::new("a", "A"));
+        inv.add_item(InventoryItem::new("b", "B"));
+        assert!(inv.is_full());
+        let added = inv.add_item(InventoryItem::new("c", "C"));
+        assert_eq!(added, 0);
+        // 'c' is NOT
+        // in the
+        // inventory.
+        assert!(inv.get_item("c").is_none());
+        assert_eq!(inv.count(), 2);
+        // And:
+        // stacking
+        // an
+        // existing
+        // item
+        // still
+        // works
+        // even
+        // at
+        // capacity
+        // (it
+        // doesn't
+        // consume
+        // a
+        // new
+        // slot).
+        let added_existing = inv.add_item(
+            InventoryItem::new("a", "A").with_quantity(5)
+        );
+        assert_eq!(added_existing, 5);
+        assert_eq!(inv.get_item("a").unwrap().quantity, 6);
+    }
 }
