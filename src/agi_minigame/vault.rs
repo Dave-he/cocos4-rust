@@ -693,4 +693,245 @@ mod round129_tests {
         assert_eq!(s.distinct_themes, 3);
         assert_eq!(s.distinct_blueprints, 4);
     }
+
+    // -----------------------------------------------------------------
+    // Round 151 — close the remaining
+    // surface-area gaps in vault.rs.
+    //
+    // The pre-existing test mods
+    // (round 20 + round 129) cover:
+    //   - DEFAULT_CAPACITY
+    //   - with_capacity honors the
+    //     requested size + ring drop
+    //   - recent(0) / recent(N) /
+    //     recent(>len) returns
+    //     everything in chronological
+    //     order
+    //   - recent_themes(0) +
+    //     recent_themes(N) returns
+    //     newest-first + caps at N
+    //   - suggest_next seed
+    //     determinism on a fresh
+    //     pool
+    //   - last_outcome_for after
+    //     clear returns None
+    //   - VaultEntry::new copies
+    //     every blueprint field
+    //   - completion_rate = 1.0
+    //     when all completed
+    //   - stats distinct_themes
+    //     counts unique names
+    //
+    // Round 151 closes the gap
+    // for:
+    //   - DimensionOutcome::is_success
+    //     (Completed→true, the other
+    //     two→false)
+    //   - record() on a capacity-0
+    //     vault is a true no-op
+    //     (doesn't panic, doesn't
+    //     grow, doesn't allocate
+    //     a non-empty ring)
+    //   - recent(1) returns just
+    //     the newest entry
+    //   - recent() with limit == len
+    //     returns exactly len entries
+    //     (boundary)
+    //   - recent_themes() with a
+    //     single repeating theme
+    //     yields exactly 1 entry
+    //     (no duplicate dedup,
+    //     but the multi-call case
+    //     pinned explicitly)
+    //   - last_outcome_for returns
+    //     the MOST RECENT outcome
+    //     when the same id was
+    //     visited multiple times
+    //     (re-visit pattern)
+    //   - suggest_next with empty
+    //     candidates → None
+    //     (boundary)
+    //   - suggest_next with
+    //     avoid_window == 0 →
+    //     every candidate is fresh
+    //     → seed % len pick
+    //   - suggest_next ALL candidates
+    //     visited → pass-2 oldest-
+    //     wins branch fires
+    //   - stats() after clear()
+    //     returns all zeros +
+    //     completion_rate = 0.0
+    //   - completion_rate = 0.333
+    //     with 1-of-3 completed
+    //     (1/3 = 0.333...; pinned
+    //     with approximate equality)
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn dimension_outcome_is_success_only_for_completed_round_151() {
+        // The `is_success` accessor is used by `VaultStats::completion_rate`
+        // — pin the contract that ONLY `Completed` returns true.
+        assert!(DimensionOutcome::Completed.is_success());
+        assert!(!DimensionOutcome::Failed.is_success());
+        assert!(!DimensionOutcome::Abandoned.is_success());
+    }
+
+    #[test]
+    fn record_on_zero_capacity_vault_is_no_op_round_151() {
+        // A capacity-0 vault is documented as a "black hole": record
+        // is a no-op. Verify NO panic, NO growth, NO allocation
+        // (we check via `len() == 0`).
+        let mut v = DimensionVault::with_capacity(0);
+        assert_eq!(v.capacity(), 0);
+        v.record(&make_blueprint("a", "t"), DimensionOutcome::Completed, 1);
+        v.record(&make_blueprint("b", "t"), DimensionOutcome::Failed, 2);
+        assert!(v.is_empty());
+        assert_eq!(v.len(), 0);
+        // recent(5) on an empty vault is empty.
+        assert!(v.recent(5).is_empty());
+        // last_outcome_for is None.
+        assert!(v.last_outcome_for("a").is_none());
+    }
+
+    #[test]
+    fn recent_with_limit_one_returns_just_the_newest_round_151() {
+        // The boundary case `limit == 1` — only the last entry.
+        let mut v = DimensionVault::with_capacity(4);
+        v.record(&make_blueprint("a", "t"), DimensionOutcome::Completed, 1);
+        v.record(&make_blueprint("b", "t"), DimensionOutcome::Completed, 2);
+        v.record(&make_blueprint("c", "t"), DimensionOutcome::Completed, 3);
+        let recent = v.recent(1);
+        assert_eq!(recent.len(), 1);
+        assert_eq!(recent[0].blueprint_id, "c");
+    }
+
+    #[test]
+    fn recent_with_limit_equal_to_len_returns_all_round_151() {
+        // `recent(len())` is the exact-fit boundary. Must yield
+        // everything (no off-by-one) in chronological order.
+        let mut v = DimensionVault::with_capacity(4);
+        v.record(&make_blueprint("a", "t"), DimensionOutcome::Completed, 1);
+        v.record(&make_blueprint("b", "t"), DimensionOutcome::Completed, 2);
+        v.record(&make_blueprint("c", "t"), DimensionOutcome::Completed, 3);
+        let recent = v.recent(v.len());
+        assert_eq!(recent.len(), 3);
+        assert_eq!(recent[0].blueprint_id, "a");
+        assert_eq!(recent[1].blueprint_id, "b");
+        assert_eq!(recent[2].blueprint_id, "c");
+    }
+
+    #[test]
+    fn last_outcome_for_returns_most_recent_when_revisited_round_151() {
+        // The pre-existing tests checked the single-visit case.
+        // Round 151 pins the re-visit pattern: same blueprint_id
+        // visited 3 times, different outcomes each time. The
+        // accessor must return the LAST outcome (newest).
+        let mut v = DimensionVault::with_capacity(4);
+        let bp = make_blueprint("a", "t");
+        v.record(&bp, DimensionOutcome::Failed,    1);
+        v.record(&bp, DimensionOutcome::Completed, 2);
+        v.record(&bp, DimensionOutcome::Abandoned, 3);
+        assert_eq!(v.last_outcome_for("a"), Some(DimensionOutcome::Abandoned));
+        // Different id → None.
+        assert_eq!(v.last_outcome_for("z"), None);
+    }
+
+    #[test]
+    fn suggest_next_empty_candidates_returns_none_round_151() {
+        // Empty candidate pool → None. Pinned so a regression
+        // that panics or returns Some(0) fails this test.
+        let mut v = DimensionVault::new();
+        v.record(&make_blueprint("a", "t"), DimensionOutcome::Completed, 1);
+        assert_eq!(v.suggest_next(&[], 4, 0), None);
+        assert_eq!(v.suggest_next(&[], 0, 0), None);
+    }
+
+    #[test]
+    fn suggest_next_avoid_window_zero_makes_everyone_fresh_round_151() {
+        // `avoid_window == 0` → the recent slice is empty → every
+        // candidate is fresh → seed % len pick from the full pool.
+        let mut v = DimensionVault::with_capacity(4);
+        v.record(&make_blueprint("a", "t"), DimensionOutcome::Completed, 1);
+        let pool = vec![
+            make_blueprint("a", "t"),
+            make_blueprint("b", "t"),
+            make_blueprint("c", "t"),
+        ];
+        // Seed 0 → index 0 (a).
+        assert_eq!(v.suggest_next(&pool, 0, 0), Some(0));
+        // Seed 2 → index 2 (c).
+        assert_eq!(v.suggest_next(&pool, 0, 2), Some(2));
+        // Seed 3 → index 0 again (3 % 3 = 0).
+        assert_eq!(v.suggest_next(&pool, 0, 3), Some(0));
+    }
+
+    #[test]
+    fn suggest_next_all_candidates_visited_picks_oldest_round_151() {
+        // Pass-2 branch: every candidate was visited recently.
+        // The pick should be the OLDEST recent visit (largest
+        // reverse-iteration position).
+        //
+        // Vault insertion order is c → b → a (c oldest entry on
+        // disk, a newest). reverse-iteration goes newest→oldest
+        // so position(a) = 0, position(b) = 1, position(c) = 2.
+        // The sort puts LARGEST position first (oldest visit
+        // wins), so ranked order is [c, b, a]. seed=0 picks the
+        // first one → c (index 2 in the pool).
+        let mut v = DimensionVault::with_capacity(4);
+        let a = make_blueprint("a", "t");
+        let b = make_blueprint("b", "t");
+        let c = make_blueprint("c", "t");
+        v.record(&c, DimensionOutcome::Completed, 1); // c is the oldest visit
+        v.record(&b, DimensionOutcome::Completed, 2);
+        v.record(&a, DimensionOutcome::Completed, 3); // a is the most recent visit
+        let pool = vec![a.clone(), b.clone(), c.clone()];
+        // avoid_window = 4 covers everything → no candidate is fresh.
+        // Pass-2 picks the oldest recent visit → c → pool index 2.
+        assert_eq!(v.suggest_next(&pool, 4, 0), Some(2));
+        // Flip the order: now a is the oldest, c is the most recent.
+        // Pass-2 should now pick a → pool index 0.
+        let mut v2 = DimensionVault::with_capacity(4);
+        v2.record(&a, DimensionOutcome::Completed, 1); // a oldest
+        v2.record(&b, DimensionOutcome::Completed, 2);
+        v2.record(&c, DimensionOutcome::Completed, 3); // c newest
+        assert_eq!(v2.suggest_next(&pool, 4, 0), Some(0));
+    }
+
+    #[test]
+    fn stats_after_clear_is_all_zeros_round_151() {
+        // `clear()` wipes the entries; `stats()` should reflect
+        // the empty state — completion_rate stays 0.0
+        // (no division-by-zero).
+        let mut v = DimensionVault::with_capacity(4);
+        v.record(&make_blueprint("a", "t"), DimensionOutcome::Completed, 1);
+        v.record(&make_blueprint("b", "t"), DimensionOutcome::Failed, 2);
+        v.clear();
+        let s = v.stats();
+        assert_eq!(s.total_visits, 0);
+        assert_eq!(s.distinct_themes, 0);
+        assert_eq!(s.distinct_blueprints, 0);
+        assert_eq!(s.completed, 0);
+        assert_eq!(s.failed, 0);
+        assert_eq!(s.abandoned, 0);
+        assert_eq!(s.completion_rate(), 0.0);
+    }
+
+    #[test]
+    fn completion_rate_one_of_three_is_one_third_round_151() {
+        // 1 completed out of 3 visits → 1/3 ≈ 0.3333.
+        // The pre-existing tests only pinned the 0.0 (empty) and
+        // 1.0 (all completed) boundaries. Round 151 pins the
+        // partial-fraction case.
+        let mut v = DimensionVault::with_capacity(4);
+        v.record(&make_blueprint("a", "t"), DimensionOutcome::Completed, 1);
+        v.record(&make_blueprint("b", "t"), DimensionOutcome::Failed,    2);
+        v.record(&make_blueprint("c", "t"), DimensionOutcome::Abandoned, 3);
+        let s = v.stats();
+        assert_eq!(s.total_visits, 3);
+        assert_eq!(s.completed, 1);
+        assert_eq!(s.failed, 1);
+        assert_eq!(s.abandoned, 1);
+        let rate = s.completion_rate();
+        assert!((rate - 1.0 / 3.0).abs() < 1e-6, "expected ~0.333, got {rate}");
+    }
 }
