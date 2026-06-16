@@ -544,3 +544,929 @@ mod tests {
         assert_eq!(atom2.gold, 300);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 139 helper-level tests — follow
+// the round 110b / 122-138
+// pattern. Pre-round-139 had 7
+// integration tests (init / place
+// tower / cannot place on path /
+// enemy damage / tower upgrade /
+// wave generation / save-load)
+// but 0 focused unit coverage
+// of the public surface. These
+// tests pin per-enum variant
+// counts, per-field defaults of
+// `TowerDefenseAtom::new` /
+// `Tower::new` / `Wave::new` /
+// `Enemy::new`, the per-tower-
+// type stat tables (Arrow /
+// Cannon / Ice / Laser), the
+// `upgrade` damage×1.5 /
+// range×1.1 + `upgrade_cost`
+// = 50×level contract, the
+// `place_tower` 4-guard matrix
+// (insufficient gold / on path
+// / existing tower / out of
+// bounds), the `generate_waves`
+// difficulty-scaling curve
+// (wave 1 = Normal only, wave 2
+// + Fast, wave 4 + Tank, every
+// 5th + Boss), the 6 getters /
+// 2 status flags (is_game_over
+// / is_victory), the `save_state`
+// 4 persisted keys + `load_state`
+// round-trip, the `handle_event`
+// "place_tower" + "upgrade_tower"
+// dispatch with default-type
+// fallback (unknown type →
+// Arrow, missing type → Arrow),
+// the `on_update` game-over /
+// victory phase transitions,
+// the full lifecycle
+// on_init / on_enter / on_pause
+// / on_resume / on_exit /
+// on_destroy, the atom_id /
+// atom_name contract, and the
+// `current_phase` mirror.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod round139_tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+    use crate::agi_minigame::world_state::UnifiedWorldState;
+    use crate::agi_minigame::player::PlayerProfile;
+
+    fn make_ctx() -> AtomContext {
+        let ws = Arc::new(Mutex::new(UnifiedWorldState::new(PlayerProfile::new("test"))));
+        AtomContext::new(ws).with_delta_time(0.016)
+    }
+
+    fn make_atom() -> TowerDefenseAtom {
+        // 10x10 grid,
+        // 100 base
+        // HP, 500
+        // starting
+        // gold.
+        TowerDefenseAtom::new(10, 10, 100.0, 500)
+    }
+
+    /// `EnemyType` has
+    /// 4 variants
+    /// (Normal /
+    /// Fast /
+    /// Tank /
+    /// Boss).
+    #[test]
+    fn enemy_type_has_4_variants_round_139() {
+        let v = [
+            EnemyType::Normal,
+            EnemyType::Fast,
+            EnemyType::Tank,
+            EnemyType::Boss,
+        ];
+        for &x in &v { assert_eq!(x, x); }
+        assert_ne!(EnemyType::Normal, EnemyType::Boss);
+        assert_ne!(EnemyType::Fast, EnemyType::Tank);
+    }
+
+    /// `TowerType` has
+    /// 4 variants
+    /// (Arrow /
+    /// Cannon /
+    /// Ice /
+    /// Laser).
+    #[test]
+    fn tower_type_has_4_variants_round_139() {
+        let v = [
+            TowerType::Arrow,
+            TowerType::Cannon,
+            TowerType::Ice,
+            TowerType::Laser,
+        ];
+        for &x in &v { assert_eq!(x, x); }
+        assert_ne!(TowerType::Arrow, TowerType::Cannon);
+        assert_ne!(TowerType::Ice, TowerType::Laser);
+    }
+
+    /// `Enemy::new`
+    /// stores fields
+    /// verbatim +
+    /// path_index=0
+    /// +
+    /// position_on_path
+    /// =0 +
+    /// max_hp=hp.
+    #[test]
+    fn enemy_new_stores_fields_round_139() {
+        let e = Enemy::new("e1", EnemyType::Normal, 50.0, 1.5, 10);
+        assert_eq!(e.id, "e1");
+        assert_eq!(e.enemy_type, EnemyType::Normal);
+        assert_eq!(e.hp, 50.0);
+        assert_eq!(e.max_hp, 50.0);
+        assert_eq!(e.speed, 1.5);
+        assert_eq!(e.path_index, 0);
+        assert_eq!(e.position_on_path, 0.0);
+        assert_eq!(e.reward, 10);
+    }
+
+    /// `Enemy::is_alive`
+    /// is hp > 0.
+    #[test]
+    fn enemy_is_alive_hp_positive_round_139() {
+        let mut e = Enemy::new("e", EnemyType::Normal, 50.0, 1.0, 10);
+        assert!(e.is_alive());
+        e.hp = 0.0;
+        assert!(!e.is_alive());
+    }
+
+    /// `Enemy::take_damage`
+    /// subtracts +
+    /// clamps to 0
+    /// + returns
+    /// killed bool.
+    #[test]
+    fn enemy_take_damage_round_139() {
+        let mut e = Enemy::new("e", EnemyType::Normal, 50.0, 1.0, 10);
+        // Non-lethal
+        // damage
+        // returns
+        // false.
+        assert!(!e.take_damage(20.0));
+        assert_eq!(e.hp, 30.0);
+        assert!(e.is_alive());
+        // Overkill
+        // damage
+        // clamps
+        // to 0
+        // and
+        // returns
+        // true.
+        assert!(e.take_damage(100.0));
+        assert_eq!(e.hp, 0.0);
+        assert!(!e.is_alive());
+    }
+
+    /// `Enemy::hp_ratio`
+    /// is
+    /// hp/max_hp,
+    /// 0 when
+    /// max_hp<=0.
+    #[test]
+    fn enemy_hp_ratio_round_139() {
+        let e = Enemy::new("e", EnemyType::Normal, 50.0, 1.0, 10);
+        assert!((e.hp_ratio() - 1.0).abs() < 1e-6);
+        let mut e2 = Enemy::new("e", EnemyType::Normal, 50.0, 1.0, 10);
+        e2.take_damage(25.0);
+        assert!((e2.hp_ratio() - 0.5).abs() < 1e-6);
+        // max_hp<=0
+        // → 0.
+        let mut e3 = Enemy::new("e", EnemyType::Normal, 50.0, 1.0, 10);
+        e3.max_hp = 0.0;
+        assert_eq!(e3.hp_ratio(), 0.0);
+    }
+
+    /// `Tower::new`
+    /// Arrow:
+    /// damage=10,
+    /// range=3,
+    /// attack_speed=1
+    /// + level=1
+    /// +
+    /// attack_timer=0
+    /// +
+    /// target_id=None.
+    #[test]
+    fn tower_new_arrow_stats_round_139() {
+        let t = Tower::new("t", TowerType::Arrow, 0, 0);
+        assert_eq!(t.id, "t");
+        assert_eq!(t.tower_type, TowerType::Arrow);
+        assert_eq!(t.row, 0);
+        assert_eq!(t.col, 0);
+        assert_eq!(t.level, 1);
+        assert_eq!(t.damage, 10.0);
+        assert_eq!(t.range, 3.0);
+        assert_eq!(t.attack_speed, 1.0);
+        assert_eq!(t.attack_timer, 0.0);
+        assert!(t.target_id.is_none());
+    }
+
+    /// `Tower::new`
+    /// Cannon:
+    /// damage=30,
+    /// range=2.5,
+    /// attack_speed=0.5.
+    #[test]
+    fn tower_new_cannon_stats_round_139() {
+        let t = Tower::new("t", TowerType::Cannon, 0, 0);
+        assert_eq!(t.damage, 30.0);
+        assert_eq!(t.range, 2.5);
+        assert_eq!(t.attack_speed, 0.5);
+    }
+
+    /// `Tower::new`
+    /// Ice:
+    /// damage=5,
+    /// range=3.5,
+    /// attack_speed=0.8.
+    #[test]
+    fn tower_new_ice_stats_round_139() {
+        let t = Tower::new("t", TowerType::Ice, 0, 0);
+        assert_eq!(t.damage, 5.0);
+        assert_eq!(t.range, 3.5);
+        assert_eq!(t.attack_speed, 0.8);
+    }
+
+    /// `Tower::new`
+    /// Laser:
+    /// damage=20,
+    /// range=4,
+    /// attack_speed=1.5.
+    #[test]
+    fn tower_new_laser_stats_round_139() {
+        let t = Tower::new("t", TowerType::Laser, 0, 0);
+        assert_eq!(t.damage, 20.0);
+        assert_eq!(t.range, 4.0);
+        assert_eq!(t.attack_speed, 1.5);
+    }
+
+    /// `Tower::upgrade`
+    /// level+=1 +
+    /// damage×=1.5
+    /// + range×=1.1
+    /// + returns
+    /// new level.
+    #[test]
+    fn tower_upgrade_stats_round_139() {
+        let mut t = Tower::new("t", TowerType::Arrow, 0, 0);
+        let new_level = t.upgrade();
+        assert_eq!(new_level, 2);
+        assert_eq!(t.level, 2);
+        assert_eq!(t.damage, 15.0); // 10 × 1.5
+        assert!((t.range - 3.3).abs() < 1e-6); // 3 × 1.1
+    }
+
+    /// `Tower::upgrade_cost`
+    /// is 50 *
+    /// level.
+    #[test]
+    fn tower_upgrade_cost_round_139() {
+        let mut t = Tower::new("t", TowerType::Arrow, 0, 0);
+        assert_eq!(t.upgrade_cost(), 50); // level 1
+        t.upgrade();
+        assert_eq!(t.upgrade_cost(), 100); // level 2
+        t.upgrade();
+        assert_eq!(t.upgrade_cost(), 150); // level 3
+    }
+
+    /// `Wave::new`
+    /// defaults:
+    /// empty
+    /// enemies,
+    /// spawn_interval=1.0,
+    /// started=false,
+    /// completed=false.
+    #[test]
+    fn wave_new_defaults_round_139() {
+        let w = Wave::new(1);
+        assert_eq!(w.wave_number, 1);
+        assert!(w.enemies.is_empty());
+        assert_eq!(w.spawn_interval, 1.0);
+        assert!(!w.started);
+        assert!(!w.completed);
+    }
+
+    /// `Wave::with_enemy`
+    /// appends +
+    /// returns self
+    /// (builder
+    /// pattern).
+    #[test]
+    fn wave_with_enemy_appends_round_139() {
+        let w = Wave::new(1)
+            .with_enemy(EnemyType::Normal, 5)
+            .with_enemy(EnemyType::Fast, 3);
+        assert_eq!(w.enemies.len(), 2);
+        assert_eq!(w.enemies[0].enemy_type, EnemyType::Normal);
+        assert_eq!(w.enemies[0].count, 5);
+        assert_eq!(w.enemies[1].enemy_type, EnemyType::Fast);
+        assert_eq!(w.enemies[1].count, 3);
+    }
+
+    /// `Wave::total_enemies`
+    /// sums counts.
+    #[test]
+    fn wave_total_enemies_sums_round_139() {
+        let w = Wave::new(1)
+            .with_enemy(EnemyType::Normal, 5)
+            .with_enemy(EnemyType::Fast, 3)
+            .with_enemy(EnemyType::Tank, 2);
+        assert_eq!(w.total_enemies(), 10);
+    }
+
+    /// `TowerDefenseAtom::new`
+    /// defaults:
+    /// phase=Uninit,
+    /// empty
+    /// collections,
+    /// base_hp/max_base_hp,
+    /// gold,
+    /// score=0,
+    /// current_wave=0,
+    /// spawn_timer=0,
+    /// enemies_spawned=0,
+    /// path from
+    /// generate_path.
+    #[test]
+    fn atom_new_defaults_round_139() {
+        let a = TowerDefenseAtom::new(10, 10, 100.0, 200);
+        assert_eq!(a.phase, AtomPhase::Uninitialized);
+        assert_eq!(a.grid_rows, 10);
+        assert_eq!(a.grid_cols, 10);
+        assert!(a.towers.is_empty());
+        assert!(a.enemies.is_empty());
+        assert!(a.waves.is_empty());
+        assert_eq!(a.current_wave, 0);
+        assert_eq!(a.spawn_timer, 0.0);
+        assert_eq!(a.enemies_spawned, 0);
+        assert_eq!(a.base_hp, 100.0);
+        assert_eq!(a.max_base_hp, 100.0);
+        assert_eq!(a.gold, 200);
+        assert_eq!(a.score, 0);
+        // Path
+        // length
+        // = cols.
+        assert_eq!(a.path.len(), 10);
+    }
+
+    /// Path is the
+    /// mid-row
+    /// across
+    /// all
+    /// columns.
+    #[test]
+    fn path_is_mid_row_across_cols_round_139() {
+        let a = TowerDefenseAtom::new(10, 10, 100.0, 200);
+        // 10 rows
+        // → mid_row
+        // = 5.
+        for c in 0..10 {
+            assert_eq!(a.path[c], (5, c));
+        }
+    }
+
+    /// `add_wave`
+    /// appends to
+    /// the
+    /// `waves`
+    /// vec.
+    #[test]
+    fn add_wave_appends_round_139() {
+        let mut a = make_atom();
+        a.add_wave(Wave::new(1).with_enemy(EnemyType::Normal, 5));
+        a.add_wave(Wave::new(2).with_enemy(EnemyType::Fast, 3));
+        assert_eq!(a.waves.len(), 2);
+    }
+
+    /// `generate_waves`
+    /// creates
+    /// `count`
+    /// waves +
+    /// wave 1
+    /// has only
+    /// Normal.
+    #[test]
+    fn generate_waves_count_round_139() {
+        let mut a = make_atom();
+        a.generate_waves(5, 0.5);
+        assert_eq!(a.waves.len(), 5);
+        // Wave 1:
+        // only
+        // Normal.
+        assert_eq!(a.waves[0].enemies.len(), 1);
+        assert_eq!(a.waves[0].enemies[0].enemy_type, EnemyType::Normal);
+    }
+
+    /// Wave 2+
+    /// adds Fast
+    /// (per
+    /// generate_waves
+    /// logic).
+    #[test]
+    fn generate_waves_wave_2_adds_fast_round_139() {
+        let mut a = make_atom();
+        a.generate_waves(5, 0.5);
+        // Wave 2:
+        // Normal
+        // + Fast.
+        let kinds_2: Vec<EnemyType> = a.waves[1].enemies.iter().map(|e| e.enemy_type).collect();
+        assert!(kinds_2.contains(&EnemyType::Normal));
+        assert!(kinds_2.contains(&EnemyType::Fast));
+        assert!(!kinds_2.contains(&EnemyType::Tank));
+    }
+
+    /// Wave 4+
+    /// adds Tank.
+    #[test]
+    fn generate_waves_wave_4_adds_tank_round_139() {
+        let mut a = make_atom();
+        a.generate_waves(5, 0.5);
+        // Wave 4:
+        // Normal
+        // + Fast
+        // + Tank.
+        let kinds_4: Vec<EnemyType> = a.waves[3].enemies.iter().map(|e| e.enemy_type).collect();
+        assert!(kinds_4.contains(&EnemyType::Normal));
+        assert!(kinds_4.contains(&EnemyType::Fast));
+        assert!(kinds_4.contains(&EnemyType::Tank));
+    }
+
+    /// Every 5th
+    /// wave
+    /// (6, 11,
+    /// 16) adds
+    /// Boss.
+    #[test]
+    fn generate_waves_every_5th_adds_boss_round_139() {
+        let mut a = make_atom();
+        a.generate_waves(11, 0.5);
+        // Wave 6
+        // (i=5):
+        // has
+        // Boss.
+        let kinds_6: Vec<EnemyType> = a.waves[5].enemies.iter().map(|e| e.enemy_type).collect();
+        assert!(kinds_6.contains(&EnemyType::Boss));
+        // Wave 11
+        // (i=10):
+        // also
+        // has
+        // Boss.
+        let kinds_11: Vec<EnemyType> = a.waves[10].enemies.iter().map(|e| e.enemy_type).collect();
+        assert!(kinds_11.contains(&EnemyType::Boss));
+    }
+
+    /// `place_tower`
+    /// Arrow
+    /// costs 50
+    /// gold.
+    #[test]
+    fn place_tower_arrow_costs_50_round_139() {
+        let mut a = make_atom();
+        a.gold = 100;
+        assert!(a.place_tower(TowerType::Arrow, 0, 0));
+        assert_eq!(a.gold, 50);
+        assert_eq!(a.towers.len(), 1);
+    }
+
+    /// `place_tower`
+    /// Cannon
+    /// costs 100,
+    /// Ice 75,
+    /// Laser 150.
+    #[test]
+    fn place_tower_per_type_costs_round_139() {
+        // Cannon
+        // = 100.
+        let mut a = make_atom();
+        a.gold = 100;
+        assert!(a.place_tower(TowerType::Cannon, 0, 0));
+        assert_eq!(a.gold, 0);
+        // Ice
+        // = 75.
+        let mut a = make_atom();
+        a.gold = 100;
+        assert!(a.place_tower(TowerType::Ice, 0, 0));
+        assert_eq!(a.gold, 25);
+        // Laser
+        // = 150.
+        let mut a = make_atom();
+        a.gold = 200;
+        assert!(a.place_tower(TowerType::Laser, 0, 0));
+        assert_eq!(a.gold, 50);
+    }
+
+    /// `place_tower`
+    /// returns
+    /// false when
+    /// gold <
+    /// cost.
+    #[test]
+    fn place_tower_insufficient_gold_returns_false_round_139() {
+        let mut a = make_atom();
+        a.gold = 10; // Laser
+        // costs 150
+        // → not
+        // enough.
+        assert!(!a.place_tower(TowerType::Laser, 0, 0));
+        assert_eq!(a.gold, 10); // unchanged
+        assert_eq!(a.towers.len(), 0);
+    }
+
+    /// `place_tower`
+    /// rejects
+    /// the mid-row
+    /// path cells.
+    #[test]
+    fn place_tower_on_path_returns_false_round_139() {
+        let mut a = make_atom();
+        a.gold = 500;
+        // mid_row=5,
+        // path
+        // occupies
+        // (5, 0..10).
+        assert!(!a.place_tower(TowerType::Arrow, 5, 3));
+        assert_eq!(a.towers.len(), 0);
+        assert_eq!(a.gold, 500); // unchanged
+    }
+
+    /// `place_tower`
+    /// rejects a
+    /// cell with
+    /// an existing
+    /// tower.
+    #[test]
+    fn place_tower_on_existing_returns_false_round_139() {
+        let mut a = make_atom();
+        a.gold = 500;
+        assert!(a.place_tower(TowerType::Arrow, 0, 0));
+        assert_eq!(a.gold, 450);
+        // Same
+        // cell →
+        // false.
+        assert!(!a.place_tower(TowerType::Cannon, 0, 0));
+        assert_eq!(a.gold, 450); // unchanged
+        assert_eq!(a.towers.len(), 1);
+    }
+
+    /// `place_tower`
+    /// rejects
+    /// out-of-
+    /// bounds
+    /// coordinates.
+    #[test]
+    fn place_tower_out_of_bounds_returns_false_round_139() {
+        let mut a = make_atom();
+        a.gold = 500;
+        // 10x10 grid
+        // → row/col
+        // 10 is OOB.
+        assert!(!a.place_tower(TowerType::Arrow, 10, 0));
+        assert!(!a.place_tower(TowerType::Arrow, 0, 10));
+        assert_eq!(a.towers.len(), 0);
+    }
+
+    /// `upgrade_tower`
+    /// unknown id
+    /// returns
+    /// false.
+    #[test]
+    fn upgrade_tower_unknown_id_returns_false_round_139() {
+        let mut a = make_atom();
+        a.gold = 500;
+        assert!(!a.upgrade_tower("nope"));
+        assert_eq!(a.gold, 500);
+    }
+
+    /// `upgrade_tower`
+    /// insufficient
+    /// gold returns
+    /// false.
+    #[test]
+    fn upgrade_tower_insufficient_gold_returns_false_round_139() {
+        let mut a = make_atom();
+        a.gold = 500;
+        a.place_tower(TowerType::Arrow, 0, 0); // tower_0
+        // gold = 450.
+        // Drop gold
+        // below
+        // upgrade_cost=50.
+        a.gold = 40;
+        assert!(!a.upgrade_tower("tower_0"));
+        // Level
+        // unchanged
+        // + gold
+        // unchanged.
+        assert_eq!(a.towers[0].level, 1);
+        assert_eq!(a.gold, 40);
+    }
+
+    /// `upgrade_tower`
+    /// sufficient
+    /// gold → true
+    /// + level+=1
+    /// + gold
+    /// -= cost.
+    #[test]
+    fn upgrade_tower_sufficient_gold_round_139() {
+        let mut a = make_atom();
+        a.gold = 200;
+        a.place_tower(TowerType::Arrow, 0, 0); // costs 50
+        // gold=150
+        // upgrade_cost
+        // = 50
+        // → ok.
+        assert!(a.upgrade_tower("tower_0"));
+        assert_eq!(a.towers[0].level, 2);
+        assert_eq!(a.gold, 100); // 150-50
+    }
+
+    /// Getters
+    /// surface
+    /// internal
+    /// state.
+    #[test]
+    fn getters_round_139() {
+        let mut a = make_atom();
+        a.gold = 250;
+        a.score = 12345;
+        a.base_hp = 80.0;
+        assert_eq!(a.get_base_hp(), 80.0);
+        assert_eq!(a.get_gold(), 250);
+        assert_eq!(a.get_score(), 12345);
+        // current_wave=0
+        // → wave_number=1.
+        assert_eq!(a.get_wave_number(), 1);
+    }
+
+    /// `is_game_over`
+    /// returns true
+    /// when
+    /// base_hp<=0.
+    #[test]
+    fn is_game_over_round_139() {
+        let mut a = make_atom();
+        assert!(!a.is_game_over());
+        a.base_hp = 0.0;
+        assert!(a.is_game_over());
+    }
+
+    /// `is_victory`
+    /// returns true
+    /// when all
+    /// waves
+    /// cleared +
+    /// no enemies.
+    #[test]
+    fn is_victory_round_139() {
+        let mut a = make_atom();
+        a.add_wave(Wave::new(1));
+        a.current_wave = 1; // past last wave
+        assert!(a.enemies.is_empty());
+        assert!(a.is_victory());
+        // Has
+        // enemies
+        // → not
+        // victory.
+        a.enemies.push(Enemy::new("e", EnemyType::Normal, 10.0, 1.0, 5));
+        assert!(!a.is_victory());
+    }
+
+    /// `save_state`
+    /// has 4
+    /// persisted
+    /// keys.
+    #[test]
+    fn save_state_keys_round_139() {
+        let a = make_atom();
+        let s = a.save_state();
+        assert!(s.contains_key("base_hp"));
+        assert!(s.contains_key("gold"));
+        assert!(s.contains_key("score"));
+        assert!(s.contains_key("current_wave"));
+    }
+
+    /// `load_state`
+    /// restores
+    /// all 4
+    /// fields.
+    #[test]
+    fn load_state_restores_all_fields_round_139() {
+        let mut a = make_atom();
+        let mut s = ValueMap::new();
+        s.insert("base_hp".to_string(), Value::Float(75.0));
+        s.insert("gold".to_string(), Value::Integer(250));
+        s.insert("score".to_string(), Value::Integer(5000));
+        s.insert("current_wave".to_string(), Value::Integer(3));
+        a.load_state(&s);
+        assert_eq!(a.base_hp, 75.0);
+        assert_eq!(a.gold, 250);
+        assert_eq!(a.score, 5000);
+        assert_eq!(a.current_wave, 3);
+    }
+
+    /// `handle_event`
+    /// "place_tower"
+    /// with
+    /// type="cannon"
+    /// places a
+    /// Cannon.
+    #[test]
+    fn handle_event_place_tower_cannon_round_139() {
+        let mut a = make_atom();
+        a.gold = 500;
+        let mut data = ValueMap::new();
+        data.insert("type".to_string(), Value::String("cannon".to_string()));
+        data.insert("row".to_string(), Value::Integer(0));
+        data.insert("col".to_string(), Value::Integer(0));
+        let mut ctx = make_ctx();
+        a.handle_event("place_tower", &data, &mut ctx);
+        assert_eq!(a.towers.len(), 1);
+        assert_eq!(a.towers[0].tower_type, TowerType::Cannon);
+    }
+
+    /// `handle_event`
+    /// "place_tower"
+    /// with
+    /// unknown
+    /// type
+    /// defaults
+    /// to Arrow.
+    #[test]
+    fn handle_event_place_tower_unknown_type_defaults_to_arrow_round_139() {
+        let mut a = make_atom();
+        a.gold = 500;
+        let mut data = ValueMap::new();
+        data.insert("type".to_string(), Value::String("dragon".to_string()));
+        let mut ctx = make_ctx();
+        a.handle_event("place_tower", &data, &mut ctx);
+        assert_eq!(a.towers[0].tower_type, TowerType::Arrow);
+    }
+
+    /// `handle_event`
+    /// "place_tower"
+    /// without
+    /// type →
+    /// defaults
+    /// to Arrow
+    /// (also
+    /// row/col
+    /// default
+    /// to 0).
+    #[test]
+    fn handle_event_place_tower_no_data_defaults_round_139() {
+        let mut a = make_atom();
+        a.gold = 500;
+        let data = ValueMap::new();
+        let mut ctx = make_ctx();
+        a.handle_event("place_tower", &data, &mut ctx);
+        assert_eq!(a.towers.len(), 1);
+        assert_eq!(a.towers[0].tower_type, TowerType::Arrow);
+        assert_eq!(a.towers[0].row, 0);
+        assert_eq!(a.towers[0].col, 0);
+    }
+
+    /// `handle_event`
+    /// "upgrade_tower"
+    /// with
+    /// tower_id
+    /// calls
+    /// upgrade.
+    #[test]
+    fn handle_event_upgrade_tower_round_139() {
+        let mut a = make_atom();
+        a.gold = 500;
+        a.place_tower(TowerType::Arrow, 0, 0); // tower_0
+        assert_eq!(a.towers[0].level, 1);
+        let mut data = ValueMap::new();
+        data.insert("tower_id".to_string(), Value::String("tower_0".to_string()));
+        let mut ctx = make_ctx();
+        a.handle_event("upgrade_tower", &data, &mut ctx);
+        assert_eq!(a.towers[0].level, 2);
+    }
+
+    /// `handle_event`
+    /// unknown
+    /// event
+    /// is no-op.
+    #[test]
+    fn handle_event_unknown_is_noop_round_139() {
+        let mut a = make_atom();
+        let prev_gold = a.gold;
+        let s = ValueMap::new();
+        let mut ctx = make_ctx();
+        a.handle_event("bogus", &s, &mut ctx);
+        assert_eq!(a.gold, prev_gold);
+        assert_eq!(a.towers.len(), 0);
+    }
+
+    /// `on_update`
+    /// with
+    /// base_hp<=0
+    /// transitions
+    /// phase to
+    /// Completed.
+    #[test]
+    fn on_update_game_over_sets_completed_round_139() {
+        let mut a = make_atom();
+        a.base_hp = 0.0;
+        let mut ctx = make_ctx();
+        a.on_update(&mut ctx);
+        assert_eq!(a.phase, AtomPhase::Completed);
+    }
+
+    /// `on_update`
+    /// with all
+    /// waves
+    /// cleared +
+    /// no enemies
+    /// sets
+    /// phase to
+    /// Completed.
+    #[test]
+    fn on_update_victory_sets_completed_round_139() {
+        let mut a = make_atom();
+        a.add_wave(Wave::new(1));
+        a.current_wave = 1; // past last wave
+        assert!(a.enemies.is_empty());
+        let mut ctx = make_ctx();
+        a.on_update(&mut ctx);
+        assert_eq!(a.phase, AtomPhase::Completed);
+    }
+
+    /// `on_init` →
+    /// Initialized.
+    /// `on_enter`
+    /// → Running
+    /// + resets
+    /// state +
+    /// generates
+    /// 10 default
+    /// waves if
+    /// waves is
+    /// empty +
+    /// sets
+    /// gold=200
+    /// (NOT
+    /// starting_gold).
+    #[test]
+    fn on_enter_resets_and_generates_waves_round_139() {
+        let mut a = TowerDefenseAtom::new(10, 10, 100.0, 999);
+        let mut ctx = make_ctx();
+        a.on_init(&mut ctx);
+        a.on_enter(&mut ctx);
+        assert_eq!(a.phase, AtomPhase::Running);
+        // gold=200
+        // hardcoded,
+        // not 999.
+        assert_eq!(a.gold, 200);
+        // 10 default
+        // waves
+        // generated.
+        assert_eq!(a.waves.len(), 10);
+    }
+
+    /// `on_pause`
+    /// → Paused,
+    /// `on_resume`
+    /// → Running,
+    /// `on_exit`
+    /// →
+    /// Completed,
+    /// `on_destroy`
+    /// →
+    /// Uninitialized.
+    #[test]
+    fn lifecycle_phases_round_139() {
+        let mut a = make_atom();
+        let mut ctx = make_ctx();
+        a.on_init(&mut ctx);
+        a.on_enter(&mut ctx);
+        a.on_pause(&mut ctx);
+        assert_eq!(a.phase, AtomPhase::Paused);
+        a.on_resume(&mut ctx);
+        assert_eq!(a.phase, AtomPhase::Running);
+        a.on_exit(&mut ctx);
+        assert_eq!(a.phase, AtomPhase::Completed);
+        a.on_destroy();
+        assert_eq!(a.phase, AtomPhase::Uninitialized);
+    }
+
+    /// `atom_id` /
+    /// `atom_name` /
+    /// `as_any` /
+    /// `as_any_mut`
+    /// contract.
+    #[test]
+    fn atom_id_and_name_round_139() {
+        let a = make_atom();
+        assert_eq!(a.atom_id(), "tower_defense");
+        assert_eq!(a.atom_name(), "塔防");
+        let _ = a.as_any();
+        let mut a = make_atom();
+        let _ = a.as_any_mut();
+    }
+
+    /// `current_phase`
+    /// mirrors the
+    /// internal
+    /// `phase`
+    /// field.
+    #[test]
+    fn current_phase_matches_field_round_139() {
+        let mut a = make_atom();
+        assert_eq!(a.current_phase(), AtomPhase::Uninitialized);
+        a.phase = AtomPhase::Paused;
+        assert_eq!(a.current_phase(), AtomPhase::Paused);
+    }
+}
