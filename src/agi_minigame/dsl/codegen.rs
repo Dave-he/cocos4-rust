@@ -46,15 +46,31 @@ use super::ast::{Action, ActionKind, Arg, Event, EventKind, Rule};
 // Inputs
 // ---------------------------------------------------------------------------
 
-/// Biome flavor. The 4 biomes match `BiomeAtmosphere`
-/// (forest / desert / ice / cyberpunk) so the generated
-/// rules "taste" like the scene the player is in.
+/// Biome flavor. The 6 biomes match the full
+/// `BiomeAtmosphere` palette (forest / desert / ice /
+/// cyberpunk / lava / space) so the generated rules
+/// "taste" like the scene the player is in.
+///
+/// Round 167 — added `Space` and `Lava`. Before round
+/// 167 the enum had 4 variants and `BiomeAtmosphere`'s
+/// 6-biome palette had 2 extras (`space` and `lava`)
+/// that fell back to `Forest`. The fallback was a
+/// round-164 A graceful-degradation strategy (the 4
+/// variants were sufficient for the round-162
+/// generator); round 167 promotes `Space` and `Lava`
+/// to first-class codegen variants so the
+/// auto-generated rules "taste" like the actual
+/// biome the player is in — `space_mob` / `lava_mob`
+/// instead of `forest_mob`. The TS-side
+/// `codegenBindings::BiomeKind` mirrors this exactly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BiomeKind {
     Forest,
     Desert,
     Ice,
     Cyberpunk,
+    Lava,
+    Space,
 }
 
 /// Mood tone. Calms down or agitates the rule actions
@@ -332,12 +348,23 @@ fn playerhit_rule(input: GenInput) -> Rule {
 /// `BiomeAtmosphere` palette names so the DslCodexPanel
 /// shows the same flavor strings the player sees in the
 /// scene HUD.
+///
+/// Round 167 — the 6-biome palette is now fully
+/// represented. Before round 167 `space` and `lava`
+/// fell back to `forest` here; now they have their
+/// own flavor strings (`space` / `lava`) so a Space
+/// biome's auto-generated rules read `space_mob` /
+/// `space_timer_spawn` instead of `forest_mob`. The
+/// TS-side `BIOME_FLAVOR` Record in `codegenBindings.ts`
+/// mirrors this map byte-for-byte.
 fn biome_flavor(biome: BiomeKind) -> &'static str {
     match biome {
         BiomeKind::Forest => "forest",
         BiomeKind::Desert => "desert",
         BiomeKind::Ice => "ice",
         BiomeKind::Cyberpunk => "cyber",
+        BiomeKind::Lava => "lava",
+        BiomeKind::Space => "space",
     }
 }
 
@@ -754,6 +781,91 @@ mod round162_tests {
             4,
             "All 4 moods must produce distinct action_kinds, got {:?}",
             kinds
+        );
+    }
+
+    #[test]
+    fn round167_biome_flavor_lava_and_space_round_167() {
+        // Round 167 — `biome_flavor` now
+        // covers all 6 BiomeKind
+        // variants. The TS `BIOME_FLAVOR`
+        // mirror in `codegenBindings.ts`
+        // must have the same 6 strings.
+        assert_eq!(biome_flavor(BiomeKind::Lava), "lava");
+        assert_eq!(biome_flavor(BiomeKind::Space), "space");
+    }
+
+    #[test]
+    fn round167_baseline_spawn_uses_each_biomes_own_mob_tag_round_167() {
+        // Cross-validation: each biome's
+        // auto-generated rule set must
+        // carry that biome's spawn tag in
+        // the baseline rule's `Spawn`
+        // action args[0]. The TS mirror
+        // in `codegenBindings.ts` emits
+        // the same per-biome mob
+        // strings, so a regression on
+        // either side breaks both.
+        let expected: &[(BiomeKind, &str)] = &[
+            (BiomeKind::Forest, "forest_mob"),
+            (BiomeKind::Desert, "desert_mob"),
+            (BiomeKind::Ice, "ice_mob"),
+            (BiomeKind::Cyberpunk, "cyber_mob"),
+            (BiomeKind::Lava, "lava_mob"),
+            (BiomeKind::Space, "space_mob"),
+        ];
+        for (biome, expected_tag) in expected {
+            let rules = generate_rules(GenInput {
+                biome: *biome,
+                mood: MoodKind::Calm,
+                complexity: ComplexityKind::Low, // Low emits only the baseline.
+                seed: 0,
+            });
+            // Round 132 manual JSON shape:
+            // rule.actions[0].kind == ActionKind::Spawn,
+            // rule.actions[0].args[0] is the mob tag.
+            let baseline = &rules[0];
+            assert_eq!(
+                baseline.actions[0].kind,
+                ActionKind::Spawn,
+                "biome {:?} baseline action.kind must be Spawn",
+                biome
+            );
+            // args[0] is the biome-flavored mob tag.
+            match &baseline.actions[0].args[0] {
+                Arg::Str(s) => assert_eq!(
+                    s, expected_tag,
+                    "biome {:?} baseline must use {:?}, got {:?}",
+                    biome, expected_tag, s
+                ),
+                other => panic!(
+                    "biome {:?} baseline args[0] must be Str({:?}), got {:?}",
+                    biome, expected_tag, other
+                ),
+            }
+        }
+    }
+
+    #[test]
+    fn round167_biome_kind_covers_six_atmospheric_variants_round_167() {
+        // The 6-biome Atmosphere palette is
+        // the source of truth for "what
+        // biomes the player sees" — the
+        // Rust BiomeKind enum must match
+        // it exactly. A regression that
+        // removed Lava or Space would
+        // break this pin.
+        assert_eq!(
+            [
+                BiomeKind::Forest,
+                BiomeKind::Desert,
+                BiomeKind::Ice,
+                BiomeKind::Cyberpunk,
+                BiomeKind::Lava,
+                BiomeKind::Space,
+            ]
+            .len(),
+            6
         );
     }
 }

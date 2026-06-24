@@ -582,12 +582,14 @@ pub(crate) fn gen_input_from_strings_json_internal(args_json: &str) -> String {
             "desert" => RustBiomeKind::Desert,
             "ice" => RustBiomeKind::Ice,
             "cyberpunk" => RustBiomeKind::Cyberpunk,
-            // lava + space: fall back to Forest (round-164 A
-            // TS-side uses the same fallback). The 4-Rust
-            // BiomeKind variants are exhaustive for the
-            // round-162 generator; the 6-biome atmosphere
-            // palette has 2 extras that the generator
-            // doesn't yet cover.
+            // Round 167 — `lava` and `space` are now first-class
+            // BiomeKind variants (the 6-biome atmosphere palette
+            // is fully represented). The TS-side `biomeIdToKind`
+            // uses the same mapping. Unknown tags still fall
+            // back to Forest (best-effort — never blocking the
+            // dimension-enter flow).
+            "lava" => RustBiomeKind::Lava,
+            "space" => RustBiomeKind::Space,
             _ => RustBiomeKind::Forest,
         }
     }
@@ -718,6 +720,14 @@ pub(crate) fn generate_rules_json_internal(args_json: &str) -> String {
             "Desert" => Ok(RustBiomeKind::Desert),
             "Ice" => Ok(RustBiomeKind::Ice),
             "Cyberpunk" => Ok(RustBiomeKind::Cyberpunk),
+            // Round 167 — `Lava` and `Space` are now first-class
+            // BiomeKind variants. The TS-side `BIOME_FLAVOR`
+            // mirror uses the same PascalCase tags. Unknown tags
+            // return an error so `generate_rules_json` emits
+            // `{"error":"unknown biome: ..."}` (and the TS wrapper
+            // nulls on that, falling back to the TS mirror).
+            "Lava" => Ok(RustBiomeKind::Lava),
+            "Space" => Ok(RustBiomeKind::Space),
             other => Err(format!("unknown biome: {}", other)),
         }
     }
@@ -1833,37 +1843,64 @@ mod tests {
     }
 
     #[test]
-    fn round_165_gen_input_from_strings_json_lava_falls_back_to_forest_round165() {
-        // The 6-biome Atmosphere
-        // palette has 2 entries
-        // (lava / space) that the
-        // round-162 codegen doesn't
-        // cover — they fall back to
-        // Forest (matches the
-        // round-164 A TS
-        // `biomeIdToKind` fallback).
-        for id in ["lava", "space"] {
+    fn round_165_gen_input_from_strings_json_lava_and_space_first_class_round165() {
+        // Round 167 — the 6-biome
+        // Atmosphere palette is
+        // fully represented. `lava`
+        // and `space` are first-class
+        // BiomeKind variants (NOT
+        // fallbacks). The pre-167
+        // version of this test
+        // asserted they fell back to
+        // Forest; that contract has
+        // changed because the Rust
+        // BiomeKind enum was widened
+        // to 6 variants.
+        let cases: &[(&str, &str)] = &[
+            ("lava", "Lava"),
+            ("space", "Space"),
+        ];
+        for (id, expected) in cases {
             let args = format!(r#"{{"biome_id":"{}"}}"#, id);
             let out = gen_input_from_strings_json_internal(&args);
             let v: serde_json::Value = serde_json::from_str(&out).unwrap();
-            assert_eq!(v["biome"], "Forest", "biome_id was {}", id);
+            assert_eq!(v["biome"], *expected, "biome_id was {}", id);
+        }
+    }
+
+    #[test]
+    fn round_167_gen_input_from_strings_json_truly_unknown_falls_back_to_forest_round167() {
+        // Round 167 — only TRULY unknown
+        // tags fall back to Forest.
+        // `lava` / `space` are first-
+        // class now (covered by the
+        // round-165b test above).
+        for id in ["unknown", "dungeon", ""] {
+            let args = format!(r#"{{"biome_id":"{}"}}"#, id);
+            let out = gen_input_from_strings_json_internal(&args);
+            let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+            assert_eq!(v["biome"], "Forest", "biome_id was {:?}", id);
         }
     }
 
     #[test]
     fn round_165_gen_input_from_strings_json_lowercase_biomes_round165() {
-        // The lowercase 4-biome
+        // The lowercase 6-biome
         // ids from the Atmosphere
         // palette map to the
         // canonical Rust BiomeKind
         // spellings (the TS mirror
         // passes these directly to
-        // `biomeIdToKind`).
+        // `biomeIdToKind`). Round 167
+        // widened the source-of-truth
+        // enum from 4 to 6 variants.
         let cases: &[(&str, &str)] = &[
             ("forest", "Forest"),
             ("desert", "Desert"),
             ("ice", "Ice"),
             ("cyberpunk", "Cyberpunk"),
+            ("lava", "Lava"),
+            ("space", "Space"),
         ];
         for (id, expected) in cases {
             let args = format!(r#"{{"biome_id":"{}"}}"#, id);
