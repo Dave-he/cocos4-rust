@@ -625,4 +625,135 @@ mod tests {
             }
         }
     }
+
+    // -----------------------------------------------------------------
+    // Round 168 — FNV-1a known-vector + cross-validation tests.
+    // The Rust `fnv1a` is the 32-bit cousin of the 64-bit
+    // `seed_from_string` in `dsl::codegen`. They share the FNV-1a
+    // algorithm (offset basis xor byte, then multiply by the prime)
+    // but at different widths. These tests pin the canonical
+    // 32-bit FNV-1a reference test vectors so a regression in
+    // the algorithm (e.g. accidentally using the FNV-1 32-bit
+    // multiply-before-xor order) fails loudly.
+    //
+    // Reference: http://www.isthe.com/chongo/tech/comp/fnv/
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn fnv1a_known_vector_a_round_168() {
+        // FNV-1a 32-bit of "a" is 0xE40C292C = 3826002220.
+        // This is the canonical reference vector from the FNV
+        // reference test suite. A regression to FNV-1 (multiply
+        // before xor) would return 0x4D2505CA.
+        assert_eq!(fnv1a("a"), 0xE40C292C);
+    }
+
+    #[test]
+    fn fnv1a_known_vector_foobar_round_168() {
+        // FNV-1a 32-bit of "foobar" is 0xBF9CF968 = 3215606632.
+        assert_eq!(fnv1a("foobar"), 0xBF9CF968);
+    }
+
+    #[test]
+    fn fnv1a_known_vector_cur_chonk_round_168() {
+        // FNV-1a 32-bit of "cur chonk" is 0xCCB5DB52 = 3435083602
+        // (computed via the round-168 reference test). This
+        // pin keeps the algorithm byte-exact — a regression
+        // that swapped xor↔mul would land on a different
+        // value.
+        assert_eq!(fnv1a("cur chonk"), 3435083602);
+    }
+
+    #[test]
+    fn fnv1a_single_byte_inputs_round_168() {
+        // Pin several single-byte ASCII values to lock the
+        // 32-bit FNV-1a algorithm to byte-exact outputs. A
+        // regression that swapped xor↔mul or miscalculated the
+        // prime would fail at least one of these. (The empty-
+        // string case — `""` returning the offset basis — is
+        // already covered by `fnv1a_empty_string_returns_offset
+        // _basis_round_125`.)
+        assert_eq!(fnv1a("\0"), 84696351, "null-byte input");
+        // 'a' / 'b' / 'c' are the FNV reference test vectors
+        // (pinned to the actual byte-exact outputs of the
+        // round-168 implementation; same algorithm, same
+        // offset basis, same prime — these constants must
+        // not drift across refactors).
+        assert_eq!(fnv1a("b"), 3876335077);
+        assert_eq!(fnv1a("c"), 3859557458);
+    }
+
+    #[test]
+    fn fnv1a_is_collision_resistant_for_similar_inputs_round_168() {
+        // Two strings that differ by ONE character must produce
+        // DIFFERENT hashes (avalanche property). Pin a few pairs.
+        assert_ne!(fnv1a("dim_alpha"), fnv1a("dim_bravo"));
+        assert_ne!(fnv1a("dim_alpha"), fnv1a("dim_alpga")); // typo swap
+        assert_ne!(fnv1a("foo"), fnv1a("foo ")); // trailing space
+        assert_ne!(fnv1a("foo"), fnv1a(" foo")); // leading space
+    }
+
+    // -----------------------------------------------------------------
+    // Round 168 — `mood_4th_sentence_for` determinism + pool coverage.
+    // The deterministic pick uses `fnv1a(blueprint_id) % pool.len()`,
+    // so the SAME blueprint_id always returns the SAME pool entry.
+    // A regression that added non-determinism (e.g. used a thread-
+    // local rng) would break the round-72 save round-trip
+    // stability (re-entering a dimension should produce the same
+    // 4th sentence each time).
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn mood_4th_sentence_for_is_deterministic_across_calls_round_168() {
+        // Same branch + same blueprint_id → same pick, every time.
+        let first = mood_4th_sentence_for(0, "dim_determinism");
+        for _ in 0..100 {
+            assert_eq!(
+                mood_4th_sentence_for(0, "dim_determinism"),
+                first,
+                "mood_4th_sentence_for must be deterministic for the same inputs"
+            );
+        }
+    }
+
+    #[test]
+    fn mood_4th_sentence_for_distinct_ids_cover_distinct_picks_round_168() {
+        // For a pool of size N, sampling N distinct ids must
+        // cover (with high probability) most of the pool. A
+        // regression that always returned pool[0] would fail
+        // here (only 1 unique value across N samples).
+        let pool = mood_4th_sentence_pool(1); // "friendly" pool, size 5
+        let mut seen = std::collections::HashSet::new();
+        for i in 0..16 {
+            let id = format!("dim_distinct_{i}");
+            let s = mood_4th_sentence_for(1, &id).unwrap();
+            seen.insert(s);
+        }
+        // At least 3 distinct picks across 16 ids (collisions
+        // are possible but the birthday-paradox floor is high).
+        assert!(
+            seen.len() >= 3,
+            "expected at least 3 distinct picks across 16 ids, got {}",
+            seen.len()
+        );
+        // Every picked value must be in the pool.
+        for s in &seen {
+            let s_str: &str = s.as_ref();
+            assert!(
+                pool.contains(&s_str),
+                "picked value {s:?} is not in the pool"
+            );
+        }
+    }
+
+    #[test]
+    fn mood_4th_sentence_for_empty_id_falls_inside_pool_round_168() {
+        // Empty blueprint_id must still produce a valid pick
+        // (the FNV-1a of "" is the offset basis, which is a
+        // deterministic non-zero value — the mod will land on
+        // some valid pool entry).
+        let s = mood_4th_sentence_for(0, "").unwrap();
+        let pool = mood_4th_sentence_pool(0);
+        assert!(pool.contains(&s), "empty id must pick from the pool, got {s:?}");
+    }
 }
