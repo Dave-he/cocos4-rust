@@ -341,7 +341,7 @@ impl Atom for ParkourAtom {
     fn save_state(&self) -> ValueMap {
         let mut map = ValueMap::new();
         map.insert("score".to_string(), Value::Integer(self.score as i32));
-        map.insert("distance".to_string(), Value::Float(self.distance as f32));
+        map.insert("distance".to_string(), Value::Float(self.distance as f64));
         map.insert("hp".to_string(), Value::Integer(self.hp as i32));
         map.insert("coins".to_string(), Value::Integer(self.coins as i32));
         map.insert("lane".to_string(), Value::Integer(self.lane as i32));

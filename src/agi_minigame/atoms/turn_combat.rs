@@ -150,9 +150,9 @@ pub struct TurnCombatAtom {
     turn: u32,
     score: u64,
     is_player_turn: bool,
-    _waiting_for_input: bool,
-    _selected_action: Option<ActionType>,
-    _selected_target: Option<String>,
+    waiting_for_input: bool,
+    selected_action: Option<ActionType>,
+    selected_target: Option<String>,
     combat_log: Vec<String>,
 }
 
@@ -165,9 +165,9 @@ impl TurnCombatAtom {
             turn: 0,
             score: 0,
             is_player_turn: true,
-            _waiting_for_input: false,
-            _selected_action: None,
-            _selected_target: None,
+            waiting_for_input: false,
+            selected_action: None,
+            selected_target: None,
             combat_log: Vec::new(),
         }
     }

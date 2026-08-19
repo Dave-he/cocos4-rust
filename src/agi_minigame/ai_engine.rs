@@ -238,8 +238,8 @@ impl DimensionGenerator {
             let ti = template_indices.remove(idx);
             let template = &rule_templates[ti];
             let mut params = ValueMap::new();
-            params.insert("intensity".to_string(), Value::Float(difficulty as f32));
-            params.insert("duration".to_string(), Value::Float((10.0 + self.rng.gen::<f32>() * 30.0) as f32));
+            params.insert("intensity".to_string(), Value::Float(difficulty as f64));
+            params.insert("duration".to_string(), Value::Float((10.0 + self.rng.gen::<f32>() * 30.0) as f64));
 
             rules.push(GeneratedRule {
                 rule_id: template.0.to_string(),
@@ -418,7 +418,7 @@ impl RuleComposer {
 
             let mut params = ValueMap::new();
             let intensity = if has_synergy { difficulty * 1.5 } else { difficulty };
-            params.insert("intensity".to_string(), Value::Float(intensity as f32));
+            params.insert("intensity".to_string(), Value::Float(intensity as f64));
 
             rules.push(GeneratedRule {
                 rule_id: id.clone(),

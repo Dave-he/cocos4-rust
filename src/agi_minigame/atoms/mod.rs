@@ -18,7 +18,7 @@ use crate::agi_minigame::atom::{AtomRegistry, AtomMetadata, AtomFactory};
 fn factory<A, F>(f: F) -> AtomFactory
 where
     A: crate::agi_minigame::atom::Atom + 'static,
-    F: Fn() -> A + 'static,
+    F: Fn() -> A + 'static + Send + Sync,
 {
     Box::new(move || Box::new(f()))
 }

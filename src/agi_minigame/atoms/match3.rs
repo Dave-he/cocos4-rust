@@ -20,7 +20,7 @@ impl GemType {
     }
 
     pub fn from_index(idx: usize) -> GemType {
-        match idx {
+        match idx % 6 {
             0 => GemType::Red,
             1 => GemType::Blue,
             2 => GemType::Green,

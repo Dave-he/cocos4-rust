@@ -241,7 +241,7 @@ impl Dimension {
 
         let mut data = ValueMap::new();
         data.insert("score".to_string(), Value::Integer(self.score as i32));
-        data.insert("time".to_string(), Value::Float(self.elapsed_time as f32));
+        data.insert("time".to_string(), Value::Float(self.elapsed_time as f64));
         self.log_event("dimension_complete", data);
     }
 

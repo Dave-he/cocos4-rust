@@ -412,7 +412,7 @@ impl Atom for TowerDefenseAtom {
 
     fn save_state(&self) -> ValueMap {
         let mut map = ValueMap::new();
-        map.insert("base_hp".to_string(), Value::Float(self.base_hp as f32));
+        map.insert("base_hp".to_string(), Value::Float(self.base_hp as f64));
         map.insert("gold".to_string(), Value::Integer(self.gold as i32));
         map.insert("score".to_string(), Value::Integer(self.score as i32));
         map.insert("current_wave".to_string(), Value::Integer(self.current_wave as i32));

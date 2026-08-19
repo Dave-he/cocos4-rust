@@ -108,7 +108,7 @@ impl GameplayState {
 
     pub fn get_float(&self, key: &str) -> Option<f32> {
         match self.data.get(key) {
-            Some(Value::Float(n)) => Some(*n),
+            Some(Value::Float(n)) => Some(*n as f32),
             _ => None,
         }
     }

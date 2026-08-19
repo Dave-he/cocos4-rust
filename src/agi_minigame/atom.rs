@@ -94,7 +94,7 @@ impl AtomRegistry {
         self.atoms.insert(id, (metadata, Box::new(factory)));
     }
 
-pub fn create(&self, id: impl AsRef<str>) -> Option<Box<dyn Atom>> {
+    pub fn create(&self, id: impl AsRef<str>) -> Option<Box<dyn Atom>> {
         self.atoms.get(id.as_ref()).map(|(_, factory)| factory())
     }
 
@@ -106,7 +106,7 @@ pub fn create(&self, id: impl AsRef<str>) -> Option<Box<dyn Atom>> {
         self.atoms.values().map(|(m, _)| m).collect()
     }
 
-pub fn has_atom(&self, id: impl AsRef<str>) -> bool {
+    pub fn has_atom(&self, id: impl AsRef<str>) -> bool {
         self.atoms.contains_key(id.as_ref())
     }
 }
