@@ -35,11 +35,11 @@ impl Joint2D {
         self.anchor_b = anchor_b;
     }
 
-    pub fn get_reaction_force(&self, inv_dt: f32) -> [f32; 2] {
+    pub fn get_reaction_force(&self, _inv_dt: f32) -> [f32; 2] {
         [0.0, 0.0]
     }
 
-    pub fn get_reaction_torque(&self, inv_dt: f32) -> f32 {
+    pub fn get_reaction_torque(&self, _inv_dt: f32) -> f32 {
         0.0
     }
 }

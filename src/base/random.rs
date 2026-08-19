@@ -40,38 +40,38 @@ mod tests {
     #[test]
     fn test_random_range_i() {
         let val = random_range_i(0, 100);
-        assert!(val >= 0 && val <= 100);
+        assert!((0..=100).contains(&val));
     }
 
     #[test]
     fn test_random_range_f() {
         let val = random_range_f(0.0, 1.0);
-        assert!(val >= 0.0 && val < 1.0);
+        assert!((0.0..1.0).contains(&val));
     }
 
     #[test]
     fn test_random_range_d() {
         let val = random_range_d(0.0, 1.0);
-        assert!(val >= 0.0 && val < 1.0);
+        assert!((0.0..1.0).contains(&val));
     }
 
     #[test]
     fn test_rand_minus1_1() {
         let val = rand_minus1_1();
-        assert!(val >= -1.0 && val < 1.0);
+        assert!((-1.0..1.0).contains(&val));
     }
 
     #[test]
     fn test_rand_0_1() {
         let val = rand_0_1();
-        assert!(val >= 0.0 && val < 1.0);
+        assert!((0.0..1.0).contains(&val));
     }
 
     #[test]
     fn test_random_range_i_bounds() {
         for _ in 0..100 {
             let val = random_range_i(-10, 10);
-            assert!(val >= -10 && val <= 10);
+            assert!((-10..=10).contains(&val));
         }
     }
 

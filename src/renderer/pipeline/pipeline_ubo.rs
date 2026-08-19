@@ -70,6 +70,7 @@ impl PipelineUBO {
         fv[native_off + 3] = 1.0 / height;
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn update_camera_ubo(
         &mut self,
         mat_view: &Mat4,

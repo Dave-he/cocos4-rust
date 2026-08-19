@@ -46,7 +46,7 @@ pub fn box_geometry(options: Option<BoxOptions>) -> IGeometry {
         0.0,
         0.0,
     );
-    vertex_offset += (ws + 1) * (hs + 1) as u32;
+    vertex_offset += (ws + 1) * (hs + 1);
 
     // Back face (z = -hle)
     generate_plane(
@@ -64,7 +64,7 @@ pub fn box_geometry(options: Option<BoxOptions>) -> IGeometry {
         PI_2,
         0.0,
     );
-    vertex_offset += (ws + 1) * (hs + 1) as u32;
+    vertex_offset += (ws + 1) * (hs + 1);
 
     // Left face (x = -hw)
     generate_plane(
@@ -82,7 +82,7 @@ pub fn box_geometry(options: Option<BoxOptions>) -> IGeometry {
         0.0,
         0.0,
     );
-    vertex_offset += (ls + 1) * (hs + 1) as u32;
+    vertex_offset += (ls + 1) * (hs + 1);
 
     // Right face (x = +hw)
     generate_plane(
@@ -100,7 +100,7 @@ pub fn box_geometry(options: Option<BoxOptions>) -> IGeometry {
         PI_2,
         0.0,
     );
-    vertex_offset += (ls + 1) * (hs + 1) as u32;
+    vertex_offset += (ls + 1) * (hs + 1);
 
     // Top face (y = +hl)
     generate_plane(
@@ -118,7 +118,7 @@ pub fn box_geometry(options: Option<BoxOptions>) -> IGeometry {
         0.0,
         0.0,
     );
-    vertex_offset += (ws + 1) * (ls + 1) as u32;
+    vertex_offset += (ws + 1) * (ls + 1);
 
     // Bottom face (y = -hl)
     generate_plane(
@@ -154,12 +154,13 @@ pub fn box_geometry(options: Option<BoxOptions>) -> IGeometry {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn generate_plane(
     positions: &mut Vec<f32>,
     normals: &mut Vec<f32>,
     uvs: &mut Vec<f32>,
     indices: &mut Vec<u32>,
-offset: u32,
+    offset: u32,
     seg_w: u32,
     seg_h: u32,
     half_w: f32,
@@ -406,8 +407,8 @@ pub fn cylinder(
                 uvs.push(1.0);
 
                 indices.push(vertex_offset);
-                indices.push(vertex_offset + ix as u32 * 2);
-                indices.push(vertex_offset + ix as u32 * 2 - 2);
+                indices.push(vertex_offset + ix * 2);
+                indices.push(vertex_offset + ix * 2 - 2);
             }
         }
         vertex_offset += (radial_segments + 1) * 2;
@@ -438,8 +439,8 @@ pub fn cylinder(
                 uvs.push(0.0);
 
                 indices.push(vertex_offset);
-                indices.push(vertex_offset + ix as u32 * 2 - 2);
-                indices.push(vertex_offset + ix as u32 * 2);
+                indices.push(vertex_offset + ix * 2 - 2);
+                indices.push(vertex_offset + ix * 2);
             }
         }
     }
@@ -624,10 +625,10 @@ pub fn transform_translate(geometry: &mut IGeometry, offset: Vec3) {
         geometry.positions[i + 2] += offset.z;
     }
     if let Some(min) = geometry.min_pos.as_mut() {
-        *min = *min + offset;
+        *min += offset;
     }
     if let Some(max) = geometry.max_pos.as_mut() {
-        *max = *max + offset;
+        *max += offset;
     }
 }
 
@@ -656,7 +657,7 @@ mod tests {
     #[test]
     fn test_box_default() {
         let geo = box_geometry(None);
-        assert!(geo.positions.len() > 0);
+        assert!(!geo.positions.is_empty());
         assert!(geo.indices.is_some());
         assert!(geo.normals.is_some());
         assert!(geo.uvs.is_some());
@@ -680,7 +681,7 @@ mod tests {
     #[test]
     fn test_sphere_default() {
         let geo = sphere(1.0, None);
-        assert!(geo.positions.len() > 0);
+        assert!(!geo.positions.is_empty());
         assert!(geo.indices.is_some());
         let min = geo.min_pos.unwrap();
         assert_eq!(min.x, -1.0);
@@ -705,14 +706,14 @@ mod tests {
     #[test]
     fn test_cylinder_default() {
         let geo = cylinder(0.5, 0.5, 2.0, None);
-        assert!(geo.positions.len() > 0);
+        assert!(!geo.positions.is_empty());
         assert!(geo.indices.is_some());
     }
 
     #[test]
     fn test_cone_default() {
         let geo = cone(0.5, 1.0, None);
-        assert!(geo.positions.len() > 0);
+        assert!(!geo.positions.is_empty());
         let min = geo.min_pos.unwrap();
         let max = geo.max_pos.unwrap();
         assert!(min.x < 0.0);
@@ -731,7 +732,7 @@ mod tests {
     #[test]
     fn test_plane_default() {
         let geo = plane(None);
-        assert!(geo.positions.len() > 0);
+        assert!(!geo.positions.is_empty());
         let min = geo.min_pos.unwrap();
         assert_eq!(min.x, -5.0);
         assert_eq!(min.z, -5.0);

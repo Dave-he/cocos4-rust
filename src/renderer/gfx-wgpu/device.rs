@@ -34,10 +34,6 @@ impl WgpuDevice {
         }
     }
 
-    pub fn default() -> Self {
-        Self::new(DeviceInfo::default())
-    }
-
     pub fn initialize(&mut self) -> bool {
         self.device.api = API::WebGPU;
         let all_features = FormatFeature::RENDER_TARGET
@@ -201,6 +197,12 @@ impl WgpuDevice {
         self.cmd_buff = None;
         self.active_swapchain = None;
         self.device.destroy();
+    }
+}
+
+impl Default for WgpuDevice {
+    fn default() -> Self {
+        Self::new(DeviceInfo::default())
     }
 }
 

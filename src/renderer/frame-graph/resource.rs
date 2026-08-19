@@ -373,7 +373,7 @@ impl ResourceAllocator {
         };
         self.pools
             .entry(desc_hash)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(entry);
         self.ages.insert(resource_id, -1);
         resource_id

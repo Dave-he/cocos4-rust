@@ -91,16 +91,27 @@ impl Armature {
     }
 
     pub fn update_world_transform(&mut self) {
-        for i in 0..self.bones.len() {
-            if i == 0 {
+        let bone_count = self.bones.len();
+        for i in 0..bone_count {
+            let (has_parent, parent_name) = {
+                let b = &self.bones[i];
+                (b.parent.is_some(), b.parent.clone())
+            };
+            if !has_parent {
                 let b = &mut self.bones[i];
                 b.world_position = b.position;
                 b.world_rotation = b.rotation;
                 b.world_scale = b.scale;
             } else {
-                let pw = self.bones[i - 1].world_position;
-                let pr = self.bones[i - 1].world_rotation;
-                let ps = self.bones[i - 1].world_scale;
+                let parent_name = parent_name.unwrap();
+                let (pw, pr, ps) = {
+                    let parent = self.bones.iter().find(|b| b.name == parent_name);
+                    if let Some(p) = parent {
+                        (p.world_position, p.world_rotation, p.world_scale)
+                    } else {
+                        ([0.0, 0.0], 0.0, [1.0, 1.0])
+                    }
+                };
                 self.bones[i].update_world_transform(&pw, pr, &ps);
             }
         }

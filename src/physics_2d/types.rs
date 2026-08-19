@@ -1,19 +1,17 @@
 use crate::math::Vec2;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RigidBodyType2D {
     Static,
+    #[default]
     Dynamic,
     Kinematic,
     Animated,
 }
 
-impl Default for RigidBodyType2D {
-    fn default() -> Self { Self::Dynamic }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum JointType2D {
+    #[default]
     Distance,
     Spring,
     Wheel,
@@ -26,21 +24,14 @@ pub enum JointType2D {
     Relative,
 }
 
-impl Default for JointType2D {
-    fn default() -> Self { Self::Distance }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ColliderType2D {
+    #[default]
     Box,
     Circle,
     Polygon,
     Capsule,
     Edge,
-}
-
-impl Default for ColliderType2D {
-    fn default() -> Self { Self::Box }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

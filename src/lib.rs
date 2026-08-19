@@ -46,7 +46,7 @@ pub mod particle_2d;
 pub mod physics;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod physics_2d;
-#[cfg(not(target_arch = "wasm32"))]
+pub use physics_2d::physics_world::DebugDrawFlags2D;
 pub mod platform;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod primitive;
@@ -79,7 +79,8 @@ pub mod xr;
 #[path = "2d/mod.rs"]
 pub mod _2d;
 
-#[cfg(not(target_arch = "wasm32"))]
+pub use _2d::mask::{Mask, MaskType, StencilStage as MaskStencilStage};
+
 #[path = "3d/mod.rs"]
 pub mod _3d;
 

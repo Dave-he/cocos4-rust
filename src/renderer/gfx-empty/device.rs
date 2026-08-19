@@ -35,10 +35,6 @@ impl EmptyDevice {
         }
     }
 
-    pub fn default() -> Self {
-        Self::new(DeviceInfo::default())
-    }
-
     pub fn initialize(&mut self) -> bool {
         self.device.api = API::Unknown;
         let all_features = FormatFeature::RENDER_TARGET
@@ -168,6 +164,12 @@ impl EmptyDevice {
         self.queue = None;
         self.cmd_buff = None;
         self.device.destroy();
+    }
+}
+
+impl Default for EmptyDevice {
+    fn default() -> Self {
+        Self::new(DeviceInfo::default())
     }
 }
 

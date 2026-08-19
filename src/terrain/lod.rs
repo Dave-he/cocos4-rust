@@ -72,6 +72,9 @@ impl LODManager {
         &self.lod_levels[self.active_level]
     }
 
+    pub fn get_max_distance(&self) -> f32 { self.max_distance }
+    pub fn set_max_distance(&mut self, max_distance: f32) { self.max_distance = max_distance; }
+
     pub fn get_level_count(&self) -> usize { self.lod_levels.len() }
 }
 

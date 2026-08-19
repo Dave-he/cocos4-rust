@@ -215,8 +215,8 @@ impl DimensionGenerator {
         weights
     }
 
-    fn generate_rules(&mut self, atoms: &[AtomId], difficulty: f32) -> Vec<GeneratedRule> {
-        let mut rules = Vec::new();
+    fn generate_rules(&mut self, _atoms: &[AtomId], difficulty: f32) -> Vec<GeneratedRule> {
+        let mut rules: Vec<GeneratedRule> = Vec::new();
         let rule_templates = [
             ("speed_boost", "加速", "行动速度提升", RuleType::Modifier),
             ("double_score", "双倍得分", "得分翻倍", RuleType::Modifier),
@@ -253,7 +253,7 @@ impl DimensionGenerator {
         rules
     }
 
-    fn generate_rewards(&mut self, atoms: &[AtomId], difficulty: f32, multiplier: f32) -> Vec<GeneratedReward> {
+    fn generate_rewards(&mut self, _atoms: &[AtomId], difficulty: f32, multiplier: f32) -> Vec<GeneratedReward> {
         let mut rewards = Vec::new();
         let base_gold = (50.0 * difficulty * multiplier) as u32;
         let base_gem = (5.0 * difficulty * multiplier) as u32;
@@ -394,7 +394,7 @@ impl RuleComposer {
     }
 
     pub fn compose(&self, atoms: &[AtomId], difficulty: f32) -> Vec<GeneratedRule> {
-        let mut rules = Vec::new();
+        let mut rules: Vec<GeneratedRule> = Vec::new();
         let mut active_synergies: Vec<String> = Vec::new();
 
         for (id, def) in &self.rule_library {
@@ -456,8 +456,8 @@ pub struct BalanceTuner {
 
 #[derive(Debug, Clone)]
 struct BalanceDataPoint {
-    dimension_id: String,
-    difficulty: f32,
+    _dimension_id: String,
+    _difficulty: f32,
     player_level: u32,
     score: u64,
     duration_secs: f32,
@@ -476,8 +476,8 @@ impl BalanceTuner {
 
     pub fn record_result(&mut self, dimension_id: &str, difficulty: f32, player_level: u32, score: u64, duration_secs: f32, completed: bool) {
         self.history.push(BalanceDataPoint {
-            dimension_id: dimension_id.to_string(),
-            difficulty,
+            _dimension_id: dimension_id.to_string(),
+            _difficulty: difficulty,
             player_level,
             score,
             duration_secs,
@@ -710,7 +710,7 @@ mod tests {
     fn test_balance_tuner() {
         let mut tuner = BalanceTuner::new();
         let difficulty = tuner.suggest_difficulty(1);
-        assert!(difficulty >= 0.1 && difficulty <= 1.0);
+        assert!((0.1..=1.0).contains(&difficulty));
 
         tuner.record_result("dim1", 0.5, 1, 500, 60.0, true);
         tuner.record_result("dim2", 0.5, 1, 300, 45.0, false);

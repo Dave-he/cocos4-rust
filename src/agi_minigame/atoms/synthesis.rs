@@ -390,7 +390,7 @@ mod tests {
         atom.on_init(&mut ctx);
         atom.on_enter(&mut ctx);
         assert!(atom.get_inventory_count("wood") > 0);
-        assert!(atom.get_unlocked_recipes().len() > 0);
+        assert!(!atom.get_unlocked_recipes().is_empty());
     }
 
     #[test]

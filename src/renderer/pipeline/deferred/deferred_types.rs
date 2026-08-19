@@ -7,17 +7,12 @@ pub enum GbufferTextureId {
     Count = 4,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum LightingMode {
     Clustered,
+    #[default]
     Tiled,
     ForwardPlus,
-}
-
-impl Default for LightingMode {
-    fn default() -> Self {
-        Self::Tiled
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -142,10 +137,24 @@ impl DeferredSceneData {
         }
     }
 
+    const ELEMENT_SIZE: usize = 48;
+
     pub fn add_light(&mut self, light: DeferredLight) -> u32 {
+        for (i, existing) in self.lights.iter().enumerate() {
+            if existing.position == light.position
+                && existing.color == light.color
+                && existing.intensity == light.intensity
+            {
+                return (i as u32) * (Self::ELEMENT_SIZE as u32);
+            }
+        }
         let id = self.lights.len() as u32;
         self.lights.push(light);
-        id
+        id * (Self::ELEMENT_SIZE as u32)
+    }
+
+    pub fn get_light_byte_offset(&self, index: usize) -> u32 {
+        (index as u32) * (Self::ELEMENT_SIZE as u32)
     }
 
     pub fn remove_light(&mut self, index: usize) {

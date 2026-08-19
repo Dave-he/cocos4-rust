@@ -1,4 +1,4 @@
-use super::types::{PassDesc, PassKind, ResourceDesc, ResourceKind, SubpassDesc};
+use super::types::{PassDesc, ResourceDesc, SubpassDesc};
 
 #[derive(Debug, Clone)]
 pub struct RenderGraphNode {
@@ -239,6 +239,7 @@ impl Default for RenderGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::types::{PassKind, ResourceKind};
 
     fn create_test_pass(name: &str, kind: PassKind) -> PassDesc {
         PassDesc {

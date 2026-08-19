@@ -6,21 +6,11 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 use super::defines::RenderPassStage;
 use super::render_queue::RenderQueue;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct RenderStageInfo {
     pub name: String,
     pub priority: u32,
     pub tag: u32,
-}
-
-impl Default for RenderStageInfo {
-    fn default() -> Self {
-        RenderStageInfo {
-            name: String::new(),
-            priority: 0,
-            tag: 0,
-        }
-    }
 }
 
 #[derive(Debug)]

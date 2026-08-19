@@ -9,9 +9,10 @@ pub enum PassKind {
     Resolve,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ResourceKind {
     ManagedBuffer,
+    #[default]
     ManagedTexture,
     PersistentBuffer,
     PersistentTexture,
@@ -19,36 +20,18 @@ pub enum ResourceKind {
     ImportedTexture,
 }
 
-impl Default for ResourceKind {
-    fn default() -> Self {
-        Self::ManagedTexture
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RenderGraphVersion {
     V1,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SubpassDesc {
     pub inputs: Vec<u32>,
     pub outputs: Vec<u32>,
     pub resolves: Vec<u32>,
     pub preserves: Vec<u32>,
     pub depth_stencil: Option<u32>,
-}
-
-impl Default for SubpassDesc {
-    fn default() -> Self {
-        Self {
-            inputs: Vec::new(),
-            outputs: Vec::new(),
-            resolves: Vec::new(),
-            preserves: Vec::new(),
-            depth_stencil: None,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]

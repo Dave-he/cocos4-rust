@@ -68,6 +68,12 @@ impl WebSocketData {
     }
 }
 
+impl Default for WebSocketData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub type WebSocketOnOpen = Arc<dyn Fn(&WebSocket) + Send + Sync>;
 pub type WebSocketOnMessage = Arc<dyn Fn(&WebSocket, &WebSocketData) + Send + Sync>;
 pub type WebSocketOnClose = Arc<dyn Fn(&WebSocket, u16, &str, bool) + Send + Sync>;

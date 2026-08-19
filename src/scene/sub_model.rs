@@ -5,20 +5,11 @@ pub enum BatchingSchemes {
     Instancing = 1,
 }
 
+#[derive(Default)]
 pub struct InstancedAttributeBlock {
     pub buffer: Vec<u8>,
     pub views: Vec<Vec<f32>>,
     pub attributes: Vec<crate::renderer::gfx_base::shader::Attribute>,
-}
-
-impl Default for InstancedAttributeBlock {
-    fn default() -> Self {
-        InstancedAttributeBlock {
-            buffer: Vec::new(),
-            views: Vec::new(),
-            attributes: Vec::new(),
-        }
-    }
 }
 
 pub struct SubModel {

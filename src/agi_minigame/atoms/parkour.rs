@@ -357,23 +357,20 @@ impl Atom for ParkourAtom {
     }
 
     fn handle_event(&mut self, event: &str, data: &ValueMap, _ctx: &mut AtomContext) {
-        match event {
-            "action" => {
-                let action = data.get("type").and_then(|v| {
-                    if let Value::String(s) = v {
-                        match s.as_str() {
-                            "jump" => Some(RunnerAction::Jump),
-                            "slide" => Some(RunnerAction::Slide),
-                            "dash" => Some(RunnerAction::Dash),
-                            "left" => Some(RunnerAction::LaneLeft),
-                            "right" => Some(RunnerAction::LaneRight),
-                            _ => None,
-                        }
-                    } else { None }
-                }).unwrap_or(RunnerAction::Jump);
-                self.perform_action(action);
-            }
-            _ => {}
+        if event == "action" {
+            let action = data.get("type").and_then(|v| {
+                if let Value::String(s) = v {
+                    match s.as_str() {
+                        "jump" => Some(RunnerAction::Jump),
+                        "slide" => Some(RunnerAction::Slide),
+                        "dash" => Some(RunnerAction::Dash),
+                        "left" => Some(RunnerAction::LaneLeft),
+                        "right" => Some(RunnerAction::LaneRight),
+                        _ => None,
+                    }
+                } else { None }
+            }).unwrap_or(RunnerAction::Jump);
+            self.perform_action(action);
         }
     }
 

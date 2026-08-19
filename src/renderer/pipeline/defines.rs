@@ -233,19 +233,10 @@ pub enum DefineType {
     Buffer = 4,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct MacroRecord {
     pub name: String,
     pub value: String,
-}
-
-impl Default for MacroRecord {
-    fn default() -> Self {
-        MacroRecord {
-            name: String::new(),
-            value: String::new(),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -583,7 +574,7 @@ pub const INST_MAT_WORLD: &str = "a_matWorld0";
 pub const INST_SH: &str = "a_sh_linear_const_r";
 pub const INST_JOINT_ANIM_INFO: &str = "a_jointAnimInfo";
 
-pub const CAMERA_DEFAULT_MASK: u32 = 0xFFFFFFFF & !(0x2 | 0x4 | 0x8 | 0x10 | 0x20);
+pub const CAMERA_DEFAULT_MASK: u32 = !(0x2 | 0x4 | 0x8 | 0x10 | 0x20);
 pub const MODEL_ALWAYS_MASK: u32 = 0xFFFFFFFF;
 
 pub const MAX_BLOOM_FILTER_PASS_NUM: u32 = 6;

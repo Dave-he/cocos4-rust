@@ -22,8 +22,9 @@ pub enum Value {
     None,
     Byte(u8),
     Integer(i32),
+    Int(i64),
     Unsigned(u32),
-    Float(f32),
+    Float(f64),
     Double(f64),
     Boolean(bool),
     String(String),
@@ -39,7 +40,7 @@ impl Value {
         match self {
             Value::None => ValueType::None,
             Value::Byte(_) => ValueType::Byte,
-            Value::Integer(_) => ValueType::Integer,
+            Value::Integer(_) | Value::Int(_) => ValueType::Integer,
             Value::Unsigned(_) => ValueType::Unsigned,
             Value::Float(_) => ValueType::Float,
             Value::Double(_) => ValueType::Double,
@@ -65,6 +66,7 @@ impl Value {
     pub fn as_int(&self) -> Option<i32> {
         match self {
             Value::Integer(v) => Some(*v),
+            Value::Int(v) => Some(*v as i32),
             Value::Byte(v) => Some(*v as i32),
             Value::Unsigned(v) => Some(*v as i32),
             Value::Boolean(v) => Some(if *v { 1 } else { 0 }),
@@ -83,6 +85,13 @@ impl Value {
                     None
                 }
             }
+            Value::Int(v) => {
+                if *v >= 0 && *v <= u32::MAX as i64 {
+                    Some(*v as u32)
+                } else {
+                    None
+                }
+            }
             Value::Boolean(v) => Some(if *v { 1 } else { 0 }),
             _ => None,
         }
@@ -90,9 +99,10 @@ impl Value {
 
     pub fn as_float(&self) -> Option<f32> {
         match self {
-            Value::Float(v) => Some(*v),
+            Value::Float(v) => Some(*v as f32),
             Value::Double(v) => Some(*v as f32),
             Value::Integer(v) => Some(*v as f32),
+            Value::Int(v) => Some(*v as f32),
             Value::Unsigned(v) => Some(*v as f32),
             _ => None,
         }
@@ -101,8 +111,9 @@ impl Value {
     pub fn as_double(&self) -> Option<f64> {
         match self {
             Value::Double(v) => Some(*v),
-            Value::Float(v) => Some(*v as f64),
+            Value::Float(v) => Some(*v),
             Value::Integer(v) => Some(*v as f64),
+            Value::Int(v) => Some(*v as f64),
             Value::Unsigned(v) => Some(*v as f64),
             _ => None,
         }
@@ -112,6 +123,7 @@ impl Value {
         match self {
             Value::Boolean(v) => Some(*v),
             Value::Integer(v) => Some(*v != 0),
+            Value::Int(v) => Some(*v != 0),
             Value::Unsigned(v) => Some(*v != 0),
             Value::Float(v) => Some((*v != 0.0) && !v.is_nan()),
             Value::Double(v) => Some((*v != 0.0) && !v.is_nan()),
@@ -151,7 +163,7 @@ impl Value {
         match self {
             Value::None => "None".to_string(),
             Value::Byte(_) => "Byte".to_string(),
-            Value::Integer(_) => "Integer".to_string(),
+            Value::Integer(_) | Value::Int(_) => "Integer".to_string(),
             Value::Unsigned(_) => "Unsigned".to_string(),
             Value::Float(_) => "Float".to_string(),
             Value::Double(_) => "Double".to_string(),

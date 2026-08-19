@@ -75,7 +75,7 @@ impl StateMachine {
 
     pub fn add_transition(&mut self, t: Transition) {
         self.transitions.push(t);
-        self.transitions.sort_by(|a, b| b.priority.cmp(&a.priority));
+        self.transitions.sort_by_key(|transition| std::cmp::Reverse(transition.priority));
     }
 
     pub fn add_any_transition<F: Fn() -> bool + Send + Sync + 'static>(
@@ -90,7 +90,7 @@ impl StateMachine {
             condition: Box::new(cond),
             priority,
         });
-        self.transitions.sort_by(|a, b| b.priority.cmp(&a.priority));
+        self.transitions.sort_by_key(|transition| std::cmp::Reverse(transition.priority));
     }
 
     pub fn set_global_guard<F: Fn(&str, &str) -> bool + Send + Sync + 'static>(

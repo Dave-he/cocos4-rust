@@ -56,8 +56,8 @@ mod tests {
         let gen = IDGenerator::new("node");
         let ids: Vec<String> = (0..10).map(|_| gen.get_new_id()).collect();
         for i in 1..ids.len() {
-            let prev_num: u32 = ids[i - 1].split('.').last().unwrap().parse().unwrap();
-            let curr_num: u32 = ids[i].split('.').last().unwrap().parse().unwrap();
+            let prev_num: u32 = ids[i - 1].split('.').next_back().unwrap().parse().unwrap();
+            let curr_num: u32 = ids[i].split('.').next_back().unwrap().parse().unwrap();
             assert_eq!(curr_num, prev_num + 1);
         }
     }

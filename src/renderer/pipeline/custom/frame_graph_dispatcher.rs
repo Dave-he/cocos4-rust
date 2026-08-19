@@ -2,20 +2,15 @@ use super::render_graph::RenderGraph;
 use super::resource_graph::ResourceGraph;
 use super::layout_graph::LayoutGraph;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CompilePhase {
+    #[default]
     Sort,
     Cull,
     ComputeLifetimes,
     Merge,
     GenerateBarriers,
     Done,
-}
-
-impl Default for CompilePhase {
-    fn default() -> Self {
-        Self::Sort
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -61,12 +56,13 @@ impl FrameGraphDispatcher {
 
     fn allocate_transient_resources(&mut self) {
         for res in &self.render_graph.resources {
-            if !res.desc.name.is_empty() && res.producer.is_some() {
-                if let None = self.resource_graph.get_managed(res.id) {
-                    self.resource_graph.create_managed(res.desc.clone());
-                    if res.last_use.is_some() {
-                        self.resource_graph.allocate_managed(res.id);
-                    }
+            if !res.desc.name.is_empty()
+                && res.producer.is_some()
+                && self.resource_graph.get_managed(res.id).is_none()
+            {
+                self.resource_graph.create_managed(res.desc.clone());
+                if res.last_use.is_some() {
+                    self.resource_graph.allocate_managed(res.id);
                 }
             }
         }

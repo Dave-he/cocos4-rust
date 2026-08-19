@@ -1,0 +1,5 @@
+# Managed by codespace-init.sh
+# Shared CARGO_TARGET_DIR keeps the build cache on the SSD instead of
+# in every project tree. Run `bash ~/codespace-init.sh` to maintain.
+[build]
+target-dir = "/home/hyx/codespace/.cargo-target/cocos4-rust"

@@ -70,7 +70,7 @@ impl<E: Clone + PartialEq + 'static> EventTarget<E> {
 
     pub fn emit(&mut self, event: &E) {
         if self.dirty {
-            self.listeners.sort_by(|a, b| b.priority.cmp(&a.priority));
+            self.listeners.sort_by_key(|listener| std::cmp::Reverse(listener.priority));
             self.dirty = false;
         }
         let mut to_remove: Vec<EventKey> = Vec::new();

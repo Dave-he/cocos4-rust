@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::base::value::{Value, ValueMap};
+use crate::base::value::ValueMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CurrencyType {
@@ -18,7 +18,7 @@ impl CurrencyType {
             CurrencyType::Gem => "gem",
             CurrencyType::Energy => "energy",
             CurrencyType::Token => "token",
-            CurrencyType::Custom(id) => "custom",
+            CurrencyType::Custom(_) => "custom",
         }
     }
 }

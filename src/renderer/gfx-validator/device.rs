@@ -44,10 +44,6 @@ impl DeviceValidator {
         }
     }
 
-    pub fn default() -> Self {
-        Self::new(DeviceInfo::default())
-    }
-
     pub fn set_enabled(&mut self, enabled: bool) {
         self.log.set_enabled(enabled);
         self.resource_tracker.enabled = enabled;
@@ -120,7 +116,7 @@ impl DeviceValidator {
             self.log
                 .error(ValidationErrorKind::Buffer, "Buffer size must not be zero");
         }
-        if info.stride > 0 && info.size % info.stride != 0 {
+        if info.stride > 0 && !info.size.is_multiple_of(info.stride) {
             self.log.warn(&format!(
                 "Buffer size ({}) should be a multiple of stride ({})",
                 info.size, info.stride
@@ -150,17 +146,17 @@ impl DeviceValidator {
         }
         let fmt = info.format;
         let fmt_features = self.device.get_format_features(fmt);
-        if !fmt_features.contains(FormatFeature::NONE) && fmt != Format::Unknown {
-            if info
+        if !fmt_features.contains(FormatFeature::NONE)
+            && fmt != Format::Unknown
+            && info
                 .usage
                 .contains(crate::renderer::gfx_base::TextureUsage::COLOR_ATTACHMENT)
-                && !fmt_features.contains(FormatFeature::RENDER_TARGET)
-            {
-                self.log.error(
-                    ValidationErrorKind::Format,
-                    &format!("Format {} does not support RENDER_TARGET", fmt as u32),
-                );
-            }
+            && !fmt_features.contains(FormatFeature::RENDER_TARGET)
+        {
+            self.log.error(
+                ValidationErrorKind::Format,
+                &format!("Format {} does not support RENDER_TARGET", fmt as u32),
+            );
         }
     }
 
@@ -299,6 +295,12 @@ impl DeviceValidator {
         }
         self.device.destroy();
         self.initialized = false;
+    }
+}
+
+impl Default for DeviceValidator {
+    fn default() -> Self {
+        Self::new(DeviceInfo::default())
     }
 }
 
@@ -445,7 +447,7 @@ mod tests {
     fn test_device_validator_resource_leak_on_destroy() {
         let mut validator = DeviceValidator::default();
         validator.initialize();
-let buf = validator.create_buffer(BufferInfo {
+        let _buf = validator.create_buffer(BufferInfo {
             size: 64,
             ..Default::default()
         });
@@ -457,7 +459,7 @@ let buf = validator.create_buffer(BufferInfo {
     fn test_device_validator_no_leak_on_destroy() {
         let mut validator = DeviceValidator::default();
         validator.initialize();
-let buf = validator.create_buffer(BufferInfo {
+        let buf = validator.create_buffer(BufferInfo {
             size: 64,
             ..Default::default()
         });
@@ -473,7 +475,7 @@ let buf = validator.create_buffer(BufferInfo {
         let mut validator = DeviceValidator::default();
         validator.set_enabled(false);
         validator.initialize();
-let buf = validator.create_buffer(BufferInfo {
+        let _buf = validator.create_buffer(BufferInfo {
             size: 0,
             ..Default::default()
         });

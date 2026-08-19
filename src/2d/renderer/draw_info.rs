@@ -3,7 +3,7 @@ Rust port of Cocos Creator Render Draw Info
 Original C++ version Copyright (c) 2019-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use crate::math::{Color, Mat4, Vec2};
+use crate::math::{Color, Mat4};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RenderDrawInfoType {
@@ -135,14 +135,10 @@ mod tests {
 
     #[test]
     fn test_draw_info_can_merge() {
-        let mut a = RenderDrawInfo::default();
-        a.texture_id = 1;
-        a.material_hash = 100;
-        let mut b = RenderDrawInfo::default();
-        b.texture_id = 1;
-        b.material_hash = 100;
+        let mut a = RenderDrawInfo { texture_id: 1, material_hash: 100, ..Default::default() };
+        let b = RenderDrawInfo { texture_id: 1, material_hash: 100, ..Default::default() };
         assert!(a.can_merge_with(&b));
-        b.texture_id = 2;
+        a.texture_id = 2;
         assert!(!a.can_merge_with(&b));
     }
 

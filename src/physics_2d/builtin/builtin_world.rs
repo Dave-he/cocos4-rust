@@ -170,6 +170,8 @@ impl BuiltinWorld2D {
     pub fn get_collider_count(&self) -> usize { self.colliders.len() }
     pub fn get_joint_count(&self) -> usize { self.joints.len() }
     pub fn get_step_count(&self) -> u64 { self.step_count }
+    pub fn allow_sleep(&self) -> bool { self.allow_sleep }
+    pub fn set_allow_sleep(&mut self, allow_sleep: bool) { self.allow_sleep = allow_sleep; }
 
     pub fn clear(&mut self) {
         self.rigid_bodies.clear();

@@ -163,14 +163,17 @@ impl GameBootstrapError {
 
 type GameEventCallback = Box<dyn Fn(&GameEvent) + Send + Sync>;
 
+#[cfg(all(not(feature = "js-runtime-mock"), not(feature = "js-runtime-real")))]
 const REASON_UNIMPLEMENTED_JS_RUNTIME: &str =
     "native JS runtime path is not implemented in this branch yet";
 const REASON_JS_BOOTSTRAP_ENTRY_NOT_DETECTED: &str =
     "javascript bootstrap entrypoint could not be detected in main entry source";
 const REASON_JS_SOURCE_SYNTAX_HEURISTIC_FAILED: &str =
     "javascript source syntax heuristic probe failed";
+#[cfg(feature = "js-runtime-mock")]
 const REASON_JS_RUNTIME_SIMULATOR_FAILED: &str =
     "javascript runtime simulator rejected bootstrap entrypoint";
+#[cfg(feature = "js-runtime-real")]
 const REASON_JS_RUNTIME_EXECUTION_FAILED: &str =
     "javascript runtime rejected bootstrap entrypoint during execution";
 
@@ -357,7 +360,7 @@ impl Game {
 
     #[cfg(not(feature = "js-runtime-probe"))]
     fn run_js_probe(&self, source: &str) -> bool {
-        source.len() > 0
+        !source.is_empty()
     }
 
     fn probe_bootstrap_entry_inner(
@@ -420,20 +423,20 @@ impl Game {
         self.probe_bootstrap_entry_inner(style_detected, source)
     }
 
-    fn try_execute_bootstrap(&self, bootstrap: &GameBootstrapContract) -> bool {
+    fn try_execute_bootstrap(&self, _bootstrap: &GameBootstrapContract) -> bool {
         #[cfg(feature = "js-runtime-real")]
         {
-            return self.execute_bootstrap_real(bootstrap);
+            return self.execute_bootstrap_real(_bootstrap);
         }
 
         #[cfg(all(feature = "js-runtime-mock", not(feature = "js-runtime-real")))]
         {
-            return self.execute_bootstrap_mock(bootstrap);
+            return self.execute_bootstrap_mock(_bootstrap);
         }
 
         #[cfg(all(not(feature = "js-runtime-real"), not(feature = "js-runtime-mock")))]
         {
-            return false;
+            false
         }
     }
 
@@ -501,7 +504,7 @@ impl Game {
 
         let normalized_style = bootstrap.normalized_runtime_style();
         let call_bootstrap = normalized_style == "legacy-cocos2d-js";
-        let mut run_eval = |context: &mut Context, source: &str| {
+        let run_eval = |context: &mut Context, source: &str| {
             context.eval(Source::from_bytes(source)).is_ok()
         };
 let prelude = r##"

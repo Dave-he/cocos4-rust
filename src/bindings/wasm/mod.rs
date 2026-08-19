@@ -16,6 +16,10 @@ impl WasmBindgen {
     pub fn register_class<F>(&self, _name: &str, _constructor: F) {}
 }
 
+impl Default for WasmBindgen {
+    fn default() -> Self { Self::new() }
+}
+
 pub fn export_function(_name: &str, _f: impl Fn()) {}
 pub fn export_constant<T>(_name: &str, _value: T) {}
 pub fn import_function(_module: &str, _name: &str) {}

@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::base::value::{Value, ValueMap};
 
 use super::world_state::UnifiedWorldState;
@@ -31,7 +29,7 @@ impl GameplayType {
             GameplayType::Shooting => "shooting",
             GameplayType::Synthesis => "synthesis",
             GameplayType::Simulation => "simulation",
-            GameplayType::Composite(types) => "composite",
+            GameplayType::Composite(_) => "composite",
             GameplayType::Custom(name) => name,
         }
     }

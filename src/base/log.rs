@@ -67,6 +67,18 @@ impl Log {
     pub fn log_remote(msg: &str) {
         eprintln!("[REMOTE] {}", msg);
     }
+
+    pub fn debug_id(id: u32) {
+        if Log::get_log_level() <= LogLevel::LevelDebug {
+            Log::log_message(LogType::Kernel, LogLevel::LevelDebug, &format!("ID: {}", id));
+        }
+    }
+
+    pub fn debug_msg(msg: &str) {
+        if Log::get_log_level() <= LogLevel::LevelDebug {
+            Log::log_message(LogType::Kernel, LogLevel::LevelDebug, msg);
+        }
+    }
 }
 
 #[macro_export]

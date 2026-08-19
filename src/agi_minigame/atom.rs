@@ -7,7 +7,7 @@ use crate::base::value::ValueMap;
 use super::world_state::UnifiedWorldState;
 
 pub type AtomId = String;
-pub type AtomFactory = Box<dyn Fn() -> Box<dyn Atom>>;
+pub type AtomFactory = Box<dyn Fn() -> Box<dyn Atom> + Send + Sync>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AtomPhase {
@@ -87,24 +87,27 @@ impl AtomRegistry {
         }
     }
 
-    pub fn register(&mut self, id: AtomId, metadata: AtomMetadata, factory: AtomFactory) {
-        self.atoms.insert(id, (metadata, factory));
+    pub fn register<F>(&mut self, id: AtomId, metadata: AtomMetadata, factory: F)
+    where
+        F: Fn() -> Box<dyn Atom> + Send + Sync + 'static,
+    {
+        self.atoms.insert(id, (metadata, Box::new(factory)));
     }
 
-    pub fn create(&self, id: &str) -> Option<Box<dyn Atom>> {
-        self.atoms.get(id).map(|(_, factory)| factory())
+pub fn create(&self, id: impl AsRef<str>) -> Option<Box<dyn Atom>> {
+        self.atoms.get(id.as_ref()).map(|(_, factory)| factory())
     }
 
-    pub fn get_metadata(&self, id: &str) -> Option<&AtomMetadata> {
-        self.atoms.get(id).map(|(metadata, _)| metadata)
+    pub fn get_metadata(&self, id: impl AsRef<str>) -> Option<&AtomMetadata> {
+        self.atoms.get(id.as_ref()).map(|(metadata, _)| metadata)
     }
 
     pub fn list_all(&self) -> Vec<&AtomMetadata> {
         self.atoms.values().map(|(m, _)| m).collect()
     }
 
-    pub fn has_atom(&self, id: &str) -> bool {
-        self.atoms.contains_key(id)
+pub fn has_atom(&self, id: impl AsRef<str>) -> bool {
+        self.atoms.contains_key(id.as_ref())
     }
 }
 

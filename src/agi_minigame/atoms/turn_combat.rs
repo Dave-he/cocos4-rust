@@ -150,9 +150,9 @@ pub struct TurnCombatAtom {
     turn: u32,
     score: u64,
     is_player_turn: bool,
-    waiting_for_input: bool,
-    selected_action: Option<ActionType>,
-    selected_target: Option<String>,
+    _waiting_for_input: bool,
+    _selected_action: Option<ActionType>,
+    _selected_target: Option<String>,
     combat_log: Vec<String>,
 }
 
@@ -165,9 +165,9 @@ impl TurnCombatAtom {
             turn: 0,
             score: 0,
             is_player_turn: true,
-            waiting_for_input: false,
-            selected_action: None,
-            selected_target: None,
+            _waiting_for_input: false,
+            _selected_action: None,
+            _selected_target: None,
             combat_log: Vec::new(),
         }
     }
@@ -186,7 +186,7 @@ impl TurnCombatAtom {
             let hp = (50.0 + difficulty * 50.0) as i32;
             let atk = (10.0 + difficulty * 15.0) as i32;
             let def = (5.0 + difficulty * 5.0) as i32;
-            let spd = (8 + i as i32 * 2) as i32;
+            let spd = 8 + i as i32 * 2;
             let name = format!("敌人_{}", i + 1);
             self.add_enemy_unit(CombatUnit::new(&format!("enemy_{}", i), &name, hp, atk, def, spd, false));
         }
@@ -328,24 +328,21 @@ impl Atom for TurnCombatAtom {
     }
 
     fn handle_event(&mut self, event: &str, data: &ValueMap, _ctx: &mut AtomContext) {
-        match event {
-            "action" => {
-                let action = data.get("type").and_then(|v| {
-                    if let Value::String(s) = v {
-                        match s.as_str() {
-                            "attack" => Some(ActionType::Attack),
-                            "defend" => Some(ActionType::Defend),
-                            "skill" => Some(ActionType::Skill),
-                            "wait" => Some(ActionType::Wait),
-                            "flee" => Some(ActionType::Flee),
-                            _ => None,
-                        }
-                    } else { None }
-                }).unwrap_or(ActionType::Wait);
-                let target = data.get("target").and_then(|v| if let Value::String(s) = v { Some(s.clone()) } else { None });
-                self.player_action(action, target.as_deref());
-            }
-            _ => {}
+        if event == "action" {
+            let action = data.get("type").and_then(|v| {
+                if let Value::String(s) = v {
+                    match s.as_str() {
+                        "attack" => Some(ActionType::Attack),
+                        "defend" => Some(ActionType::Defend),
+                        "skill" => Some(ActionType::Skill),
+                        "wait" => Some(ActionType::Wait),
+                        "flee" => Some(ActionType::Flee),
+                        _ => None,
+                    }
+                } else { None }
+            }).unwrap_or(ActionType::Wait);
+            let target = data.get("target").and_then(|v| if let Value::String(s) = v { Some(s.clone()) } else { None });
+            self.player_action(action, target.as_deref());
         }
     }
 
@@ -383,7 +380,6 @@ mod tests {
         atom.on_init(&mut ctx);
         atom.on_enter(&mut ctx);
 
-        let enemy_count = atom.enemy_units.len();
         atom.player_action(ActionType::Attack, None);
         assert!(atom.get_turn() >= 1);
     }

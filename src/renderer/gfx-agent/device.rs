@@ -57,10 +57,6 @@ impl DeviceAgent {
         }
     }
 
-    pub fn default() -> Self {
-        Self::new(DeviceInfo::default())
-    }
-
     pub fn initialize(&mut self) -> bool {
         self.device.api = API::Unknown;
         let all_features = FormatFeature::RENDER_TARGET
@@ -162,8 +158,7 @@ impl DeviceAgent {
     }
 
     pub fn create_buffer(&mut self, info: BufferInfo) -> GfxBuffer {
-        let buf = self.device.create_buffer(info);
-        buf
+        self.device.create_buffer(info)
     }
 
     pub fn create_buffer_view(&mut self, info: BufferViewInfo) -> GfxBuffer {
@@ -267,6 +262,12 @@ impl DeviceAgent {
         self.cmd_buff = None;
         self.device.destroy();
         self.multithreaded = false;
+    }
+}
+
+impl Default for DeviceAgent {
+    fn default() -> Self {
+        Self::new(DeviceInfo::default())
     }
 }
 

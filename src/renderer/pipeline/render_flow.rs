@@ -6,23 +6,12 @@ Original C++ version Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
 use super::defines::RenderFlowType;
 use super::render_stage::RenderStage;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct RenderFlowInfo {
     pub name: String,
     pub priority: u32,
     pub stages: Vec<RenderStage>,
     pub tag: u32,
-}
-
-impl Default for RenderFlowInfo {
-    fn default() -> Self {
-        RenderFlowInfo {
-            name: String::new(),
-            priority: 0,
-            stages: Vec::new(),
-            tag: 0,
-        }
-    }
 }
 
 #[derive(Debug)]

@@ -10,21 +10,11 @@ use super::shadow::ShadowsInfo;
 use super::states::PipelineStateManager;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct RenderPipelineInfo {
     pub name: String,
     pub flows: Vec<RenderFlow>,
     pub tag: u32,
-}
-
-impl Default for RenderPipelineInfo {
-    fn default() -> Self {
-        RenderPipelineInfo {
-            name: String::new(),
-            flows: Vec::new(),
-            tag: 0,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Default)]

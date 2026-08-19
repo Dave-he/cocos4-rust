@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use crate::base::value::{Value, ValueMap};
@@ -293,7 +292,12 @@ impl Dimension {
     }
 
     fn check_all_mandatory_objectives(&self) -> bool {
-        let mandatory: Vec<_> = self.config.objectives.iter().filter(|o| !o.is_optional).collect();
+        let mandatory: Vec<&DimensionObjective> = self
+            .config
+            .objectives
+            .iter()
+            .filter(|o| !o.is_optional)
+            .collect();
         // A dimension with no objectives never auto-completes — only the
         // runner's `complete()` call or a time-limit expiry ends it.
         if mandatory.is_empty() {
@@ -381,22 +385,22 @@ impl DimensionRunner {
     }
 
     pub fn update(&mut self, dt: f32) {
+        let mut ctx = self.make_ctx();
         if let Some(ref mut dim) = self.active_dimension {
-            let mut ctx = AtomContext::new(Arc::clone(&self.world_state));
             dim.update(dt, &mut ctx);
         }
     }
 
     pub fn pause(&mut self) {
+        let mut ctx = self.make_ctx();
         if let Some(ref mut dim) = self.active_dimension {
-            let mut ctx = AtomContext::new(Arc::clone(&self.world_state));
             dim.pause(&mut ctx);
         }
     }
 
     pub fn resume(&mut self) {
+        let mut ctx = self.make_ctx();
         if let Some(ref mut dim) = self.active_dimension {
-            let mut ctx = AtomContext::new(Arc::clone(&self.world_state));
             dim.resume(&mut ctx);
         }
     }
@@ -428,7 +432,8 @@ impl DimensionRunner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agi_minigame::atom::AtomMetadata;
+    use std::collections::HashMap;
+    use crate::agi_minigame::atom::{Atom, AtomMetadata, AtomPhase};
     use crate::agi_minigame::player::PlayerProfile;
 
     struct MockAtom {

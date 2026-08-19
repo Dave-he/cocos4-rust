@@ -200,7 +200,7 @@ impl CardAtom {
 
         let played = self.hand.remove(hand_index);
         self.discard.push(played);
-        Some(&self.hand.last().map(|ci| &ci.card).unwrap_or(&self.discard.last().unwrap().card))
+        Some(self.hand.last().map(|ci| &ci.card).unwrap_or(&self.discard.last().unwrap().card))
     }
 
     pub fn start_turn(&mut self) {

@@ -46,11 +46,7 @@ impl CommandBufferAgent {
     }
 
     pub fn begin(&mut self) {
-        if self.immediate_mode {
-            self.inner.begin();
-        } else {
-            self.inner.begin();
-        }
+        self.inner.begin();
     }
 
     pub fn begin_with_render_pass(
@@ -155,7 +151,7 @@ impl CommandBufferAgent {
         if self.immediate_mode {
             self.inner.set_viewport(viewport);
         } else {
-            let vp = viewport.clone();
+            let vp = *viewport;
             self.message_queue.enqueue(move || {
                 let _ = vp;
             });
@@ -199,7 +195,7 @@ impl CommandBufferAgent {
         if self.immediate_mode {
             self.inner.set_blend_constants(constants);
         } else {
-            let cc = constants.clone();
+            let cc = *constants;
             self.message_queue.enqueue(move || {
                 let _ = cc;
             });

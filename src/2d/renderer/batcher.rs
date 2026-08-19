@@ -3,7 +3,6 @@ Rust port of Cocos Creator 2D Batcher System
 Original C++ version Copyright (c) 2019-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use crate::math::{Color, Mat4, Vec2};
 use super::draw_info::RenderDrawInfo;
 use super::ui_mesh::{UIMeshBuffer, UIMeshBufferImpl, VertexAttribute, AttributeFormat};
 
@@ -14,6 +13,7 @@ pub enum Batcher2DType {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct BatchCommand {
     pub draw_info_index: usize,
     pub vertex_start: u32,
@@ -235,14 +235,14 @@ impl Default for Batcher2D {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::math::Color;
 
     fn make_draw_info(tex: u32, vc: u32, ic: u32) -> RenderDrawInfo {
-        let mut info = RenderDrawInfo::default();
-        info.texture_id = tex;
-        info.vertex_count = vc;
-        info.index_count = ic;
-        info
+        RenderDrawInfo {
+            texture_id: tex,
+            vertex_count: vc,
+            index_count: ic,
+            ..Default::default()
+        }
     }
 
     #[test]

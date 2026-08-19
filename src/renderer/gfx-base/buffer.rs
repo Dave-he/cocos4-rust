@@ -72,11 +72,7 @@ impl GfxBuffer {
     }
 
     pub fn get_count(&self) -> u32 {
-        if self.info.stride > 0 {
-            self.info.size / self.info.stride
-        } else {
-            0
-        }
+        self.info.size.checked_div(self.info.stride).unwrap_or(0)
     }
 
     pub fn new_view(id: u32, info: BufferViewInfo) -> Self {

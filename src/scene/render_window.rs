@@ -59,7 +59,7 @@ impl RenderWindow {
     }
 
     pub fn sort_cameras(&mut self) {
-        self.cameras.sort_by(|a, b| a.priority.cmp(&b.priority));
+        self.cameras.sort_by_key(|camera| camera.priority);
     }
 
     pub fn get_cameras(&self) -> &[Camera] {

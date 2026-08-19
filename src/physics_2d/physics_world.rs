@@ -5,6 +5,19 @@ use super::rigid_body::RigidBody2D;
 use super::joint::Joint2D;
 use super::builtin::intersection;
 
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+    pub struct DebugDrawFlags2D: u32 {
+        const NONE = 0;
+        const SHAPE = 1 << 0;
+        const JOINT = 1 << 1;
+        const AABB = 1 << 2;
+        const PAIR = 1 << 3;
+        const CENTER_OF_MASS = 1 << 4;
+        const ALL = 0x1F;
+    }
+}
+
 pub struct PhysicsWorld2D {
     pub gravity: Vec2,
     pub allow_sleep: bool,
@@ -19,6 +32,8 @@ pub struct PhysicsWorld2D {
     next_collider_id: u32,
     next_joint_id: u32,
     step_count: u64,
+    debug_draw_flags: DebugDrawFlags2D,
+    debug_graphics_cleared: bool,
 }
 
 impl PhysicsWorld2D {
@@ -37,6 +52,8 @@ impl PhysicsWorld2D {
             next_collider_id: 0,
             next_joint_id: 0,
             step_count: 0,
+            debug_draw_flags: DebugDrawFlags2D::NONE,
+            debug_graphics_cleared: false,
         }
     }
 
@@ -46,6 +63,19 @@ impl PhysicsWorld2D {
         self.next_body_id += 1;
         self.rigid_bodies.push(body);
         self.next_body_id - 1
+    }
+
+    pub fn base_velocity_iterations(&self) -> u32 {
+        self.base_velocity_iterations
+    }
+
+    pub fn base_position_iterations(&self) -> u32 {
+        self.base_position_iterations
+    }
+
+    pub fn set_solver_iterations(&mut self, velocity: u32, position: u32) {
+        self.base_velocity_iterations = velocity;
+        self.base_position_iterations = position;
     }
 
     pub fn destroy_body(&mut self, id: u32) -> bool {
@@ -212,6 +242,25 @@ impl PhysicsWorld2D {
 
     pub fn get_step_count(&self) -> u64 {
         self.step_count
+    }
+
+    pub fn set_debug_draw_flags(&mut self, flags: DebugDrawFlags2D) {
+        let was_enabled = self.debug_draw_flags != DebugDrawFlags2D::NONE;
+        let now_enabled = flags != DebugDrawFlags2D::NONE;
+        if was_enabled && !now_enabled {
+            self.debug_graphics_cleared = true;
+        } else if !was_enabled && now_enabled {
+            self.debug_graphics_cleared = false;
+        }
+        self.debug_draw_flags = flags;
+    }
+
+    pub fn get_debug_draw_flags(&self) -> DebugDrawFlags2D {
+        self.debug_draw_flags
+    }
+
+    pub fn is_debug_graphics_cleared(&self) -> bool {
+        self.debug_graphics_cleared
     }
 
     pub fn clear(&mut self) {

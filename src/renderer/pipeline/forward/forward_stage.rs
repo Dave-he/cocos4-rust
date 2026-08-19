@@ -89,7 +89,6 @@ impl Default for ForwardStage {
 
 #[cfg(test)]
 mod tests {
-use super::super::super::render_stage::RenderStageInfo;
     use super::*;
 
     #[test]

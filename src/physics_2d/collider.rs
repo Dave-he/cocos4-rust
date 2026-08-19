@@ -1,4 +1,5 @@
 use super::types::{ColliderType2D, PhysicsMaterial2D, AABB2D};
+use crate::math::{Mat4, Vec2};
 
 #[derive(Debug, Clone)]
 pub struct Collider2D {
@@ -12,6 +13,7 @@ pub struct Collider2D {
     pub enabled: bool,
     pub group: u32,
     pub mask: u32,
+    node_world_matrix: Mat4,
 }
 
 impl Collider2D {
@@ -27,7 +29,17 @@ impl Collider2D {
             enabled: true,
             group: 1,
             mask: 0xFFFFFFFF,
+            node_world_matrix: Mat4::IDENTITY,
         }
+    }
+
+    pub fn set_node_world_matrix(&mut self, matrix: Mat4) {
+        self.node_world_matrix = matrix;
+    }
+
+    pub fn world_position(&self) -> Vec2 {
+        let offset = Vec2::new(self.offset[0], self.offset[1]);
+        offset.transform_mat4(&self.node_world_matrix)
     }
 
     pub fn set_as_box(&mut self, width: f32, height: f32) {
@@ -134,5 +146,34 @@ mod tests {
         assert!(collider.is_trigger);
         assert_eq!(collider.group, 0b0010);
         assert_eq!(collider.mask, 0b0100);
+    }
+
+    #[test]
+    fn test_world_position_identity() {
+        let collider = Collider2D::new(0);
+        let wp = collider.world_position();
+        assert_eq!(wp.x, 0.0);
+        assert_eq!(wp.y, 0.0);
+    }
+
+    #[test]
+    fn test_world_position_with_offset() {
+        let mut collider = Collider2D::new(0);
+        collider.offset = [2.0, -3.0];
+        let wp = collider.world_position();
+        assert_eq!(wp.x, 2.0);
+        assert_eq!(wp.y, -3.0);
+    }
+
+    #[test]
+    fn test_world_position_with_translated_node() {
+        let mut collider = Collider2D::new(0);
+        collider.offset = [2.0, -3.0];
+        let mut mat = Mat4::IDENTITY;
+        mat.translate(&crate::math::Vec3::new(10.0, 20.0, 0.0));
+        collider.set_node_world_matrix(mat);
+        let wp = collider.world_position();
+        assert!((wp.x - 12.0).abs() < 1e-4);
+        assert!((wp.y - 17.0).abs() < 1e-4);
     }
 }

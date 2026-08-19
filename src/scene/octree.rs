@@ -33,16 +33,21 @@ impl BBox {
         }
     }
 
-    pub fn default() -> Self {
+    pub fn get_center(&self) -> Vec3 {
+        (self.min + self.max) * 0.5
+    }
+}
+
+impl Default for BBox {
+    fn default() -> Self {
         BBox {
             min: Vec3::ZERO,
             max: Vec3::ZERO,
         }
     }
+}
 
-    pub fn get_center(&self) -> Vec3 {
-        (self.min + self.max) * 0.5
-    }
+impl BBox {
 
     pub fn contain_point(&self, point: &Vec3) -> bool {
         point.x >= self.min.x
@@ -215,19 +220,15 @@ impl OctreeNode {
 
     fn remove(&mut self, model_id: u64) {
         self.models.retain(|id| *id != model_id);
-        for child in &mut self.children {
-            if let Some(c) = child {
-                c.remove(model_id);
-            }
+        for c in self.children.iter_mut().flatten() {
+            c.remove(model_id);
         }
     }
 
     fn gather_models(&self, results: &mut Vec<u64>) {
         results.extend(&self.models);
-        for child in &self.children {
-            if let Some(c) = child {
-                c.gather_models(results);
-            }
+        for c in self.children.iter().flatten() {
+            c.gather_models(results);
         }
     }
 }

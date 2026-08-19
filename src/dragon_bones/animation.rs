@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AnimationPlayMode {
     Normal,
     NoTween,
@@ -12,6 +12,26 @@ pub struct KeyFrame {
     pub time: f32,
     pub tween_easing: f32,
     pub curve: Vec<f32>,
+    pub x: f32,
+    pub y: f32,
+    pub rotation: f32,
+    pub scale_x: f32,
+    pub scale_y: f32,
+}
+
+impl Default for KeyFrame {
+    fn default() -> Self {
+        Self {
+            time: 0.0,
+            tween_easing: 0.0,
+            curve: Vec::new(),
+            x: 0.0,
+            y: 0.0,
+            rotation: 0.0,
+            scale_x: 1.0,
+            scale_y: 1.0,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -38,10 +58,75 @@ impl AnimationTrack {
 
     pub fn add_keyframe(&mut self, frame: KeyFrame) {
         self.keyframes.push(frame);
+        self.keyframes.sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
     }
 
     pub fn get_keyframe_at(&self, time: f32) -> Option<&KeyFrame> {
         self.keyframes.iter().find(|kf| (kf.time - time).abs() < 0.001)
+    }
+
+    pub fn get_interpolated(&self, time: f32) -> KeyFrame {
+        if self.keyframes.is_empty() {
+            return KeyFrame::default();
+        }
+        if self.keyframes.len() == 1 {
+            return self.keyframes[0].clone();
+        }
+
+        let mut prev_idx = 0;
+        let mut next_idx = 0;
+
+        for (i, kf) in self.keyframes.iter().enumerate() {
+            if kf.time <= time {
+                prev_idx = i;
+            }
+            if kf.time >= time {
+                next_idx = i;
+                break;
+            }
+        }
+
+        if prev_idx == next_idx {
+            return self.keyframes[prev_idx].clone();
+        }
+
+        let prev = &self.keyframes[prev_idx];
+        next_idx = (prev_idx + 1).min(self.keyframes.len() - 1);
+        let next = &self.keyframes[next_idx];
+
+        let alpha = if next.time > prev.time {
+            (time - prev.time) / (next.time - prev.time)
+        } else {
+            0.0
+        };
+
+        let alpha = if prev.tween_easing != 0.0 && !prev.curve.is_empty() {
+            self.apply_bezier_easing(alpha, &prev.curve)
+        } else if prev.tween_easing > 0.0 {
+            let p = 1.0 + prev.tween_easing * 10.0;
+            alpha.powf(p)
+        } else if prev.tween_easing < 0.0 {
+            let p = 1.0 + (-prev.tween_easing) * 10.0;
+            1.0 - (1.0 - alpha).powf(p)
+        } else {
+            alpha
+        };
+
+        let inv = 1.0 - alpha;
+        KeyFrame {
+            time: prev.time * inv + next.time * alpha,
+            tween_easing: 0.0,
+            curve: Vec::new(),
+            x: prev.x * inv + next.x * alpha,
+            y: prev.y * inv + next.y * alpha,
+            rotation: prev.rotation * inv + next.rotation * alpha,
+            scale_x: prev.scale_x * inv + next.scale_x * alpha,
+            scale_y: prev.scale_y * inv + next.scale_y * alpha,
+        }
+    }
+
+    fn apply_bezier_easing(&self, t: f32, _curve: &[f32]) -> f32 {
+        t
     }
 
     pub fn get_total_frames(&self) -> usize {
@@ -58,6 +143,7 @@ pub struct Animation {
     pub auto_tween: bool,
     is_playing: bool,
     current_time: f32,
+    ping_pong_forward: bool,
 }
 
 impl Animation {
@@ -70,6 +156,7 @@ impl Animation {
             auto_tween: true,
             is_playing: false,
             current_time: 0.0,
+            ping_pong_forward: true,
         }
     }
 
@@ -80,6 +167,7 @@ impl Animation {
     pub fn play(&mut self) {
         self.is_playing = true;
         self.current_time = 0.0;
+        self.ping_pong_forward = true;
     }
 
     pub fn stop(&mut self) {
@@ -105,7 +193,19 @@ impl Animation {
                 AnimationPlayMode::Loop => {
                     self.current_time %= self.duration;
                 }
-                AnimationPlayMode::PingPong => {}
+                AnimationPlayMode::PingPong => {
+                    if self.ping_pong_forward {
+                        self.current_time = self.duration * 2.0 - self.current_time;
+                        self.ping_pong_forward = false;
+                    } else {
+                        self.current_time -= self.duration;
+                        self.ping_pong_forward = true;
+                    }
+                }
+                AnimationPlayMode::Normal => {
+                    self.current_time = self.duration;
+                    self.is_playing = false;
+                }
                 _ => {
                     self.current_time %= self.duration;
                 }
@@ -158,6 +258,25 @@ mod tests {
     }
 
     #[test]
+    fn test_animation_normal_mode() {
+        let mut anim = Animation::new("action", 1.0);
+        anim.play_mode = AnimationPlayMode::Normal;
+        anim.play();
+        anim.advance_time(1.5);
+        assert!(!anim.is_playing());
+    }
+
+    #[test]
+    fn test_animation_ping_pong() {
+        let mut anim = Animation::new("bounce", 1.0);
+        anim.play_mode = AnimationPlayMode::PingPong;
+        anim.play();
+        anim.advance_time(1.5);
+        assert!(!anim.ping_pong_forward);
+        assert!((anim.get_current_time() - 0.5).abs() < 0.01);
+    }
+
+    #[test]
     fn test_animation_track() {
         let track = AnimationTrack::new("translate", 1.0);
         assert_eq!(track.name, "translate");
@@ -170,5 +289,35 @@ mod tests {
         anim.play();
         anim.advance_time(1.0);
         assert!((anim.get_progress() - 0.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_track_interpolation_linear() {
+        let mut track = AnimationTrack::new("t", 1.0);
+        track.add_keyframe(KeyFrame { time: 0.0, x: 0.0, y: 0.0, ..Default::default() });
+        track.add_keyframe(KeyFrame { time: 1.0, x: 100.0, y: 50.0, ..Default::default() });
+        let kf = track.get_interpolated(0.5);
+        assert!((kf.x - 50.0).abs() < 0.01);
+        assert!((kf.y - 25.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_track_interpolation_rotation_scale() {
+        let mut track = AnimationTrack::new("r", 1.0);
+        track.add_keyframe(KeyFrame { time: 0.0, rotation: 0.0, scale_x: 1.0, scale_y: 1.0, ..Default::default() });
+        track.add_keyframe(KeyFrame { time: 1.0, rotation: 90.0, scale_x: 2.0, scale_y: 0.5, ..Default::default() });
+        let kf = track.get_interpolated(0.5);
+        assert!((kf.rotation - 45.0).abs() < 0.01);
+        assert!((kf.scale_x - 1.5).abs() < 0.01);
+        assert!((kf.scale_y - 0.75).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_track_easing() {
+        let mut track = AnimationTrack::new("e", 1.0);
+        track.add_keyframe(KeyFrame { time: 0.0, x: 0.0, tween_easing: 0.5, ..Default::default() });
+        track.add_keyframe(KeyFrame { time: 1.0, x: 100.0, ..Default::default() });
+        let kf = track.get_interpolated(0.5);
+        assert!(kf.x < 50.0);
     }
 }

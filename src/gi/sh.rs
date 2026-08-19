@@ -29,11 +29,15 @@ pub fn evaluate_basis(index: usize, sample: &Vec3) -> f32 {
 
 pub fn evaluate(sample: &Vec3, coefficients: &[Vec3]) -> Vec3 {
     let mut result = Vec3::new(0.0, 0.0, 0.0);
-    for i in 0..SH_BASIS_COUNT.min(coefficients.len()) {
+    for (i, coefficient) in coefficients
+        .iter()
+        .enumerate()
+        .take(SH_BASIS_COUNT.min(coefficients.len()))
+    {
         let basis = evaluate_basis(i, sample);
-        result.x += coefficients[i].x * basis;
-        result.y += coefficients[i].y * basis;
-        result.z += coefficients[i].z * basis;
+        result.x += coefficient.x * basis;
+        result.y += coefficient.y * basis;
+        result.z += coefficient.z * basis;
     }
     result
 }

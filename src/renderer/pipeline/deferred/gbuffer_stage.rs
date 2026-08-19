@@ -31,8 +31,12 @@ impl GbufferStage {
         self.gbuffer.clear();
         let formats = [0x8058, 0x8058, 0x8058, 0x0002];
 
-        for i in 0..GbufferTextureId::Count as usize {
-            let tex = GbufferTexture::new(i as u32, self.width, self.height, formats[i]);
+        for (i, format) in formats
+            .iter()
+            .enumerate()
+            .take(GbufferTextureId::Count as usize)
+        {
+            let tex = GbufferTexture::new(i as u32, self.width, self.height, *format);
             self.gbuffer.push(tex);
         }
         self.gbuffer.clone()
@@ -46,8 +50,7 @@ impl GbufferStage {
         if !self.enabled || self.gbuffer.is_empty() {
             return 0;
         }
-        let draw_calls = scene_data.get_light_count() as u32;
-        draw_calls
+        scene_data.get_light_count() as u32
     }
 
     pub fn clear(&mut self) {

@@ -33,6 +33,7 @@ impl WebSocketImpl {
     }
 
     pub fn is_connected(&self) -> bool { self.connected }
+    pub fn url(&self) -> &str { &self.url }
 
     pub fn set_protocols(&mut self, protocols: &[&str]) {
         self.protocols = protocols.iter().map(|s| s.to_string()).collect();

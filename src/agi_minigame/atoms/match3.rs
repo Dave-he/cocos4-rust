@@ -20,7 +20,7 @@ impl GemType {
     }
 
     pub fn from_index(idx: usize) -> GemType {
-        match idx % 6 {
+        match idx {
             0 => GemType::Red,
             1 => GemType::Blue,
             2 => GemType::Green,
@@ -95,8 +95,6 @@ impl MatchGroup {
             } else {
                 Some(SpecialType::LineV)
             }
-        } else if self.size() >= 3 {
-            None
         } else {
             None
         }
@@ -139,7 +137,7 @@ impl Match3Atom {
     }
 
     pub fn with_gem_types(mut self, n: usize) -> Self {
-        self.num_gem_types = n.min(6).max(3);
+        self.num_gem_types = n.clamp(3, 6);
         self
     }
 
@@ -479,15 +477,12 @@ impl Atom for Match3Atom {
     }
 
     fn handle_event(&mut self, event: &str, data: &ValueMap, _ctx: &mut AtomContext) {
-        match event {
-            "swap" => {
-                let r1 = data.get("r1").and_then(|v| if let Value::Integer(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
-                let c1 = data.get("c1").and_then(|v| if let Value::Integer(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
-                let r2 = data.get("r2").and_then(|v| if let Value::Integer(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
-                let c2 = data.get("c2").and_then(|v| if let Value::Integer(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
-                self.swap(r1, c1, r2, c2);
-            }
-            _ => {}
+        if event == "swap" {
+            let r1 = data.get("r1").and_then(|v| if let Value::Int(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
+            let c1 = data.get("c1").and_then(|v| if let Value::Int(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
+            let r2 = data.get("r2").and_then(|v| if let Value::Int(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
+            let c2 = data.get("c2").and_then(|v| if let Value::Int(n) = v { Some(*n as usize) } else { None }).unwrap_or(0);
+            self.swap(r1, c1, r2, c2);
         }
     }
 

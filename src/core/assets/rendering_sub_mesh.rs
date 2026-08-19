@@ -77,12 +77,14 @@ mod tests {
 
     #[test]
     fn test_invalidate_geometric_info() {
-        let mut sub_mesh = RenderingSubMesh::default();
-        sub_mesh.geometric_info = Some(IGeometricInfo {
-            positions: vec![1.0, 2.0, 3.0],
-            indices: Some(vec![0, 1, 2]),
-            double_sided: None,
-        });
+        let mut sub_mesh = RenderingSubMesh {
+            geometric_info: Some(IGeometricInfo {
+                positions: vec![1.0, 2.0, 3.0],
+                indices: Some(vec![0, 1, 2]),
+                double_sided: None,
+            }),
+            ..Default::default()
+        };
         assert!(sub_mesh.geometric_info.is_some());
         sub_mesh.invalidate_geometric_info();
         assert!(sub_mesh.geometric_info.is_none());

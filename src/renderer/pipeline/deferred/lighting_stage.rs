@@ -86,9 +86,12 @@ mod tests {
     fn test_lighting_stage_render_with_lights() {
         let mut stage = LightingStage::new();
         let mut scene = DeferredSceneData::new();
-        scene.add_light(DeferredLight::default());
-        scene.add_light(DeferredLight::default());
-        scene.add_light(DeferredLight::default());
+        let l1 = DeferredLight { position: [1.0, 2.0, 3.0], ..Default::default() };
+        let l2 = DeferredLight { position: [4.0, 5.0, 6.0], ..Default::default() };
+        let l3 = DeferredLight { position: [7.0, 8.0, 9.0], ..Default::default() };
+        scene.add_light(l1);
+        scene.add_light(l2);
+        scene.add_light(l3);
         let draws = stage.render(&scene);
         assert_eq!(draws, 3);
     }

@@ -599,8 +599,8 @@ impl Delaunay {
             - ap.x * bp.z * cp.y;
         let mut m_vals = m;
         if c.abs() > EPSILON {
-            for k in 0..12 {
-                m_vals[k] /= c;
+            for value in &mut m_vals {
+                *value /= c;
             }
         } else {
             self.tetrahedrons[idx].vertex3 = -2;

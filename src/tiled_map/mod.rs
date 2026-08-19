@@ -1,5 +1,6 @@
 pub mod tiled_asset;
 pub mod tiled_layer;
+#[allow(clippy::module_inception)]
 pub mod tiled_map;
 pub mod tiled_types;
 pub mod tmx_parser;

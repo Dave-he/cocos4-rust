@@ -176,6 +176,7 @@ pub struct DevicePass {
 }
 
 impl DevicePass {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         subpasses: Vec<Subpass>,
         attachments: Vec<Attachment>,

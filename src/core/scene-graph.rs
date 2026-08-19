@@ -322,13 +322,9 @@ impl BaseNode {
         }
         let mut current: Option<NodePtr> = self.get_child_by_name(segments[0]);
         for seg in &segments[1..] {
-            match current {
-                Some(node) => {
-                    let next = node.lock().ok()?.get_child_by_name(seg);
-                    current = next;
-                }
-                None => return None,
-            }
+            let node = current?;
+            let next = node.lock().ok()?.get_child_by_name(seg);
+            current = Some(next?);
         }
         current
     }
@@ -615,6 +611,10 @@ impl BaseNode {
 
     pub fn get_component_count(&self) -> usize {
         self.components.len()
+    }
+
+    pub fn components_iter_mut(&mut self) -> impl Iterator<Item = (TypeId, &mut ComponentPtr)> {
+        self.components.iter_mut().map(|(k, v)| (*k, v))
     }
 
     pub fn on_event(&mut self, listener: NodeEventListener) {

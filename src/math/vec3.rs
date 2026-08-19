@@ -189,6 +189,14 @@ impl Vec3 {
         self.x * self.x + self.y * self.y + self.z * self.z
     }
 
+    pub fn len(v: &Vec3) -> f32 {
+        v.length()
+    }
+
+    pub fn length_sqr(v: &Vec3) -> f32 {
+        v.length_squared()
+    }
+
     pub fn negate(&mut self) {
         self.x = -self.x;
         self.y = -self.y;
@@ -221,6 +229,10 @@ impl Vec3 {
         self.x *= scalar;
         self.y *= scalar;
         self.z *= scalar;
+    }
+
+    pub fn multiply_scalar(v: &Vec3, scalar: f32) -> Vec3 {
+        *v * scalar
     }
 
     pub fn set(&mut self, xx: f32, yy: f32, zz: f32) {
@@ -306,10 +318,85 @@ impl Vec3 {
         }
     }
 
+    pub fn lerp_vecs(a: &Vec3, b: &Vec3, t: f32) -> Vec3 {
+        Vec3 {
+            x: a.x + t * (b.x - a.x),
+            y: a.y + t * (b.y - a.y),
+            z: a.z + t * (b.z - a.z),
+        }
+    }
+
     pub fn approx_equals(&self, v: &Vec3, precision: f32) -> bool {
         (self.x - v.x).abs() < precision
             && (self.y - v.y).abs() < precision
             && (self.z - v.z).abs() < precision
+    }
+
+    pub fn equals(a: &Vec3, b: &Vec3, epsilon: f32) -> bool {
+        (a.x - b.x).abs() <= epsilon * 1.0_f32.max(a.x.abs()).max(b.x.abs())
+            && (a.y - b.y).abs() <= epsilon * 1.0_f32.max(a.y.abs()).max(b.y.abs())
+            && (a.z - b.z).abs() <= epsilon * 1.0_f32.max(a.z.abs()).max(b.z.abs())
+    }
+
+    pub fn scale_and_add(a: &Vec3, b: &Vec3, scale: f32) -> Vec3 {
+        Vec3 {
+            x: a.x + b.x * scale,
+            y: a.y + b.y * scale,
+            z: a.z + b.z * scale,
+        }
+    }
+
+    pub fn generate_orthogonal(n: &Vec3) -> Vec3 {
+        let abs_x = n.x.abs();
+        let abs_y = n.y.abs();
+        let abs_z = n.z.abs();
+        let mut out = if abs_x < abs_y && abs_x < abs_z {
+            Vec3::new(0.0, n.z, -n.y)
+        } else if abs_y < abs_z {
+            Vec3::new(n.z, 0.0, -n.x)
+        } else {
+            Vec3::new(n.y, -n.x, 0.0)
+        };
+        out.normalize();
+        out
+    }
+
+    pub fn slerp(from: &Vec3, to: &Vec3, t: f32) -> Vec3 {
+        const SLERP_EPSILON: f32 = 1e-5;
+
+        let len_from = Vec3::len(from);
+        let len_to = Vec3::len(to);
+        if len_from < SLERP_EPSILON || len_to < SLERP_EPSILON {
+            return Vec3::lerp_vecs(from, to, t);
+        }
+
+        let len_lerped = len_from + (len_to - len_from) * t;
+        let dot = Vec3::dot_vecs(from, to) / (len_from * len_to);
+
+        if dot > 1.0 - SLERP_EPSILON {
+            Vec3::lerp_vecs(from, to, t)
+        } else if dot < -1.0 + SLERP_EPSILON {
+            let from_normalized = *from / len_from;
+            let axis = Vec3::generate_orthogonal(&from_normalized);
+            let angle = std::f32::consts::PI * t;
+            let half_angle = angle * 0.5;
+            let sin_half = half_angle.sin();
+            let rotation = super::Quaternion::new(
+                sin_half * axis.x,
+                sin_half * axis.y,
+                sin_half * axis.z,
+                half_angle.cos(),
+            );
+            from_normalized.transform_quat(&rotation) * len_lerped
+        } else {
+            let theta = dot.acos() * t;
+            let from_normalized = *from / len_from;
+            let to_normalized = *to / len_to;
+            let mut perpendicular = Vec3::scale_and_add(&to_normalized, &from_normalized, -dot);
+            perpendicular.normalize();
+            perpendicular *= theta.sin();
+            Vec3::scale_and_add(&perpendicular, &from_normalized, theta.cos()) * len_lerped
+        }
     }
 
     pub fn move_towards(current: &Vec3, target: &Vec3, max_step: f32) -> Vec3 {
@@ -734,6 +821,114 @@ mod tests {
         let v2 = Vec3::new(10.0, 10.0, 10.0);
         let result = v1.lerp(&v2, 0.5);
         assert_eq!(result, Vec3::new(5.0, 5.0, 5.0));
+    }
+
+    #[test]
+    fn test_vec3_cocos4_value_types_vec3_spec() {
+        let mut vec3 = Vec3::new(1.0, 2.0, 3.0);
+        assert_eq!(vec3.x, 1.0);
+        assert_eq!(vec3.y, 2.0);
+        assert_eq!(vec3.z, 3.0);
+        vec3.x = -1.0;
+        vec3.y = -2.0;
+        vec3.z = -3.0;
+        assert_eq!(vec3, Vec3::new(-1.0, -2.0, -3.0));
+        assert_eq!(vec3, vec3);
+
+        let mut vec = Vec3::new(4.0, 5.0, 6.0);
+        vec.multiply(&Vec3::new(1.0, 2.0, 3.0));
+        assert_eq!(vec, Vec3::new(4.0, 10.0, 18.0));
+        vec *= 0.0;
+        assert_eq!(vec, Vec3::ZERO);
+
+        let mut vector = Vec3::new(3.0, 7.0, 11.0);
+        let mut vec1 = Vec3::new(2.0, 11.0, -42.0);
+        assert_eq!(vec1.dot(&vector), -379.0);
+        assert_eq!(
+            Vec3::cross_vecs(&vec1, &vector),
+            Vec3::new(415.0, -148.0, -19.0)
+        );
+        assert_eq!(vec1.length_squared(), 1889.0);
+
+        vec1.normalize();
+        let mag = (vec1.x * vec1.x + vec1.y * vec1.y + vec1.z * vec1.z).sqrt();
+        let compare = Vec3::new(vec1.x / mag, vec1.y / mag, vec1.z / mag);
+        assert_vec3_approx_eq(&vec1, &compare, EPSILON);
+
+        vector.set(5.0, 5.0, 5.0);
+        vec1.set(5.0, 0.0, 5.0);
+        let vec2 = Vec3::new(10.0, 10.0, 10.0);
+
+        let mag_sqr1 = vec1.length_squared();
+        let mag_sqr2 = vector.length_squared();
+        let dot = vec1.dot(&vector);
+        let theta = (dot / (mag_sqr1 * mag_sqr2).sqrt()).clamp(-1.0, 1.0);
+
+        assert!((Vec3::angle(&vec1, &vector) - theta.acos()).abs() < EPSILON);
+        assert_vec3_approx_eq(&vec2.project(&vector), &Vec3::new(10.0, 10.0, 10.0), EPSILON);
+    }
+
+    #[test]
+    fn test_vec3_cocos4_slerp_spec() {
+        fn expect_close(actual: Vec3, expected: Vec3) {
+            assert!(
+                Vec3::equals(&actual, &expected, 1e-4),
+                "Vec3 not close: {:?} != {:?}",
+                actual,
+                expected
+            );
+        }
+
+        fn expect_fallback_to_lerp(from: Vec3, to: Vec3, t: f32) {
+            expect_close(Vec3::slerp(&from, &to, t), Vec3::lerp_vecs(&from, &to, t));
+        }
+
+        fn create_spherical_coordinate(yaw_degrees: f32, pitch_degrees: f32, radius: f32) -> Vec3 {
+            let theta = pitch_degrees.to_radians();
+            let phi = yaw_degrees.to_radians();
+            Vec3::new(
+                radius * theta.sin() * phi.cos(),
+                radius * theta.cos(),
+                radius * theta.sin() * phi.sin(),
+            )
+        }
+
+        expect_fallback_to_lerp(Vec3::ZERO, Vec3::new(1.0, 2.0, 3.0), 0.2);
+        expect_fallback_to_lerp(Vec3::new(-1.0, -2.0, 3.0), Vec3::new(1e-7, 1e-7, 0.0), 0.3);
+        expect_fallback_to_lerp(Vec3::new(1e-9, 1e-7, 1e-8), Vec3::ZERO, 0.3);
+
+        expect_close(
+            Vec3::slerp(
+                &Vec3::new(1.5, 1.5, 1.5),
+                &Vec3::new(1.2, 1.2, 1.2 + 1e-8),
+                0.6,
+            ),
+            Vec3::new(1.32, 1.32, 1.32),
+        );
+
+        let from = Vec3::new(1.5, 1.5, 1.5);
+        let to_scale = 1.2;
+        let t = 0.6;
+        let to = Vec3::multiply_scalar(
+            &Vec3::new(-from.x, -from.y + 1e-7, -from.z + 1e-8),
+            to_scale,
+        );
+        let result = Vec3::slerp(&from, &to, t);
+        assert!((Vec3::len(&result) - (Vec3::len(&from) + (Vec3::len(&to) - Vec3::len(&from)) * t)).abs() < 1e-4);
+        assert!((Vec3::angle(&from, &result) / PI - t).abs() < 1e-4);
+
+        let from = create_spherical_coordinate(30.0, 20.0, 1.0);
+        let to = create_spherical_coordinate(100.0, 60.0, 2.2);
+        expect_close(Vec3::slerp(&from, &to, 0.0), from);
+        expect_close(
+            Vec3::slerp(&from, &to, 0.2),
+            Vec3::new(0.268105, 1.133066, 0.426475),
+        );
+        expect_close(
+            Vec3::slerp(&from, &to, 0.6),
+            Vec3::new(0.061_089_45, 1.3119493, 1.1106112),
+        );
+        expect_close(Vec3::slerp(&from, &to, 1.0), to);
     }
 
     #[test]

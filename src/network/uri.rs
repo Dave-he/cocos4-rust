@@ -3,7 +3,7 @@ Rust port of Cocos Creator Uri
 Original C++ version Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
 ****************************************************************************/
 
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 #[derive(Debug, Clone)]
 pub struct Uri {
@@ -66,9 +66,8 @@ impl Uri {
 
         let rest = &s[scheme_end + 1..];
 
-        if rest.starts_with("//") {
+        if let Some(after_slashes) = rest.strip_prefix("//") {
             uri.has_authority = true;
-            let after_slashes = &rest[2..];
 
             let path_start = Self::find_authority_end(after_slashes);
             let authority_part = &after_slashes[..path_start];
@@ -258,7 +257,13 @@ impl Uri {
         // For now, we rely on the caller using parse_query_params_mut() after construction.
     }
 
-    pub fn to_string(&self) -> String {
+    pub fn clear(&mut self) {
+        *self = Uri::default();
+    }
+}
+
+impl fmt::Display for Uri {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut result = self.scheme.clone();
         result.push(':');
         if self.has_authority {
@@ -273,7 +278,7 @@ impl Uri {
                 result.push('@');
             }
             result.push_str(&self.host);
-            let default_port = Self::default_port_for_scheme(&self.scheme);
+            let default_port = Uri::default_port_for_scheme(&self.scheme);
             if self.port != 0 && self.port != default_port {
                 result.push(':');
                 result.push_str(&self.port.to_string());
@@ -292,11 +297,7 @@ impl Uri {
             result.push('#');
             result.push_str(&self.fragment);
         }
-        result
-    }
-
-    pub fn clear(&mut self) {
-        *self = Uri::default();
+        f.write_str(&result)
     }
 }
 

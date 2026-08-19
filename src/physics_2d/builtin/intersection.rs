@@ -44,7 +44,7 @@ pub fn ray_segment_intersection(
     }
     let t = ((seg_start.x - ray_origin.x) * seg.y - (seg_start.y - ray_origin.y) * seg.x) / denom;
     let u = ((seg_start.x - ray_origin.x) * ray_dir.y - (seg_start.y - ray_origin.y) * ray_dir.x) / denom;
-    if t < 0.0 || u < 0.0 || u > 1.0 {
+    if t < 0.0 || !(0.0..=1.0).contains(&u) {
         return None;
     }
     let point = *ray_origin + *ray_dir * t;

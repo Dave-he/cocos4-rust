@@ -1,25 +1,19 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TileMapOrientation {
+    #[default]
     Orthogonal,
     Isometric,
     Hexagonal,
     Staggered,
 }
 
-impl Default for TileMapOrientation {
-    fn default() -> Self { Self::Orthogonal }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TileRenderOrder {
+    #[default]
     RightDown,
     RightUp,
     LeftDown,
     LeftUp,
-}
-
-impl Default for TileRenderOrder {
-    fn default() -> Self { Self::RightDown }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
